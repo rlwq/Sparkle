@@ -149,26 +149,23 @@ LispAST *eval(LispAST *expr) {
 }
 
 int main() {
-    StringView prog = sv_mk("(add (add 5 4) 2)");
- 
-    printf("%.*s\n", (int) prog.size, prog.data);
+    char buff[2048];
 
-    Token tokens[256];
-    size_t tokens_count = 0;
+    while (true) {
+        if (!fgets(buff, sizeof(buff), stdin)) break;
 
-    Token t = parse_token(&prog);
-    while (t.kind != TK_EOF) {
-        tokens[tokens_count++] = t;
-        t = parse_token(&prog);
+        StringView prog = sv_mk(buff);
+        Tokenizer t = tokenizer_init(prog);
+        tokenize(&t);
+
+        size_t cursor = 0;
+        LispAST *result = parse_expr(t.tokens.data, &cursor, t.tokens.size);
+        LispAST *r2 = eval(result);
+        print_expr(result);
+        printf("\n");
+        print_expr(r2);
+        printf("\n");
     }
-    
-    size_t cursor = 0;
-    LispAST *result = parse_expr(tokens, &cursor, tokens_count);
-    LispAST *r2 = eval(result);
-    print_expr(result);
-    printf("\n");
-    print_expr(r2);
-    printf("\n");
     return 0;
 }
 

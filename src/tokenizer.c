@@ -3,6 +3,14 @@
 #include "string_view.h"
 #include "tokenizer.h"
 
+Tokenizer tokenizer_init(StringView src) {
+    Tokenizer result;
+    result.remainder = src;
+    da_init(result.tokens);
+
+    return result;
+}
+
 Token parse_token(StringView *src) {
     *src = sv_drop_ws(*src);
     
@@ -47,7 +55,6 @@ Token parse_token(StringView *src) {
         return token;
     }
 
-
     // SYMBOL
     if (isalpha(sv_head(*src))) {
         size_t length = 0;
@@ -60,4 +67,10 @@ Token parse_token(StringView *src) {
     }
     
     assert(0 && "Unreachable");
+}
+
+void tokenize(Tokenizer *tokenizer) {
+    while (tokenizer->remainder.size) {
+        da_push(tokenizer->tokens, parse_token(&tokenizer->remainder));
+    }
 }
