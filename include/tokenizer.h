@@ -1,3 +1,6 @@
+#ifndef TOKENIZER_H
+#define TOKENIZER_H
+
 #include "string_view.h"
 #include "dynamic_array.h"
 
@@ -34,3 +37,5 @@ Tokenizer tokenizer_init(StringView src);
 
 Token parse_token(StringView *src);
 void tokenize(Tokenizer *tokenizer);
+
+#endif

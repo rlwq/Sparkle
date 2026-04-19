@@ -3,6 +3,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
+
 #define DA_INIT_CAPACITY 64
 #define DA(T_) struct { T_ *data; size_t size; size_t capacity; }
 

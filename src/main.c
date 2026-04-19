@@ -1,106 +1,10 @@
 #include "string_view.h"
 #include "tokenizer.h"
+#include "parser.h"
+#include "lisp_ast.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-typedef enum {
-    LISP_NIL,
-    LISP_CONS,
-    LISP_SYMBOL,
-    LISP_INTEGER,
-    LISP_STRING,
-} LISP_AST_KIND;
-
-typedef struct LispAST LispAST;
-
-typedef struct {
-    LispAST *car;
-    LispAST *cdr;
-} Cons;
-
-struct LispAST {
-    LISP_AST_KIND kind;
-    union {
-        StringView symbol;
-        StringView string;
-        Cons cons;
-        int integer;
-    } as;
-};
-
-int svtoi(StringView sv) {
-    int result = 0;
-    
-    for (size_t i = 0; i < sv.size; i++)
-        result = 10 * result + sv_at(sv, i) - '0';
-
-    return result;
-}
-
-LispAST *parse_expr(Token *tokens, size_t *curr, size_t size) {
-    // S-expr
-    assert(*curr < size);
-    if (tokens[*curr].kind == TK_L_PAREN) {
-        (*curr)++;
-        
-        // TODO: rewrite that
-        LispAST **subexprs = malloc(sizeof(LispAST *) * 256);
-        size_t subexprs_count = 0;
-
-        while (tokens[*curr].kind != TK_R_PAREN)
-            subexprs[subexprs_count++] = parse_expr(tokens, curr, size);
-        
-        LispAST *result = malloc(sizeof(LispAST));
-        result->kind = LISP_NIL;
-        
-        for (size_t i = 0; i < subexprs_count; i++) {
-            LispAST *head = malloc(sizeof(LispAST));
-            head->kind = LISP_CONS;
-            head->as.cons.cdr = result;
-            head->as.cons.car = subexprs[subexprs_count - i - 1];
-            result = head;
-        }
-        free(subexprs);
-        
-        assert(tokens[*curr].kind == TK_R_PAREN);
-        (*curr)++;
-        
-        return result;
-    }
-    
-    // Integer
-    if (tokens[*curr].kind == TK_INTEGER) {
-        LispAST *ast = malloc(sizeof(LispAST));
-        ast->kind = LISP_INTEGER;
-        ast->as.integer = svtoi(tokens[*curr].src);
-        
-        (*curr)++;
-        return ast;
-    }
-    
-    // Symbol
-    if (tokens[*curr].kind == TK_SYMBOL) {
-        LispAST *ast = malloc(sizeof(LispAST));
-        ast->kind = LISP_SYMBOL;
-        ast->as.symbol = tokens[*curr].src;
-        
-        (*curr)++;
-        return ast;
-    }
-    
-    // String
-    if (tokens[*curr].kind == TK_STRING) {
-        LispAST *ast = malloc(sizeof(LispAST));
-        ast->kind = LISP_STRING;
-        ast->as.string = sv_shrink(tokens[*curr].src, 1);
-        
-        (*curr)++;
-        return ast;
-    }
-
-    assert(0 && "Unreachable");
-}
 
 void print_expr(LispAST *expr) {
     switch (expr->kind) {
@@ -118,6 +22,7 @@ void print_expr(LispAST *expr) {
         default: assert(0 && "Unreachable"); break;
     }
 }
+
 
 LispAST *eval(LispAST *expr) {
     switch (expr->kind) {
@@ -157,9 +62,10 @@ int main() {
         StringView prog = sv_mk(buff);
         Tokenizer t = tokenizer_init(prog);
         tokenize(&t);
+        
+        Parser p = parser_init(t.tokens);
 
-        size_t cursor = 0;
-        LispAST *result = parse_expr(t.tokens.data, &cursor, t.tokens.size);
+        LispAST *result = parse_expr(&p);
         LispAST *r2 = eval(result);
         print_expr(result);
         printf("\n");

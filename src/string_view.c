@@ -70,3 +70,14 @@ StringView sv_alloc_replace(StringView sv, char from, char to) {
     return (StringView) { .data = new_data, .size = sv.size };
 }
 
+// TODO: unsafe, no sound logic
+int svtoi(StringView sv) {
+    int result = 0;
+    
+    for (size_t i = 0; i < sv.size; i++)
+        result = 10 * result + sv_at(sv, i) - '0';
+
+    return result;
+}
+
+
