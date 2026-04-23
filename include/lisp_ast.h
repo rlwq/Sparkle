@@ -22,6 +22,11 @@ typedef struct {
     LispAST *cdr;
 } Cons;
 
+typedef struct {
+    SV_DA args; 
+    LispAST *expr;
+} Lambda;
+
 typedef LispAST *(*LispBuiltin) (LispAST *args);
 
 struct LispAST {
@@ -35,15 +40,18 @@ struct LispAST {
     } as;
 };
 
-typedef struct {
+typedef struct Env Env;
+
+struct Env {
+    Env *parent;
     DA(StringView) symbols;
     DA(LispAST *) values;
-} Env;
+};
 
-Env env_init(); 
+Env env_init(Env *parent); 
 
 void env_define(Env *env, StringView name, LispAST *value);
 
-LispAST *env_get(Env *env, StringView name);
+LispAST *env_get(Env *env, LispAST *expr);
 
 #endif

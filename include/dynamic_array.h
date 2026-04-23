@@ -28,7 +28,8 @@
         (da_).data[(da_).size++] = (item_);                                  \
     } while (0)
 
-#define da_at(da_, i_) ((assert((i_) < (da_).size), (da_).data[i_]))
+//TODO: add bounds cheking
+#define da_at(da_, i_) ((da_).data[i_])
 
 #define da_free(da_)         \
     do {                     \

@@ -1,11 +1,15 @@
-#include "string_view.h"
-#include "tokenizer.h"
-#include "parser.h"
-#include "lisp_ast.h"
 #include <assert.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "dynamic_array.h"
+#include "string_view.h"
+#include "tokenizer.h"
+#include "parser.h"
+#include "lisp_ast.h"
+#include "utils.h"
+#include "evaluator.h"
 
 void print_expr(LispAST *expr) {
     switch (expr->kind) {
@@ -21,63 +25,12 @@ void print_expr(LispAST *expr) {
             printf(">");
         break;
         case LISP_BUILTIN:
-            assert(0 && "Not implemented.");
+            NOT_IMPLEMENTED();
         break;
         case LISP_LAMBDA:
-            assert(0 && "Not implemented.");
-        break;
-        default: assert(0 && "Unreachable"); break;
-    }
-}
-
-LispAST *eval(LispAST *expr, Env *env) {
-    switch (expr->kind) {
-        case LISP_NIL:
-        case LISP_INTEGER:
-        case LISP_STRING:
-            return expr;
-        break;
-        case LISP_SYMBOL:
-            return env_get(env, expr->as.symbol);
-        break;
-        case LISP_CONS: {
-            LispAST *func = eval(expr->as.cons.car, env);
-            LispAST *args = expr->as.cons.cdr;
-           
-            // TODO: control here if args should or should not be evaluated
-            for (LispAST *curr_arg = args;
-                 curr_arg->kind != LISP_NIL;
-                 curr_arg = curr_arg->as.cons.cdr)
-                curr_arg->as.cons.car = eval(curr_arg->as.cons.car, env);
-
-
-            switch (func->kind) {
-                case LISP_BUILTIN: {
-                    LispAST *result = func->as.builtin(args);
-                    return result;
-                } break;
-                case LISP_LAMBDA:
-                    assert(0 && "Not implemented.");
-                break;
-                default:
-                    assert(0 && "Uncallable object.");
-                break;
-            }
-        } break;
-        case LISP_BUILTIN:
-            assert(0 && "Not implemented.");
-        break;
-        case LISP_LAMBDA:
-            assert(0 && "Not implemented.");
-        break;
- 
-        default:
-            assert(0 && "Unreachable");
+            NOT_IMPLEMENTED();
         break;
     }
-
-    assert(0 && "Unreachable");
-    return NULL;
 }
 
 LispAST *lisp_add(LispAST *args) {
@@ -92,6 +45,35 @@ LispAST *lisp_add(LispAST *args) {
     return result;
 }
 
+LispAST *lisp_reverse_list(LispAST *args) {
+    DA(LispAST *) new_args;
+    da_init(new_args);
+
+    for (LispAST *curr_arg = args;
+            curr_arg->kind != LISP_NIL;
+            curr_arg = curr_arg->as.cons.cdr) {
+            da_push(new_args, curr_arg->as.cons.car);
+    }
+
+    LispAST *result = malloc(sizeof(LispAST));
+    result->kind = LISP_NIL;
+    for (size_t i = 0; i < new_args.size; i++) {
+        LispAST *curr = malloc(sizeof(LispAST));
+        curr->kind = LISP_CONS;
+        curr->as.cons.car = da_at(new_args, new_args.size - i - 1);
+        curr->as.cons.cdr = result;
+        result = curr;
+    }
+
+    da_free(new_args);
+
+    return result;
+}
+
+LispAST *lisp_id(LispAST *args) {
+    return args;
+}
+
 int main() {
     char buff[2048];
 
@@ -101,7 +83,17 @@ int main() {
     add_func->kind = LISP_BUILTIN;
     add_func->as.builtin = lisp_add;
 
+    LispAST *reverse_func = malloc(sizeof(LispAST));
+    reverse_func->kind = LISP_BUILTIN;
+    reverse_func->as.builtin = lisp_reverse_list;
+
+    LispAST *id_func = malloc(sizeof(LispAST));
+    id_func->kind = LISP_BUILTIN;
+    id_func->as.builtin = lisp_id;
+
     env_define(&env, sv_mk("add"), add_func);
+    env_define(&env, sv_mk("reverse"), reverse_func);
+    env_define(&env, sv_mk("id"), id_func);
 
     while (true) {
         if (!fgets(buff, sizeof(buff), stdin)) break;
@@ -113,7 +105,7 @@ int main() {
         Parser p = parser_init(t.tokens);
 
         LispAST *result = parse_expr(&p);
-        LispAST *r2 = eval(result, &env);
+        LispAST *r2 = lisp_eval(result, &env);
         print_expr(result);
         printf("\n");
         print_expr(r2);

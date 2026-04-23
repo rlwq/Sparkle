@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdbool.h>
+#include "dynamic_array.h"
 
 /* String View Data Structure */
 
@@ -11,6 +12,8 @@ typedef struct {
     const char *data;
     size_t size;
 } StringView;
+
+typedef DA(StringView) SV_DA;
 
 #define SV_FMT "%.*s"
 #define SV_ARGS(sv_) (int) (sv_).size, sv_.data
