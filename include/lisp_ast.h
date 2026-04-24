@@ -17,6 +17,7 @@ typedef enum {
 } LISP_AST_KIND;
 
 typedef struct LispAST LispAST;
+typedef DA(LispAST *) da_lisp_ast_ptr;
 
 typedef struct {
     LispAST *car;
@@ -24,7 +25,7 @@ typedef struct {
 } Cons;
 
 typedef struct {
-    SV_DA args; 
+    da_lisp_ast_ptr args; 
     LispAST *expr;
 } Lambda;
 
@@ -38,12 +39,14 @@ struct LispAST {
         StringView symbol;
         StringView string;
         LispBuiltin builtin;
+        Lambda lambda;
         Cons cons;
         int integer;
     } as;
 };
 
-typedef DA(LispAST *) da_list_ast_ptr;
+#define CAR(n_) ((n_)->as.cons.car)
+#define CDR(n_) ((n_)->as.cons.cdr)
 
 LispAST *gc_alloc(LISP_AST_KIND kind);
 void gc_mark(LispAST *expr);

@@ -28,7 +28,7 @@ LispAST *gc_alloc(LISP_AST_KIND kind) {
 }
 
 void gc_free(LispAST *expr) {
-    assert(expr->marked);
+    assert(!expr->marked);
     ast_heap_size--;
     free(expr);
 }
@@ -93,6 +93,8 @@ Env *env_free(Env *env) {
     
     da_free(env->symbols);
     da_free(env->values);
+
+    free(env);
 
     return parent;
 }

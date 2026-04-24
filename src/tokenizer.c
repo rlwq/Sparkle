@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <ctype.h>
+#include "dynamic_array.h"
 #include "string_view.h"
 #include "tokenizer.h"
 
@@ -10,6 +11,11 @@ Tokenizer *tokenizer_alloc(StringView src) {
     da_init(result->tokens);
 
     return result;
+}
+
+void tokenizer_free(Tokenizer *tokenizer) {
+    da_free(tokenizer->tokens);
+    free(tokenizer);
 }
 
 Token parse_token(StringView *src) {

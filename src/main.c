@@ -10,6 +10,22 @@
 #include "lisp_ast.h"
 #include "evaluator.h"
 
+
+LispAST *lisp_int_eq(LispAST *args) {
+    if (CAR(args)->as.integer == CAR(CDR(args))->as.integer) {
+        LispAST *result = gc_alloc(LISP_INTEGER);
+        result->as.integer = 1;
+        return result;
+    }
+    return gc_alloc(LISP_NIL);
+}
+
+LispAST *lisp_sub(LispAST *args) {
+    LispAST *result = gc_alloc(LISP_INTEGER);
+    result->as.integer = CAR(args)->as.integer - CAR(CDR(args))->as.integer;
+    return result;
+}
+
 LispAST *lisp_add(LispAST *args) {
     int result_value = 0;
 
@@ -51,20 +67,25 @@ int main([[maybe_unused]] int argc, char** argv) {
     char *src = read_file(argv[1]);
     StringView prog = sv_mk(src);
 
-    Tokenizer *t = tokenizer_alloc(prog);
-    tokenize(t);
+    Tokenizer *tokenizer = tokenizer_alloc(prog);
+    tokenize(tokenizer);
 
-    Parser *p = parser_alloc(t->tokens);
-    parse(p);
+    Parser *parser = parser_alloc(tokenizer->tokens);
+    parse(parser);
 
-    Evaluator *evaluator = evaluator_alloc(p->exprs);
+    Evaluator *evaluator = evaluator_alloc(parser->exprs);
     register_builtin(evaluator, sv_mk("add"), lisp_add);
-    evaluate_all(evaluator);
+    register_builtin(evaluator, sv_mk("sub"), lisp_sub);
+    register_builtin(evaluator, sv_mk("eq"), lisp_int_eq);
+    eval_all(evaluator);
     
-    printf("%zu\n", heap_size());
-    env_mark(evaluator->global_scope);
     gc_sweep();
-    printf("%zu\n", heap_size());
+
+    evaluator_free(evaluator);
+    parser_free(parser);
+    tokenizer_free(tokenizer);
+ 
+    free(src);
     return 0;
 }
 

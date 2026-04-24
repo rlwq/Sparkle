@@ -17,6 +17,11 @@ Parser* parser_alloc(TokenDA tokens) {
     return result;
 }
 
+void parser_free(Parser *parser) {
+    da_free(parser->exprs);
+    free(parser);
+}
+
 Token parser_lookup(Parser *parser) {
     assert(PARSER_VALID_STATE(*parser));
     return da_at(parser->tokens, parser->cursor);
@@ -58,8 +63,7 @@ LispAST *parse_expr(Parser *parser) {
         while (!parser_eat(parser, TK_R_PAREN))
             da_push(args, parse_expr(parser));
         
-        LispAST *result = gc_alloc(sizeof(LispAST));
-        result->kind = LISP_NIL;
+        LispAST *result = gc_alloc(LISP_NIL);
         
         for (size_t i = 0; i < args.size; i++) {
             LispAST *head = gc_alloc(sizeof(LispAST));

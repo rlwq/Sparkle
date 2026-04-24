@@ -11,10 +11,11 @@
 typedef struct {
     TokenDA tokens;
     size_t cursor;
-    da_list_ast_ptr exprs;
+    da_lisp_ast_ptr exprs;
 } Parser;
 
-Parser* parser_alloc(TokenDA tokens);
+Parser *parser_alloc(TokenDA tokens);
+void parser_free(Parser *parser);
 
 Token parser_lookup(Parser *parser); 
 bool parser_match(Parser *parser, TokenKind kind);

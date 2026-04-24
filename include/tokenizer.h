@@ -34,6 +34,7 @@ typedef struct {
 #define TOKEN_ARGS(t_) (t_).kind, ((t_).line + 1), ((t_).column + 1), (int) (t_).src.size, (t_).src.data
 
 Tokenizer* tokenizer_alloc(StringView src);
+void tokenizer_free(Tokenizer *tokenizer);
 
 Token parse_token(StringView *src);
 void tokenize(Tokenizer *tokenizer);
