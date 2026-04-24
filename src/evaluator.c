@@ -7,7 +7,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-// <list> := NIL | cons(<expr>, <list>)
+void evaluator_mark(Evaluator *evaluator) {
+    env_mark(evaluator->global_scope);
+
+    //TODO: maybe should mark only the not yet evaluated ones
+    for (size_t i = 0; i < evaluator->exprs.size; i++) {
+        gc_mark(da_at(evaluator->exprs, i));
+    }
+}
 
 void print_expr(LispAST *expr) {
     switch (expr->kind) {
@@ -39,27 +46,18 @@ Evaluator *evaluator_alloc(da_list_ast_ptr exprs) {
     return evaluator;
 }
 
-LispAST *lisp_eval_list(LispAST *expr, Env *env) {
-    // TODO: Warning! Mutates state!!! Should copy and overwrite
-    for (LispAST *curr_arg = expr;
-         curr_arg->kind != LISP_NIL;
-         curr_arg = curr_arg->as.cons.cdr)
-        curr_arg->as.cons.car = eval_expr(curr_arg->as.cons.car, env);
-    return expr;
-}
+LispAST *eval_list(LispAST *expr, Env *env) {
+    assert(expr->kind == LISP_NIL || expr->kind == LISP_CONS);
+    if (expr->kind == LISP_NIL) return expr;
+    if (expr->kind == LISP_CONS) {
+        LispAST *result = gc_alloc(LISP_CONS);
+        result->as.cons.car = eval_expr(expr->as.cons.car, env);
+        result->as.cons.cdr = eval_list(expr->as.cons.cdr, env);
+        return result;
+    }
 
-// ((lambda) a b c)
-// LispAST *lisp_lamda_call(LispAST *expr, Env *env) {
-//     assert(expr->kind == LISP_CONS);
-//     assert(expr->as.cons.car->kind == LISP_LAMBDA);
-//
-//     Env *new_env = env_alloc(env);
-//
-//     // TODO: iterate through lambda paramters and expr and define them in new_env
-//     // TODO: eval lambda's sub expr in the new_env
-//     // TODO: free new_env
-//     NOT_IMPLEMENTED();
-// }
+    UNREACHABLE();
+}
 
 LispAST *evaluate_current(Evaluator *evaluator) {
     assert(evaluator->cursor < evaluator->exprs.size);
@@ -70,8 +68,7 @@ LispAST *evaluate_current(Evaluator *evaluator) {
 }
 
 void register_builtin(Evaluator *evaluator, StringView name, LispBuiltin func_ptr) {
-    LispAST *builtin = malloc(sizeof(LispAST));
-    builtin->kind = LISP_BUILTIN;
+    LispAST *builtin = gc_alloc(LISP_BUILTIN);
     builtin->as.builtin = func_ptr;
 
     env_define(evaluator->global_scope, name, builtin);
@@ -88,7 +85,6 @@ void evaluate_all(Evaluator *evaluator) {
 LispAST *lisp_eval_let_expr(LispAST *args, Env *env) {
     assert(args->kind == LISP_CONS);
     assert(args->as.cons.car->kind == LISP_SYMBOL);
-    //TODO: maybe should copy the value
     env_define(env, args->as.cons.car->as.symbol, eval_expr(args->as.cons.cdr->as.cons.car, env));
     return args;
 }
@@ -112,7 +108,7 @@ LispAST *lisp_eval_sexpr(LispAST *expr, Env *env) {
     }
 
     LispAST *evaluated_head = eval_expr(head, env);
-    LispAST *evaluated_args = lisp_eval_list(args, env);
+    LispAST *evaluated_args = eval_list(args, env);
 
     switch (evaluated_head->kind) {
         case LISP_LAMBDA:
@@ -135,15 +131,17 @@ LispAST *lisp_eval_sexpr(LispAST *expr, Env *env) {
     UNREACHABLE();
 }
 
-// TODO: maybe should always return a new AST
 LispAST *eval_expr(LispAST *expr, Env *env) {
     switch (expr->kind) {
         case LISP_NIL:
         case LISP_INTEGER:
         case LISP_STRING:
-        case LISP_LAMBDA:
         case LISP_BUILTIN:
             return expr;
+        break;
+
+        case LISP_LAMBDA:
+            NOT_IMPLEMENTED();
         break;
 
         case LISP_SYMBOL:

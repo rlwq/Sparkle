@@ -21,4 +21,6 @@ LispAST *evaluate_current(Evaluator *evaluator);
 void evaluate_all(Evaluator *evaluator);
 LispAST *lisp_print(LispAST);
 
+void evaluator_mark(Evaluator *evaluator);
+
 #endif

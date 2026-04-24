@@ -58,6 +58,7 @@ struct Env {
     DA(LispAST *) values;
 };
 
+size_t heap_size();
 Env* env_alloc(Env *parent);
 Env* env_free(Env *env);
 void env_mark(Env *env);

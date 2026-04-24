@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <string.h>
 #include "string_view.h"
 #include "ctype.h"
@@ -63,7 +64,8 @@ StringView sv_drop_ws(StringView sv) {
 
 StringView sv_alloc_replace(StringView sv, char from, char to) {
     char *new_data = strndup(sv.data, sv.size);
-    
+    assert(new_data);
+
     for (size_t i = 0; i < sv.size; i++)
         if (sv_at(sv, i) == from)
             new_data[i] = to;

@@ -7,7 +7,7 @@ TARGET := ./build/clisp
 
 debug: $(SRC) $(HEADERS)
 	@mkdir -p ./build/
-	$(CC) $(CFLAGS) $(SRC) -g -o $(TARGET)
+	$(CC) $(CFLAGS) $(SRC) $(SFLAGS) -g -o $(TARGET)
 
 build: $(SRC) $(HEADERS)
 	@mkdir -p ./build/

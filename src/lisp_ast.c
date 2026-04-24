@@ -7,9 +7,17 @@
 #include <string.h>
 
 static LispAST *ast_heap = NULL;
+static size_t ast_heap_size = 0;
+
+size_t heap_size() {
+    return ast_heap_size;
+}
+
 LispAST *gc_alloc(LISP_AST_KIND kind) {
     LispAST *node = malloc(sizeof(LispAST));
     assert(node); //TODO: add some error reporting
+    
+    ast_heap_size++;
     node->kind = kind;
 
     node->marked = false;
@@ -21,6 +29,7 @@ LispAST *gc_alloc(LISP_AST_KIND kind) {
 
 void gc_free(LispAST *expr) {
     assert(expr->marked);
+    ast_heap_size--;
     free(expr);
 }
 
@@ -104,3 +113,10 @@ LispAST *env_get(Env *env, LispAST *expr) {
     return env_get(env->parent, expr);    
 }
 
+void env_mark(Env *env) {
+    if (!env) return;
+
+    for (size_t i = 0; i < env->symbols.size; i++)
+        gc_mark(da_at(env->values, i));
+    env_mark(env->parent);
+}

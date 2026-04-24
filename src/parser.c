@@ -58,11 +58,11 @@ LispAST *parse_expr(Parser *parser) {
         while (!parser_eat(parser, TK_R_PAREN))
             da_push(args, parse_expr(parser));
         
-        LispAST *result = malloc(sizeof(LispAST));
+        LispAST *result = gc_alloc(sizeof(LispAST));
         result->kind = LISP_NIL;
         
         for (size_t i = 0; i < args.size; i++) {
-            LispAST *head = malloc(sizeof(LispAST));
+            LispAST *head = gc_alloc(sizeof(LispAST));
             head->kind = LISP_CONS;
             head->as.cons.cdr = result;
             head->as.cons.car = da_at(args, args.size - i - 1);
@@ -75,7 +75,7 @@ LispAST *parse_expr(Parser *parser) {
     
     // Integer
     if (parser_match(parser, TK_INTEGER)) {
-        LispAST *ast = malloc(sizeof(LispAST));
+        LispAST *ast = gc_alloc(sizeof(LispAST));
         ast->kind = LISP_INTEGER;
         ast->as.integer = svtoi(parser_advance(parser).src);
         return ast;
@@ -83,7 +83,7 @@ LispAST *parse_expr(Parser *parser) {
     
     // Symbol
     if (parser_match(parser, TK_SYMBOL)) {
-        LispAST *ast = malloc(sizeof(LispAST));
+        LispAST *ast = gc_alloc(sizeof(LispAST));
         ast->kind = LISP_SYMBOL;
         ast->as.symbol = parser_advance(parser).src;
         return ast;
@@ -91,7 +91,7 @@ LispAST *parse_expr(Parser *parser) {
     
     // String
     if (parser_match(parser, TK_STRING)) {
-        LispAST *ast = malloc(sizeof(LispAST));
+        LispAST *ast = gc_alloc(sizeof(LispAST));
         ast->kind = LISP_STRING;
         ast->as.string = sv_shrink(parser_advance(parser).src, 1);
         return ast;

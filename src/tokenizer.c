@@ -5,6 +5,7 @@
 
 Tokenizer *tokenizer_alloc(StringView src) {
     Tokenizer *result = malloc(sizeof(Tokenizer));
+    assert(result);
     result->remainder = src;
     da_init(result->tokens);
 
