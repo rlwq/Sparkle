@@ -18,6 +18,7 @@ typedef enum {
 
 typedef struct LispAST LispAST;
 typedef DA(LispAST *) da_lisp_ast_ptr;
+typedef struct Env Env;
 
 typedef struct {
     LispAST *car;
@@ -27,6 +28,7 @@ typedef struct {
 typedef struct {
     da_lisp_ast_ptr args; 
     LispAST *expr;
+    Env *env;
 } Lambda;
 
 typedef LispAST *(*LispBuiltin) (LispAST *args);
@@ -52,8 +54,6 @@ LispAST *gc_alloc(LISP_AST_KIND kind);
 void gc_mark(LispAST *expr);
 void gc_free(LispAST *expr);
 void gc_sweep();
-
-typedef struct Env Env;
 
 struct Env {
     Env *parent;

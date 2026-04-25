@@ -122,17 +122,18 @@ LispAST *eval_if_form(LispAST *condition, LispAST *if_true, LispAST *if_false, E
     return eval_expr(if_true, env);
 }
 
-LispAST *eval_lambda_form(da_lisp_ast_ptr args, LispAST *subexpr) {
+LispAST *eval_lambda_form(da_lisp_ast_ptr args, LispAST *subexpr, Env *env) {
     LispAST *lambda_result = gc_alloc(LISP_LAMBDA);
 
     lambda_result->as.lambda.args = args;
     lambda_result->as.lambda.expr = subexpr;
+    lambda_result->as.lambda.env = env;
 
     return lambda_result;
 }
 
-LispAST *eval_lambda_call(LispAST *lambda, LispAST *args, Env *env) {
-    Env *local_scope = env_alloc(env);
+LispAST *eval_lambda_call(LispAST *lambda, LispAST *args) {
+    Env *local_scope = env_alloc(lambda->as.lambda.env);
     
     for (size_t i = 0; args->kind != LISP_NIL; args = args->as.cons.cdr) {
         env_define(local_scope, da_at(lambda->as.lambda.args, i)->as.symbol,
@@ -141,7 +142,8 @@ LispAST *eval_lambda_call(LispAST *lambda, LispAST *args, Env *env) {
     }
 
     LispAST *result = eval_expr(lambda->as.lambda.expr, local_scope);
-
+    
+    // env_free(local_scope);
     // TODO: should manage allocated scopes
 
     return result;
@@ -181,7 +183,7 @@ LispAST *eval_sexpr(LispAST *expr, Env *env) {
             // TODO: make proper assertions
             da_lisp_ast_ptr lambda_args = unpack_list(CAR(args));
             LispAST *lambda_subexpr = CAR(CDR(args));
-            LispAST *result = eval_lambda_form(lambda_args, lambda_subexpr);
+            LispAST *result = eval_lambda_form(lambda_args, lambda_subexpr, env);
             return result;
         }
     }
@@ -191,7 +193,7 @@ LispAST *eval_sexpr(LispAST *expr, Env *env) {
 
     switch (evaluated_head->kind) {
         case LISP_LAMBDA:
-            return eval_lambda_call(evaluated_head, evaluated_args, env);
+            return eval_lambda_call(evaluated_head, evaluated_args);
         break;
 
         case LISP_BUILTIN:
