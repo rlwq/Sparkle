@@ -61,7 +61,7 @@ Token lex_char_token(Lexer *lexer, TokenKind kind) {
 
 
 bool issymbolchar(char c) {
-    return isascii(c) && !isspace(c) && c != '(' && c != ')' && c != '"';
+    return (unsigned char) c <= 127 && !isspace(c) && c != '(' && c != ')' && c != '"';
 }
 
 void lexer_skip_ws(Lexer *lexer) {

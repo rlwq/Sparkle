@@ -72,16 +72,6 @@ StringView sv_drop_ws(StringView sv) {
     return sv_drop(sv, size);
 }
 
-StringView sv_alloc_replace(StringView sv, char from, char to) {
-    char *new_data = strndup(sv.data, sv.size);
-    assert(new_data);
-
-    for (size_t i = 0; i < sv.size; i++)
-        if (sv_at(sv, i) == from)
-            new_data[i] = to;
-    return (StringView) { .data = new_data, .size = sv.size };
-}
-
 // TODO: unsafe, no sound logic
 int svtoi(StringView sv) {
     int result = 0;

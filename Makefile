@@ -1,5 +1,5 @@
 CC := gcc
-CFLAGS := -I./include -Wall -Wextra -Wswitch-enum 
+CFLAGS := -std=c11 -I./include -Wall -Wextra -Wswitch-enum -Wpedantic
 SFLAGS := -fsanitize=address,undefined
 SRC := $(wildcard ./src/*.c) 
 HEADERS := $(wildcard ./include/*.h)

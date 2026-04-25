@@ -46,9 +46,6 @@ size_t sv_find(StringView sv, char c);
 
 StringView sv_drop_ws(StringView sv);
 
-// TODO: add custom allocation
-StringView sv_alloc_replace(StringView sv, char from, char to);
-
 int svtoi(StringView sv);
 
 /* String Builder Data Structure */
