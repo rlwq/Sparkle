@@ -30,7 +30,22 @@ LispAST *gc_alloc(LISP_AST_KIND kind) {
 void gc_free(LispAST *expr) {
     assert(!expr->marked);
     ast_heap_size--;
-    free(expr);
+
+    switch (expr->kind) {
+        case LISP_NIL:
+        case LISP_INTEGER:
+        case LISP_CONS:
+        case LISP_SYMBOL:
+        case LISP_BUILTIN:
+        case LISP_STRING:
+            free(expr);
+        break;
+
+        case LISP_LAMBDA:
+            da_free(expr->as.lambda.args);
+            free(expr);
+        break;
+    }
 }
 
 void gc_sweep() {

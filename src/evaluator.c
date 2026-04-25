@@ -182,7 +182,6 @@ LispAST *eval_sexpr(LispAST *expr, Env *env) {
             da_lisp_ast_ptr lambda_args = unpack_list(CAR(args));
             LispAST *lambda_subexpr = CAR(CDR(args));
             LispAST *result = eval_lambda_form(lambda_args, lambda_subexpr);
-            // da_free(lambda_args);
             return result;
         }
     }
