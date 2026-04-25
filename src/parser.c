@@ -1,20 +1,27 @@
-#include "dynamic_array.h"
-#include "tokenizer.h"
-#include "lisp_ast.h"
-#include "parser.h"
 #include <assert.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-Parser* parser_alloc(TokenDA tokens) {
-    Parser *result = malloc(sizeof(Parser));
-    result->tokens = tokens;
-    result->cursor = 0;
-    
-    da_init(result->exprs);
+#include "dynamic_array.h"
+#include "lexer.h"
+#include "lisp_ast.h"
+#include "parser.h"
 
-    return result;
+#define CURR(p_) (assert((p_)), *((p_)->tokens))
+
+Parser* parser_alloc(TokenDA tokens) {
+    Parser *parser = malloc(sizeof(Parser));
+    assert(parser);
+
+    parser->tokens = tokens.data;
+    parser->tokens_count = tokens.size;
+    parser->is_err = false;
+
+    da_init(parser->exprs);
+
+    return parser;
 }
 
 void parser_free(Parser *parser) {
@@ -22,59 +29,79 @@ void parser_free(Parser *parser) {
     free(parser);
 }
 
-Token parser_lookup(Parser *parser) {
-    assert(PARSER_VALID_STATE(*parser));
-    return da_at(parser->tokens, parser->cursor);
-}
-
 bool parser_match(Parser *parser, TokenKind kind) {
-    assert(PARSER_VALID_STATE(*parser));
-    return parser_lookup(parser).kind == kind;
+    if (!PARSER_VALID(parser))
+        return false;
+
+    return CURR(parser).kind == kind;
 }
 
 Token parser_advance(Parser *parser) {
-    assert(PARSER_VALID_STATE(*parser));
-    Token result = parser_lookup(parser);
-    parser->cursor++;
-    return result;
+    assert(PARSER_VALID(parser));
+
+    Token token = CURR(parser);
+    parser->tokens++;
+    parser->tokens_count--;
+    return token;
 }
 
 bool parser_eat(Parser *parser, TokenKind kind) {
-    assert(PARSER_VALID_STATE(*parser));
-    if (parser_lookup(parser).kind != kind)
+    assert(PARSER_VALID(parser));
+
+    if (CURR(parser).kind != kind)
         return false;
     parser_advance(parser);
     return true;
 }
 
-/*
- * <expr> = <int_lit> | <str_lit> | <NIL_lit> | <sexpr>
- * <sexpr> + '(' {<expr>} ')'
- * */
+bool parser_expect(Parser *parser, TokenKind kind) {
+    if (!PARSER_VALID(parser)) {
+        parser->is_err = true;
+        return false;
+    }
+
+    if (CURR(parser).kind != kind) {
+        parser->is_err = true;
+        return false;
+    }
+
+    parser_advance(parser);
+    return true;
+}
 
 LispAST *parse_expr(Parser *parser) {
-    assert(PARSER_VALID_STATE(*parser));
+    assert(PARSER_VALID(parser));
     
+    if (parser_match(parser, TK_EOF)) {
+        parser->tokens_count = 0;
+        return NULL;
+    }
+
     // S-expr 
     if (parser_eat(parser, TK_L_PAREN)) {
         DA(LispAST *) args;
         da_init(args);
 
-        while (!parser_eat(parser, TK_R_PAREN))
+        while (PARSER_VALID(parser) && !parser_match(parser, TK_R_PAREN))
             da_push(args, parse_expr(parser));
         
-        LispAST *result = gc_alloc(LISP_NIL);
+        if (!parser_expect(parser, TK_R_PAREN)) {
+            da_free(args);
+            return NULL;
+        }
+
+        LispAST *node = gc_alloc(LISP_NIL);
         
         for (size_t i = 0; i < args.size; i++) {
             LispAST *head = gc_alloc(sizeof(LispAST));
             head->kind = LISP_CONS;
-            head->as.cons.cdr = result;
+            head->as.cons.cdr = node;
             head->as.cons.car = da_at(args, args.size - i - 1);
-            result = head;
+            node = head;
         }
 
         da_free(args); 
-        return result;
+        return node;
     }
     
     // Integer
@@ -101,6 +128,20 @@ LispAST *parse_expr(Parser *parser) {
         return ast;
     }
     
-    assert(0 && "Unreachable");
+    parser->is_err = true;
     return NULL;
+}
+
+void parse_current(Parser *parser) {
+    assert(PARSER_VALID(parser));
+    
+    LispAST *expr = parse_expr(parser);
+    if (expr) da_push(parser->exprs, expr);
+}
+
+void parse_all(Parser *parser) { 
+    assert(PARSER_VALID(parser));
+
+    while (PARSER_VALID(parser))
+        parse_current(parser);
 }

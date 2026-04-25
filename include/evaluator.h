@@ -5,12 +5,12 @@
 #include "string_view.h"
 
 typedef struct {
-    da_lisp_ast_ptr exprs;
+    LispASTPtrDA exprs;
     size_t cursor;
     Env* global_scope;
 } Evaluator;
 
-Evaluator *evaluator_alloc(da_lisp_ast_ptr exprs);
+Evaluator *evaluator_alloc(LispASTPtrDA exprs);
 void evaluator_free(Evaluator *evaluator);
 
 // TODO: Should maybe bind to a Symbol or smth like that

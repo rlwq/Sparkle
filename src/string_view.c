@@ -56,6 +56,16 @@ char sv_head(StringView sv) {
     return sv.data[0];
 }
 
+char sv_next(StringView sv) {
+    if (sv.size < 2) return '\0';
+    return sv.data[1];
+}
+
+size_t sv_find(StringView sv, char c) {
+    char *end = memchr(sv.data, c, sv.size);
+    return end ? (size_t)(end - sv.data) : sv.size;
+}
+
 StringView sv_drop_ws(StringView sv) {
     size_t size = 0;
     while (size < sv.size && isspace(sv_at(sv, size))) size++;

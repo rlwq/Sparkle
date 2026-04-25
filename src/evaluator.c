@@ -8,15 +8,15 @@
 #include "string_view.h"
 #include "utils.h"
 
-da_lisp_ast_ptr unpack_list(LispAST *expr) {
-    da_lisp_ast_ptr result;
-    da_init(result);
+LispASTPtrDA unpack_list(LispAST *expr) {
+    LispASTPtrDA array;
+    da_init(array);
     
     // TODO: make assertions
     for (; expr->kind != LISP_NIL; expr = CDR(expr))
-        da_push(result, CAR(expr));
+        da_push(array, CAR(expr));
 
-    return result;
+    return array;
 }
 
 void evaluator_mark(Evaluator *evaluator) {
@@ -57,7 +57,7 @@ void print_expr(LispAST *expr) {
     }
 }
 
-Evaluator *evaluator_alloc(da_lisp_ast_ptr exprs) {
+Evaluator *evaluator_alloc(LispASTPtrDA exprs) {
     Evaluator *evaluator = malloc(sizeof(Evaluator));
     
     evaluator->exprs = exprs;
@@ -76,10 +76,10 @@ LispAST *eval_list(LispAST *expr, Env *env) {
     assert(expr->kind == LISP_NIL || expr->kind == LISP_CONS);
     if (expr->kind == LISP_NIL) return expr;
     if (expr->kind == LISP_CONS) {
-        LispAST *result = gc_alloc(LISP_CONS);
-        result->as.cons.car = eval_expr(expr->as.cons.car, env);
-        result->as.cons.cdr = eval_list(expr->as.cons.cdr, env);
-        return result;
+        LispAST *node = gc_alloc(LISP_CONS);
+        node->as.cons.car = eval_expr(expr->as.cons.car, env);
+        node->as.cons.cdr = eval_list(expr->as.cons.cdr, env);
+        return node;
     }
 
     UNREACHABLE();
@@ -87,10 +87,10 @@ LispAST *eval_list(LispAST *expr, Env *env) {
 
 LispAST *eval_current(Evaluator *evaluator) {
     assert(evaluator->cursor < evaluator->exprs.size);
-    LispAST *result = eval_expr(da_at(evaluator->exprs, evaluator->cursor),
-                                evaluator->global_scope);
+    LispAST *node = eval_expr(da_at(evaluator->exprs, evaluator->cursor),
+                              evaluator->global_scope);
     evaluator->cursor++;
-    return result;
+    return node;
 }
 
 void register_builtin(Evaluator *evaluator, StringView name, LispBuiltin func_ptr) {
@@ -102,17 +102,17 @@ void register_builtin(Evaluator *evaluator, StringView name, LispBuiltin func_pt
 
 void eval_all(Evaluator *evaluator) {
     while (evaluator->cursor < evaluator->exprs.size) {
-        LispAST *result = eval_current(evaluator);
-        print_expr(result);
+        LispAST *node = eval_current(evaluator);
+        print_expr(node);
         printf("\n");
     }
 }
 
 LispAST *eval_let_form(LispAST *symbol, LispAST *expr, Env *env) {
     assert(symbol->kind == LISP_SYMBOL);
-    LispAST *result = eval_expr(expr, env);
-    env_define(env, symbol->as.symbol, result);
-    return result;
+    LispAST *node = eval_expr(expr, env);
+    env_define(env, symbol->as.symbol, node);
+    return node;
 }
 
 LispAST *eval_if_form(LispAST *condition, LispAST *if_true, LispAST *if_false, Env *env) {
@@ -122,7 +122,7 @@ LispAST *eval_if_form(LispAST *condition, LispAST *if_true, LispAST *if_false, E
     return eval_expr(if_true, env);
 }
 
-LispAST *eval_lambda_form(da_lisp_ast_ptr args, LispAST *subexpr, Env *env) {
+LispAST *eval_lambda_form(LispASTPtrDA args, LispAST *subexpr, Env *env) {
     LispAST *lambda_result = gc_alloc(LISP_LAMBDA);
 
     lambda_result->as.lambda.args = args;
@@ -181,7 +181,7 @@ LispAST *eval_sexpr(LispAST *expr, Env *env) {
 
         else if (sv_eq(head->as.symbol, sv_mk("lambda"))) {
             // TODO: make proper assertions
-            da_lisp_ast_ptr lambda_args = unpack_list(CAR(args));
+            LispASTPtrDA lambda_args = unpack_list(CAR(args));
             LispAST *lambda_subexpr = CAR(CDR(args));
             LispAST *result = eval_lambda_form(lambda_args, lambda_subexpr, env);
             return result;

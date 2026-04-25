@@ -31,12 +31,18 @@
 //TODO: add bounds cheking
 #define da_at(da_, i_) ((da_).data[i_])
 
-#define da_free(da_)         \
+#define da_nullify(da_)      \
     do {                     \
-        free((da_).data);    \
         (da_).data = NULL;   \
         (da_).size = 0;      \
         (da_).capacity = 0;  \
+    } while (0)
+
+
+#define da_free(da_)         \
+    do {                     \
+        free((da_).data);    \
+        da_nullify(da_);     \
     } while (0)
 
 #endif

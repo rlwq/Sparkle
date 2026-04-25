@@ -17,7 +17,7 @@ typedef enum {
 } LISP_AST_KIND;
 
 typedef struct LispAST LispAST;
-typedef DA(LispAST *) da_lisp_ast_ptr;
+typedef DA(LispAST *) LispASTPtrDA;
 typedef struct Env Env;
 
 typedef struct {
@@ -26,7 +26,7 @@ typedef struct {
 } Cons;
 
 typedef struct {
-    da_lisp_ast_ptr args; 
+    LispASTPtrDA args; 
     LispAST *expr;
     Env *env;
 } Lambda;

@@ -24,6 +24,8 @@ typedef DA(StringView) SV_DA;
 #define sv_size(sv_) ( (sv_).size )
 #define sv_eq(sv1_, sv2_) ( (sv1_).size == (sv2_).size && !memcmp((sv1_).data, (sv2_).data, (sv1_).size) )
 
+#define sv_is_empty(sv_) ((sv_).size == 0)
+
 // TODO: review this macro
 #define sv_dup(sv_) ( (StringView) { .data = strndup((sv_).data, (sv_).size), .size = (sv_).size } )
 
@@ -36,8 +38,11 @@ StringView sv_shrink(StringView sv, size_t size);
 size_t sv_prefix_size(StringView sv, char c);
 
 char sv_head(StringView sv);
+char sv_next(StringView sv);
 bool sv_peek(StringView sv, char c);
 bool sv_eat(StringView *sv, char c);
+
+size_t sv_find(StringView sv, char c);
 
 StringView sv_drop_ws(StringView sv);
 

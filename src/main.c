@@ -3,27 +3,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "dynamic_array.h"
 #include "string_view.h"
-#include "tokenizer.h"
+#include "lexer.h"
 #include "parser.h"
 #include "lisp_ast.h"
 #include "evaluator.h"
 
-
 LispAST *lisp_int_eq(LispAST *args) {
     if (CAR(args)->as.integer == CAR(CDR(args))->as.integer) {
-        LispAST *result = gc_alloc(LISP_INTEGER);
-        result->as.integer = 1;
-        return result;
+        LispAST *node = gc_alloc(LISP_INTEGER);
+        node->as.integer = 1;
+        return node;
     }
     return gc_alloc(LISP_NIL);
 }
 
 LispAST *lisp_sub(LispAST *args) {
-    LispAST *result = gc_alloc(LISP_INTEGER);
-    result->as.integer = CAR(args)->as.integer - CAR(CDR(args))->as.integer;
-    return result;
+    LispAST *node = gc_alloc(LISP_INTEGER);
+    node->as.integer = CAR(args)->as.integer - CAR(CDR(args))->as.integer;
+    return node;
 }
 
 LispAST *lisp_add(LispAST *args) {
@@ -32,16 +30,9 @@ LispAST *lisp_add(LispAST *args) {
     for (; args->kind != LISP_NIL; args = args->as.cons.cdr)
         result_value += args->as.cons.car->as.integer;
 
-    LispAST *result = gc_alloc(LISP_INTEGER);
-    result->as.integer = result_value;
-    return result;
-}
-
-void parse(Parser *parser) {
-    assert(PARSER_VALID_STATE(*parser));
-    while (da_at(parser->tokens, parser->cursor).kind != TK_EOF) {
-        da_push(parser->exprs, parse_expr(parser));
-    }
+    LispAST *node = gc_alloc(LISP_INTEGER);
+    node->as.integer = result_value;
+    return node;
 }
 
 char *read_file(const char *path) {
@@ -67,23 +58,46 @@ int main([[maybe_unused]] int argc, char** argv) {
     char *src = read_file(argv[1]);
     StringView prog = sv_mk(src);
 
-    Tokenizer *tokenizer = tokenizer_alloc(prog);
-    tokenize(tokenizer);
+    Lexer *lexer = lexer_alloc(prog);
+    lex_all(lexer);
+    
+    if (lexer->is_err) {
+        printf("%s:%zu:%zu: [ERROR] Unexpected character: " SV_FMT "\n",
+                argv[1], lexer->line + 1, lexer->column + 1,
+                SV_ARGS(sv_take(lexer->src, sv_find(lexer->src, '\n'))));
+        
+        free(src);
+        lexer_free(lexer);
+        return 1;
+    }
+  
+    TokenDA tokens = extract_tokens(lexer);
 
-    Parser *parser = parser_alloc(tokenizer->tokens);
-    parse(parser);
+    Parser *parser = parser_alloc(tokens);
+    parse_all(parser);
+    
+    if (parser->is_err) {
+        printf("%s:%zu:%zu: [ERROR] Unexpected token.\n",
+                argv[1], parser->tokens->line + 1, parser->tokens->column + 1);
+        
+        free(src);
+        lexer_free(lexer);
+        return 1;
+    }
+ 
 
     Evaluator *evaluator = evaluator_alloc(parser->exprs);
-    register_builtin(evaluator, sv_mk("add"), lisp_add);
-    register_builtin(evaluator, sv_mk("sub"), lisp_sub);
-    register_builtin(evaluator, sv_mk("eq"), lisp_int_eq);
+    register_builtin(evaluator, sv_mk("+"), lisp_add);
+    register_builtin(evaluator, sv_mk("-"), lisp_sub);
+    register_builtin(evaluator, sv_mk("="), lisp_int_eq);
     eval_all(evaluator);
-    
+
     gc_sweep();
 
     evaluator_free(evaluator);
     parser_free(parser);
-    tokenizer_free(tokenizer);
+    da_free(tokens);
+    lexer_free(lexer);
  
     free(src);
     return 0;
