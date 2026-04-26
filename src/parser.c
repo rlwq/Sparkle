@@ -25,7 +25,6 @@ Parser* parser_alloc(TokenDA tokens) {
 }
 
 void parser_free(Parser *parser) {
-    da_free(parser->exprs);
     free(parser);
 }
 
@@ -140,4 +139,10 @@ void parse_all(Parser *parser) {
 
     while (PARSER_VALID(parser))
         parse_current(parser);
+}
+
+LispASTPtrDA extract_exprs(Parser *parser) {
+    LispASTPtrDA result = parser->exprs;
+    da_nullify(parser->exprs);
+    return result;
 }

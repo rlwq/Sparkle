@@ -26,7 +26,6 @@ Lexer *lexer_alloc(StringView src) {
 }
 
 void lexer_free(Lexer *lexer) {
-    da_free(lexer->tokens);
     free(lexer);
 }
 

@@ -3,11 +3,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "dynamic_array.h"
 #include "string_view.h"
 #include "lexer.h"
 #include "parser.h"
 #include "lisp_ast.h"
 #include "evaluator.h"
+#include "debug.h"
 
 LispAST *lisp_int_eq(LispAST *args) {
     if (CAR(args)->as.integer == CAR(CDR(args))->as.integer) {
@@ -53,9 +55,12 @@ char *read_file(const char *path) {
     return src;
 }
 
-// TODO: implement exprDA extraction from parser
-int main([[maybe_unused]] int argc, char** argv) {
-    assert(argc == 2);
+int main(int argc, char** argv) {
+    if (argc != 2) {
+        printf("USAGE: %s source.rkl\n", argv[0]);
+        return 1;
+    }
+    
     char *src = read_file(argv[1]);
     StringView prog = sv_mk(src);
 
@@ -78,29 +83,43 @@ int main([[maybe_unused]] int argc, char** argv) {
     parse_all(parser);
     
     if (parser->is_err) {
-        printf("%s:%zu:%zu: [ERROR] Unexpected token.\n",
-                argv[1], parser->tokens->line + 1, parser->tokens->column + 1);
+        printf("%s:%zu:%zu: [ERROR] Unexpected token \""SV_FMT"\".\n",
+                argv[1], parser->tokens->line + 1, parser->tokens->column + 1,
+                SV_ARGS(parser->tokens->src));
         
         free(src);
         lexer_free(lexer);
         return 1;
     }
- 
+    
+    LispASTPtrDA exprs = extract_exprs(parser);
 
-    Evaluator *evaluator = evaluator_alloc(parser->exprs);
+    Evaluator *evaluator = evaluator_alloc(exprs);
     register_builtin(evaluator, sv_mk("+"), lisp_add);
     register_builtin(evaluator, sv_mk("-"), lisp_sub);
     register_builtin(evaluator, sv_mk("="), lisp_int_eq);
     eval_all(evaluator);
 
+    //TODO: maybe should be an iterative approach
+
+    LispASTPtrDA results = extract_results(evaluator);
+
+    for (size_t i = 0; i < results.size; i++) {
+        print_expr(da_at(results, i));
+        printf("\n");
+    }
+
     gc_sweep();
 
     evaluator_free(evaluator);
+    da_free(exprs);
+
     parser_free(parser);
     da_free(tokens);
+    
     lexer_free(lexer);
- 
     free(src);
+
     return 0;
 }
 

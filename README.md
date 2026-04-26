@@ -1,6 +1,6 @@
 # Sparkle
 
-Sparkle is a [Lisp](https://en.wikipedia.org/wiki/Lisp) dialect designed to be intuitive and easy to use and reuse.
+Sparkle is a [Lisp](https://en.wikipedia.org/wiki/Lisp_(programming_language)) dialect designed to be intuitive and easy to use and reuse.
 The **AST-walking interpreter** is written from scratch in **ISO C11**, no dependencies required.
 
 > [!WARNING]

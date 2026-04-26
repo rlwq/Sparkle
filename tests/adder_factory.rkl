@@ -1,0 +1,7 @@
+(let adder_factory (lambda (x) (lambda (y) (+ x y))))
+
+(let add3 (adder_factory 3))
+(let add5 (adder_factory 5))
+
+(add3 (add5 7))
+

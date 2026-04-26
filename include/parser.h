@@ -24,4 +24,6 @@ void parser_free(Parser *parser);
 void parse_current(Parser *parser);
 void parse_all(Parser *parser);
 
+LispASTPtrDA extract_exprs(Parser *parser);
+
 #endif 

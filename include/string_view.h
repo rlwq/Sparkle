@@ -16,7 +16,7 @@ typedef struct {
 typedef DA(StringView) SV_DA;
 
 #define SV_FMT "%.*s"
-#define SV_ARGS(sv_) (int) (sv_).size, sv_.data
+#define SV_ARGS(sv_) ((int) (sv_).size), (sv_).data
 
 #define sv(s_, n_) ( (StringView) { .data = (s_), .size = (n_) } )
 #define sv_mk(s_) ( (StringView) { .data = (s_), .size = strlen(s_) } )
