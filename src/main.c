@@ -126,13 +126,16 @@ int main(int argc, char** argv) {
     //     }
     //     printf("===========\n");
     // }
-    //
+    
     evaluator_free(evaluator);
     da_free(exprs);
+    da_free(results);
 
     parser_free(parser);
     da_free(tokens);
     
+    gc_free(gc);
+
     lexer_free(lexer);
     free(src);
 

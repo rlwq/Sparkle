@@ -22,7 +22,7 @@ typedef struct {
 } Cons;
 
 typedef struct {
-    LispASTPtrDA args; 
+    SV_DA args; 
     LispAST *expr;
     Scope *scope;
 } Lambda;

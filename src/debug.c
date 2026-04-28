@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "debug.h"
+#include "string_view.h"
 
 
 void print_expr(LispAST *expr) {
@@ -20,9 +21,8 @@ void print_expr(LispAST *expr) {
         case LISP_LAMBDA:
             printf("( lambda (");
             for (size_t i = 0; i < expr->as.lambda.args.size; i++) {
-                LispAST *curr = da_at(expr->as.lambda.args, i);
-                print_expr(curr);
-                printf(" ");
+                StringView curr = da_at(expr->as.lambda.args, i);
+                printf(SV_FMT" ", SV_ARGS(curr));
             }
             printf(") ");
             print_expr(expr->as.lambda.expr);

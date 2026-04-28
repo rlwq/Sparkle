@@ -25,13 +25,13 @@ GC *gc_alloc(void) {
 void gc_free(GC *gc) {
     while (gc->nodes_heap) {
         LispAST *next = gc->nodes_heap->heap_next;
-        free(gc->nodes_heap);
+        gc_free_node(gc, gc->nodes_heap);
         gc->nodes_heap = next;
     }
     
     while (gc->scopes_heap) {
         Scope *next = gc->scopes_heap->heap_next;
-        free(gc->scopes_heap);
+        gc_free_scope(gc, gc->scopes_heap);
         gc->scopes_heap = next;
     }
 
@@ -81,10 +81,12 @@ Scope *gc_alloc_scope(GC *gc, Scope *parent) {
     da_init(scope->symbols);
     da_init(scope->values);
 
+    scope->marked = false;
+
     scope->heap_next = gc->scopes_heap;
     gc->scopes_heap = scope;
     gc->scopes_count++;
-
+    
     scope->parent = parent;
 
     return scope;
@@ -99,19 +101,33 @@ void gc_free_scope(GC *gc, Scope *scope) {
 }
 
 void gc_sweep(GC *gc) {
-    LispAST **curr = &(gc->nodes_heap);
+    LispAST **curr_node = &(gc->nodes_heap);
 
-    while (*curr) {
-        if ((*curr)->marked) {
-            (*curr)->marked = false;
-            curr = &((*curr)->heap_next);
+    while (*curr_node) {
+        if ((*curr_node)->marked) {
+            (*curr_node)->marked = false;
+            curr_node = &((*curr_node)->heap_next);
         }
         else {
-            LispAST *dead = *curr;
-            *curr = dead->heap_next;
+            LispAST *dead = *curr_node;
+            *curr_node = dead->heap_next;
             gc_free_node(gc, dead);
         }
     }
+
+    Scope **curr_scope = &(gc->scopes_heap);
+
+    while (*curr_scope) {
+        if ((*curr_scope)->marked) {
+            (*curr_scope)->marked = false;
+            curr_scope = &((*curr_scope)->heap_next);
+        }
+        else {
+            Scope *dead = *curr_scope;
+            *curr_scope = dead->heap_next;
+            gc_free_scope(gc, dead);
+        }
+    } 
 }
 
 void gc_mark_node(LispAST *expr) {
@@ -131,9 +147,6 @@ void gc_mark_node(LispAST *expr) {
         break;
 
         case LISP_LAMBDA:
-            for (size_t i = 0; i < expr->as.lambda.args.size; i++)
-                gc_mark_node(da_at(expr->as.lambda.args, i));
-            
             gc_mark_node(expr->as.lambda.expr);
             gc_mark_scope(expr->as.lambda.scope);
         break;

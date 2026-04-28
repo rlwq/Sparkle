@@ -29,6 +29,8 @@ Evaluator *evaluator_alloc(LispASTPtrDA exprs, GC *gc) {
 }
 
 void evaluator_free(Evaluator *evaluator) {
+    da_free(evaluator->scope_stack);
+
     free(evaluator);
 }
 
@@ -55,7 +57,7 @@ void evaluator_mark(Evaluator *evaluator) {
 }
 
 LispAST *evaluator_advance(Evaluator *evaluator) {
-    EVALUATOR_VALID(evaluator);
+    assert(EVALUATOR_VALID(evaluator));
     LispAST *curr = CURR(evaluator);
     
     evaluator->stmts++;
@@ -64,18 +66,6 @@ LispAST *evaluator_advance(Evaluator *evaluator) {
 }
 
 LispAST *eval_expr(LispAST *expr, Evaluator *evaluator);
-
-LispASTPtrDA unpack_lisp_list(LispAST *expr) {
-    LispASTPtrDA array;
-    da_init(array);
-
-    for (; expr->kind != LISP_NIL; expr = CDR(expr)) {
-        assert(expr->kind == LISP_CONS);
-        da_push(array, CAR(expr));
-    }
-
-    return array;
-}
 
 LispAST *eval_list(LispAST *expr, Evaluator *evaluator) {
     assert(expr->kind == LISP_NIL || expr->kind == LISP_CONS);
@@ -129,7 +119,7 @@ LispAST *eval_if_form(LispAST *condition, LispAST *if_true, LispAST *if_false, E
     return eval_expr(if_true, evaluator);
 }
 
-LispAST *eval_lambda_form(LispASTPtrDA args, LispAST *subexpr, Evaluator *evaluator) {
+LispAST *eval_lambda_form(SV_DA args, LispAST *subexpr, Evaluator *evaluator) {
     LispAST *lambda_result = gc_alloc_node(evaluator->gc, LISP_LAMBDA);
 
     lambda_result->as.lambda.args = args;
@@ -146,7 +136,7 @@ LispAST *eval_lambda_call(LispAST *lambda, LispAST *args, Evaluator *evaluator) 
     push_scope(evaluator, gc_alloc_scope(evaluator->gc, CURR_SCOPE(evaluator)));
 
     for (size_t i = 0; args->kind != LISP_NIL; args = args->as.cons.cdr) {
-        scope_define(CURR_SCOPE(evaluator), da_at(lambda->as.lambda.args, i)->as.symbol,
+        scope_define(CURR_SCOPE(evaluator), da_at(lambda->as.lambda.args, i),
                    args->as.cons.car);
         i++;
     }
@@ -187,8 +177,15 @@ LispAST *dispatch_special_form(LispAST *head, LispAST *args, Evaluator *evaluato
 
     if (sv_eq(head->as.symbol, sv_mk("lambda"))) {
         // TODO: make proper assertions
-        LispASTPtrDA lambda_args = unpack_lisp_list(CAR(args));
+        LispAST *lambda_args_list = CAR(args);
         LispAST *lambda_subexpr = CAR(CDR(args));
+
+        SV_DA lambda_args;
+        da_init(lambda_args);
+
+        for (; lambda_args_list->kind != LISP_NIL;
+               lambda_args_list = lambda_args_list->as.cons.cdr)
+            da_push(lambda_args, CAR(lambda_args_list)->as.symbol);
         LispAST *result = eval_lambda_form(lambda_args, lambda_subexpr, evaluator);
         return result;
     }
