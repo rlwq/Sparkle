@@ -1,10 +1,11 @@
 #include "gc.h"
 #include "dynamic_array.h"
 #include "lisp_ast.h"
-#include "utils.h"
 #include "scope.h"
+#include "typedefs.h"
 
 #include <assert.h>
+#include <stdbool.h>
 #include <stdlib.h>
 
 
@@ -12,11 +13,28 @@ GC *gc_alloc(void) {
     GC *gc = malloc(sizeof(GC));
     assert(gc);
 
+    gc->nodes_heap = NULL;
+    gc->nodes_count = 0;
+
+    gc->scopes_heap = NULL;
+    gc->scopes_count = 0;
+
     return gc;
 }
 
 void gc_free(GC *gc) {
-    // TODO: free all objects in heap 
+    while (gc->nodes_heap) {
+        LispAST *next = gc->nodes_heap->heap_next;
+        free(gc->nodes_heap);
+        gc->nodes_heap = next;
+    }
+    
+    while (gc->scopes_heap) {
+        Scope *next = gc->scopes_heap->heap_next;
+        free(gc->scopes_heap);
+        gc->scopes_heap = next;
+    }
+
     free(gc);
 }
 
@@ -33,22 +51,6 @@ LispAST *gc_alloc_node(GC *gc, LISP_AST_KIND kind) {
     gc->nodes_heap = node;
 
     return node;
-}
-
-Scope *gc_alloc_scope(GC *gc, Scope *parent) {
-    Scope *scope = malloc(sizeof(Scope));
-    assert(scope);
-
-    da_init(scope->symbols);
-    da_init(scope->values);
-
-    scope->heap_next = gc->scopes_heap;
-    gc->scopes_heap = scope;
-    gc->scopes_count++;
-
-    scope->parent = parent;
-
-    return scope;
 }
 
 void gc_free_node(GC *gc, LispAST *expr) {
@@ -70,6 +72,30 @@ void gc_free_node(GC *gc, LispAST *expr) {
             free(expr);
         break;
     }
+}
+
+Scope *gc_alloc_scope(GC *gc, Scope *parent) {
+    Scope *scope = malloc(sizeof(Scope));
+    assert(scope);
+
+    da_init(scope->symbols);
+    da_init(scope->values);
+
+    scope->heap_next = gc->scopes_heap;
+    gc->scopes_heap = scope;
+    gc->scopes_count++;
+
+    scope->parent = parent;
+
+    return scope;
+}
+
+void gc_free_scope(GC *gc, Scope *scope) {
+    da_free(scope->symbols);
+    da_free(scope->values);
+    
+    gc->scopes_count--;
+    free(scope);
 }
 
 void gc_sweep(GC *gc) {
@@ -105,7 +131,11 @@ void gc_mark_node(LispAST *expr) {
         break;
 
         case LISP_LAMBDA:
-            NOT_IMPLEMENTED();
+            for (size_t i = 0; i < expr->as.lambda.args.size; i++)
+                gc_mark_node(da_at(expr->as.lambda.args, i));
+            
+            gc_mark_node(expr->as.lambda.expr);
+            gc_mark_scope(expr->as.lambda.scope);
         break;
 
         case LISP_CONS:
@@ -115,4 +145,14 @@ void gc_mark_node(LispAST *expr) {
     }
 }
 
+void gc_mark_scope(Scope *scope) {
+    assert(scope);
 
+    scope->marked = true;
+   
+    for (size_t i = 0; i < scope->values.size; i++)
+        gc_mark_node(da_at(scope->values, i));
+
+    if (scope->parent)
+        gc_mark_scope(scope->parent);
+}

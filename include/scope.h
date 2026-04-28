@@ -15,7 +15,6 @@ struct Scope {
     bool marked;
 };
 
-void scope_mark(Scope *scope);
 void scope_define(Scope *scope, StringView name, LispAST *value);
 LispAST *scope_get(Scope *scope, LispAST *expr);
 

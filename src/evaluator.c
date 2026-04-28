@@ -7,6 +7,7 @@
 #include "dynamic_array.h"
 #include "lisp_ast.h"
 #include "string_view.h"
+#include "typedefs.h"
 #include "utils.h"
 
 #define CURR(e_) (*((e_)->stmts))
@@ -39,6 +40,20 @@ void pop_scope(Evaluator *evaluator) {
     da_pop(evaluator->scope_stack);
 }
 
+void evaluator_mark(Evaluator *evaluator) {
+    // Marking unevaluated expressions
+    for (size_t i = 0; i < evaluator->stmts_count; i++)
+        gc_mark_node(evaluator->stmts[i]);
+
+    // Marking results
+    for (size_t i = 0; i < evaluator->results.size; i++)
+        gc_mark_node(da_at(evaluator->results, i));
+
+    // Marking scopes
+    for (size_t i = 0; i < evaluator->scope_stack.size; i++)
+        gc_mark_scope(da_at(evaluator->scope_stack, i));
+}
+
 LispAST *evaluator_advance(Evaluator *evaluator) {
     EVALUATOR_VALID(evaluator);
     LispAST *curr = CURR(evaluator);
@@ -61,13 +76,7 @@ LispASTPtrDA unpack_lisp_list(LispAST *expr) {
 
     return array;
 }
-//
-// void evaluator_mark_stmts(Evaluator *evaluator) {
-//     scope_mark(CURR_SCOPE(evaluator));
-//     for (size_t i = 0; i < evaluator->stmts_count; i++)
-//         gc_mark_node(evaluator->stmts[i]);
-// }
-//
+
 LispAST *eval_list(LispAST *expr, Evaluator *evaluator) {
     assert(expr->kind == LISP_NIL || expr->kind == LISP_CONS);
 

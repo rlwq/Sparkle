@@ -38,6 +38,6 @@ void pop_scope(Evaluator *evaluator);
 
 LispASTPtrDA extract_results(Evaluator *evaluator);
 
-void evaluator_mark_stmts(Evaluator *evaluator);
+void evaluator_mark(Evaluator *evaluator);
 
 #endif

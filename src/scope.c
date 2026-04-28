@@ -1,5 +1,4 @@
 #include "scope.h"
-#include "gc.h"
 #include <assert.h>
 
 void scope_define(Scope *scope, StringView name, LispAST *value) {
@@ -20,10 +19,3 @@ LispAST *scope_get(Scope *scope, LispAST *expr) {
     return scope_get(scope->parent, expr);    
 }
 
-void scope_mark(Scope *scope) {
-    if (!scope) return;
-
-    for (size_t i = 0; i < scope->symbols.size; i++)
-        gc_mark_node(da_at(scope->values, i));
-    scope_mark(scope->parent);
-}
