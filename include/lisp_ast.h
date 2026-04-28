@@ -32,7 +32,9 @@ typedef LispAST *(*LispBuiltin) (LispAST *args, GC *gc);
 struct LispAST {
     LISP_AST_KIND kind;
     bool marked;
-    LispAST *next;
+
+    LispAST *heap_next;
+    
     union {
         StringView symbol;
         StringView string;

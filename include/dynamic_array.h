@@ -28,6 +28,13 @@
         (da_).data[(da_).size++] = (item_);                                  \
     } while (0)
 
+#define da_pop(da_)          \
+    do {                     \
+        assert((da_).size);  \
+        (da_).size--;        \
+    } while (0)
+
+
 //TODO: add bounds cheking
 #define da_at(da_, i_) ((da_).data[i_])
 

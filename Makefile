@@ -1,6 +1,6 @@
 CC := gcc
 CFLAGS := -std=c11 -I./include -Wall -Wextra -Wswitch-enum -Wpedantic
-SFLAGS := -fsanitize=address,undefined
+SFLAGS := -fsanitize=undefined#,address
 SRC := $(wildcard ./src/*.c) 
 HEADERS := $(wildcard ./include/*.h)
 TARGET := ./build/sparkle

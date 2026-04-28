@@ -7,16 +7,16 @@ typedef struct Scope Scope;
 
 struct Scope {
     Scope *parent;
+    
     DA(StringView) symbols;
     DA(LispAST *) values;
+    
+    Scope *heap_next;
+    bool marked;
 };
 
-Scope* scope_alloc(Scope *parent);
-Scope* scope_free(Scope *scope);
 void scope_mark(Scope *scope);
-
 void scope_define(Scope *scope, StringView name, LispAST *value);
-
 LispAST *scope_get(Scope *scope, LispAST *expr);
 
 #endif

@@ -1,9 +1,10 @@
-#include "lexer.h"
-#include "dynamic_array.h"
-#include "string_view.h"
 #include <assert.h>
 #include <ctype.h>
 #include <stdlib.h>
+
+#include "lexer.h"
+#include "dynamic_array.h"
+#include "string_view.h"
 
 #define CURR(l_) (sv_head((l_)->src))
 #define VALID(l_) (!(l_)->is_err && !(l_)->is_eof)

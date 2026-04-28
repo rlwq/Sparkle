@@ -1,10 +1,14 @@
 #include "gc.h"
+#include "dynamic_array.h"
 #include "lisp_ast.h"
 #include "utils.h"
+#include "scope.h"
+
 #include <assert.h>
 #include <stdlib.h>
 
-GC *gc_alloc() {
+
+GC *gc_alloc(void) {
     GC *gc = malloc(sizeof(GC));
     assert(gc);
 
@@ -25,10 +29,26 @@ LispAST *gc_alloc_node(GC *gc, LISP_AST_KIND kind) {
     node->kind = kind;
 
     node->marked = false;
-    node->next = gc->nodes_heap;
-    gc->nodes_heap= node;
+    node->heap_next = gc->nodes_heap;
+    gc->nodes_heap = node;
 
     return node;
+}
+
+Scope *gc_alloc_scope(GC *gc, Scope *parent) {
+    Scope *scope = malloc(sizeof(Scope));
+    assert(scope);
+
+    da_init(scope->symbols);
+    da_init(scope->values);
+
+    scope->heap_next = gc->scopes_heap;
+    gc->scopes_heap = scope;
+    gc->scopes_count++;
+
+    scope->parent = parent;
+
+    return scope;
 }
 
 void gc_free_node(GC *gc, LispAST *expr) {
@@ -58,11 +78,11 @@ void gc_sweep(GC *gc) {
     while (*curr) {
         if ((*curr)->marked) {
             (*curr)->marked = false;
-            curr = &((*curr)->next);
+            curr = &((*curr)->heap_next);
         }
         else {
             LispAST *dead = *curr;
-            *curr = dead->next;
+            *curr = dead->heap_next;
             gc_free_node(gc, dead);
         }
     }

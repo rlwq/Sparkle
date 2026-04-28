@@ -5,6 +5,7 @@
 
 #include "gc.h"
 #include "dynamic_array.h"
+#include "scope.h"
 #include "string_view.h"
 #include "lexer.h"
 #include "parser.h"
@@ -98,6 +99,9 @@ int main(int argc, char** argv) {
     LispASTPtrDA exprs = extract_exprs(parser);
 
     Evaluator *evaluator = evaluator_alloc(exprs, gc);
+
+    push_scope(evaluator, gc_alloc_scope(gc, NULL));
+
     register_builtin(evaluator, sv_mk("+"), lisp_add);
     register_builtin(evaluator, sv_mk("-"), lisp_sub);
     register_builtin(evaluator, sv_mk("="), lisp_int_eq);
@@ -111,9 +115,18 @@ int main(int argc, char** argv) {
         print_expr(da_at(results, i));
         printf("\n");
     }
-
-    gc_sweep(gc);
-
+    //
+    // for (Scope *scope = gc->scopes_heap; scope != NULL; scope = scope->heap_next) {
+    //     printf("SCOPE %zu\n", (unsigned long) scope);
+    //     printf("PAREN %zu\n", (unsigned long) scope->parent);
+    //     for (size_t i = 0; i < scope->symbols.size; i++) {
+    //         printf(SV_FMT" = ", SV_ARGS(da_at(scope->symbols, i)));
+    //         print_expr(da_at(scope->values, i));
+    //         printf("\n");
+    //     }
+    //     printf("===========\n");
+    // }
+    //
     evaluator_free(evaluator);
     da_free(exprs);
 

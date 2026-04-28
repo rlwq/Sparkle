@@ -26,7 +26,7 @@ void print_expr(LispAST *expr) {
             }
             printf(") ");
             print_expr(expr->as.lambda.expr);
-            printf(")");
+            printf("; %zu)", (unsigned long) expr->as.lambda.scope);
         break;
     }
 }
