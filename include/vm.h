@@ -36,6 +36,7 @@ void vm_pop_scope(VM *vm);
 void vm_push_value(VM *vm, LispNode *value);
 void vm_swap_value(VM *vm);
 void vm_pop_value(VM *vm);
+void vm_pop_prev_value(VM *vm);
 LispNode *vm_peek_value(VM *vm);
 
 void vm_mark(VM *vm);

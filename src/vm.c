@@ -52,7 +52,13 @@ void vm_push_value(VM *vm, LispNode *value) {
 // 1 -> 0
 void vm_pop_value(VM *vm) {
     assert(vm->value_stack.size);
+    da_pop(vm->value_stack);
+}
 
+
+void vm_pop_prev_value(VM *vm) {
+    assert(vm->value_stack.size >= 2);
+    da_at_end(vm->value_stack, 1) = da_at_end(vm->value_stack, 0);
     da_pop(vm->value_stack);
 }
 
@@ -66,7 +72,7 @@ void vm_swap_value(VM *vm) {
 LispNode *vm_peek_value(VM *vm) {
     assert(vm->value_stack.size);
 
-    return da_at(vm->value_stack, vm->value_stack.size-1);
+    return da_at_end(vm->value_stack, 0);
 }
 
 void vm_mark(VM *vm) {
@@ -109,8 +115,7 @@ size_t eval_list(VM *vm) {
 
         // Push tail
         vm_push_value(vm, CDR(vm_peek_value(vm)));
-        vm_swap_value(vm);
-        vm_pop_value(vm);
+        vm_pop_prev_value(vm);
         size++;
     }
     vm_pop_value(vm); 
@@ -160,11 +165,8 @@ void eval_if_form(VM *vm) {
     bool is_positive = vm_peek_value(vm)->kind != LISP_NIL;
     vm_pop_value(vm);
 
-    if (is_positive) {
-        vm_swap_value(vm);
-        vm_pop_value(vm);
-    } else
-        vm_pop_value(vm);
+    if (is_positive) vm_pop_prev_value(vm);
+    else vm_pop_value(vm);
 
     eval_expr(vm);
 }
@@ -180,8 +182,7 @@ void eval_lambda_form(VM *vm, StringViewDA args) {
     lambda_result->as.lambda.expr = subexpr;
     lambda_result->as.lambda.scope = CURR_SCOPE(vm);
     
-    vm_swap_value(vm);
-    vm_pop_value(vm);
+    vm_pop_prev_value(vm);
 }
 
 // Node * n (args), Node (lambda) -> Node (result)
@@ -203,8 +204,7 @@ void eval_lambda_call(VM *vm) {
     vm_push_value(vm, lambda->as.lambda.expr);
     eval_expr(vm);
 
-    vm_swap_value(vm);
-    vm_pop_value(vm);
+    vm_pop_prev_value(vm);
 
     vm_pop_scope(vm);
     vm_pop_scope(vm);
@@ -241,8 +241,7 @@ bool dispatch_special_form(LispNode *head, LispNode *args, VM *vm) {
         vm_push_value(vm, symbol);
         eval_let_form(vm);
 
-        vm_swap_value(vm);
-        vm_pop_value(vm);
+        vm_pop_prev_value(vm);
 
         return true;
     }
@@ -261,8 +260,7 @@ bool dispatch_special_form(LispNode *head, LispNode *args, VM *vm) {
         vm_push_value(vm, lambda_subexpr);
         eval_lambda_form(vm, lambda_args);
 
-        vm_swap_value(vm);
-        vm_pop_value(vm);
+        vm_pop_prev_value(vm);
 
         return true;
     }
@@ -311,8 +309,7 @@ void eval_cons(VM *vm) {
         break;
     }
     
-    vm_swap_value(vm);
-    vm_pop_value(vm);
+    vm_pop_prev_value(vm);
 }
 
 // Symbol -> Node
@@ -334,17 +331,14 @@ void eval_expr(VM *vm) {
         case LISP_BUILTIN:
         case LISP_LAMBDA:
             // Do nothing
-            return;
         break;
 
         case LISP_SYMBOL:
             eval_symbol(vm);
-            return;
         break;
 
         case LISP_CONS:
             eval_cons(vm);
-            return;
         break;
     }
     
