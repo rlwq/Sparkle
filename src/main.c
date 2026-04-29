@@ -9,47 +9,47 @@
 #include "lexer.h"
 #include "parser.h"
 #include "lisp_node.h"
-#include "evaluator.h"
+#include "vm.h"
 #include "debug.h"
 
-void lisp_int_eq(size_t args_count, Evaluator *evaluator) {
+void lisp_int_eq(size_t args_count, VM *vm) {
     assert(args_count == 2);
-    LispNode *value2 = evaluator_pop_value(evaluator);
-    LispNode *value1 = evaluator_pop_value(evaluator);
+    LispNode *value2 = vm_pop_value(vm);
+    LispNode *value1 = vm_pop_value(vm);
 
     if (value1->as.integer == value2->as.integer) {
-        LispNode *node = gc_alloc_node(evaluator->gc, LISP_INTEGER);
+        LispNode *node = gc_alloc_node(vm->gc, LISP_INTEGER);
         node->as.integer = 1;
 
-        evaluator_push_value(evaluator, node);
+        vm_push_value(vm, node);
         return;
     }
 
-    evaluator_push_value(evaluator, gc_alloc_node(evaluator->gc, LISP_NIL));
+    vm_push_value(vm, gc_alloc_node(vm->gc, LISP_NIL));
 }
 
-void lisp_sub(size_t args_count, Evaluator *evaluator) {
+void lisp_sub(size_t args_count, VM *vm) {
     assert(args_count == 2);
-    LispNode *value2 = evaluator_pop_value(evaluator);
-    LispNode *value1 = evaluator_pop_value(evaluator);
+    LispNode *value2 = vm_pop_value(vm);
+    LispNode *value1 = vm_pop_value(vm);
     
-    LispNode *node = gc_alloc_node(evaluator->gc, LISP_INTEGER);
+    LispNode *node = gc_alloc_node(vm->gc, LISP_INTEGER);
     node->as.integer = value1->as.integer - value2->as.integer;
     
-    evaluator_push_value(evaluator, node);
+    vm_push_value(vm, node);
 }
 
-void lisp_add(size_t args_count, Evaluator *evaluator) {
+void lisp_add(size_t args_count, VM *vm) {
     int result_value = 0;
 
     for (size_t i = 0; i < args_count; i++) {
-        LispNode *popped = evaluator_pop_value(evaluator);
+        LispNode *popped = vm_pop_value(vm);
         result_value += popped->as.integer;
     }
     
-    LispNode *result = gc_alloc_node(evaluator->gc, LISP_INTEGER);
+    LispNode *result = gc_alloc_node(vm->gc, LISP_INTEGER);
     result->as.integer = result_value;
-    evaluator_push_value(evaluator, result);
+    vm_push_value(vm, result);
 }
 
 char *read_file(const char *path) {
@@ -110,18 +110,18 @@ int main(int argc, char** argv) {
     
     LispNodePtrDA exprs = extract_exprs(parser);
 
-    Evaluator *evaluator = evaluator_alloc(exprs, gc);
+    VM *vm = vm_alloc(exprs, gc);
 
-    evaluator_push_scope(evaluator, gc_alloc_scope(gc, NULL));
+    vm_push_scope(vm, gc_alloc_scope(gc, NULL));
     //
-    register_builtin(evaluator, sv_mk("+"), lisp_add);
-    register_builtin(evaluator, sv_mk("-"), lisp_sub);
-    register_builtin(evaluator, sv_mk("="), lisp_int_eq);
-    eval_all(evaluator);
+    vm_register_builtin(vm, sv_mk("+"), lisp_add);
+    vm_register_builtin(vm, sv_mk("-"), lisp_sub);
+    vm_register_builtin(vm, sv_mk("="), lisp_int_eq);
+    eval_all(vm);
 
     //TODO: maybe should be an iterative approach
 
-    LispNodePtrDA results = extract_results(evaluator);
+    LispNodePtrDA results = extract_results(vm);
 
     for (size_t i = 0; i < results.size; i++) {
         print_expr(da_at(results, i));
@@ -139,7 +139,7 @@ int main(int argc, char** argv) {
     //     printf("===========\n");
     // }
     
-    evaluator_free(evaluator);
+    vm_free(vm);
     da_free(exprs);
     da_free(results);
 

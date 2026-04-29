@@ -41,14 +41,14 @@ void gc_free(GC *gc) {
 // TODO: split allocation/deallocation logic with construction/deconstruction logic
 LispNode *gc_alloc_node(GC *gc, LispNodeKind kind) {
     LispNode *node = malloc(sizeof(LispNode));
-    assert(node); //TODO: add some error reporting
-    
+    assert(node); //TODO: add some error reporting 
+      
     gc->nodes_count++;
-    node->kind = kind;
+    node->kind = kind;   
 
     node->marked = false;
-    node->heap_next = gc->nodes_heap;
-    gc->nodes_heap = node;
+    node->heap_next = gc->nodes_heap; 
+    gc->nodes_heap = node; 
 
     return node;
 }
