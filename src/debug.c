@@ -26,7 +26,7 @@ void print_expr(LispNode *expr) {
             }
             printf(") ");
             print_expr(expr->as.lambda.expr);
-            printf("; %zu)", (unsigned long) expr->as.lambda.scope);
+            printf(")");
         break;
     }
 }

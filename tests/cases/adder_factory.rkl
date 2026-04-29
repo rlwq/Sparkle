@@ -3,5 +3,5 @@
 (let add3 (adder_factory 3))
 (let add5 (adder_factory 5))
 
-(add3 (add5 7))
+(print (add3 (add5 7)))
 

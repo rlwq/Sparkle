@@ -28,7 +28,7 @@ typedef struct {
     Scope *scope;
 } LispLambdaNode;
 
-typedef void (*LispBuiltin) (size_t args_count, VM *vm);
+typedef void (*LispBuiltin) (VM *vm, size_t args_count);
 
 struct LispNode {
     LispNodeKind kind;

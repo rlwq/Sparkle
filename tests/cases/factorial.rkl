@@ -8,4 +8,4 @@
       1
       (* (fac (- x 1)) x))))
 
-(fac 5)
+(print (fac 10))

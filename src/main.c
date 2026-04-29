@@ -12,12 +12,14 @@
 #include "vm.h"
 #include "debug.h"
 
-void lisp_int_eq(size_t args_count, VM *vm) {
+void lisp_int_eq(VM *vm, size_t args_count) {
     assert(args_count == 2);
-    LispNode *value2 = vm_pop_value(vm);
-    LispNode *value1 = vm_pop_value(vm);
+    int value2 = vm_peek_value(vm)->as.integer;
+    vm_pop_value(vm);
+    int value1 = vm_peek_value(vm)->as.integer;
+    vm_pop_value(vm);
 
-    if (value1->as.integer == value2->as.integer) {
+    if (value1 == value2 ) {
         LispNode *node = gc_alloc_node(vm->gc, LISP_INTEGER);
         node->as.integer = 1;
 
@@ -28,33 +30,37 @@ void lisp_int_eq(size_t args_count, VM *vm) {
     vm_push_value(vm, gc_alloc_node(vm->gc, LISP_NIL));
 }
 
-void lisp_sub(size_t args_count, VM *vm) {
+void lisp_sub(VM *vm, size_t args_count) {
     assert(args_count == 2);
-    LispNode *value2 = vm_pop_value(vm);
-    LispNode *value1 = vm_pop_value(vm);
+    int value2 = vm_peek_value(vm)->as.integer;
+    vm_pop_value(vm);
+    int value1 = vm_peek_value(vm)->as.integer;
+    vm_pop_value(vm);
     
     LispNode *node = gc_alloc_node(vm->gc, LISP_INTEGER);
-    node->as.integer = value1->as.integer - value2->as.integer;
+    node->as.integer = value1 - value2;
     
     vm_push_value(vm, node);
 }
 
-void lisp_print(size_t args_count, VM *vm) {
+void lisp_print(VM *vm, size_t args_count) {
     for (; args_count > 0; args_count--) {
-        LispNode *expr = vm_pop_value(vm);
+        LispNode *expr = vm_peek_value(vm);
         print_expr(expr);
+        vm_pop_value(vm);
         printf("\n");
     }
     vm_push_value(vm, gc_alloc_node(vm->gc, LISP_NIL));
 }
 
 
-void lisp_add(size_t args_count, VM *vm) {
+void lisp_add(VM *vm, size_t args_count) {
     int result_value = 0;
 
     for (size_t i = 0; i < args_count; i++) {
-        LispNode *popped = vm_pop_value(vm);
+        LispNode *popped = vm_peek_value(vm);
         result_value += popped->as.integer;
+        vm_pop_value(vm);
     }
     
     LispNode *result = gc_alloc_node(vm->gc, LISP_INTEGER);

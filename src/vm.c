@@ -1,5 +1,4 @@
 #include <assert.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "gc.h"
@@ -51,12 +50,17 @@ void vm_push_value(VM *vm, LispNode *value) {
 }
 
 // 1 -> 0
-LispNode *vm_pop_value(VM *vm) {
+void vm_pop_value(VM *vm) {
     assert(vm->value_stack.size);
 
-    LispNode *curr = da_at(vm->value_stack, vm->value_stack.size-1);
     da_pop(vm->value_stack);
-    return curr;
+}
+
+// Node, Node -> Node, Node
+void vm_swap_value(VM *vm) {
+    LispNode *curr = da_at_end(vm->value_stack, 0);
+    da_at_end(vm->value_stack, 0) = da_at_end(vm->value_stack, 1);
+    da_at_end(vm->value_stack, 1) = curr;
 }
 
 LispNode *vm_peek_value(VM *vm) {
@@ -88,25 +92,36 @@ LispNode *vm_advance(VM *vm) {
     return curr;
 }
 
-void eval_expr(LispNode *expr, VM *vm);
+void eval_expr(VM *vm);
 
-size_t eval_list(LispNode *expr, VM *vm) {
-    assert(expr->kind == LISP_NIL || expr->kind == LISP_CONS);
-    
+// Cons -> Expr * n
+size_t eval_list(VM *vm) {
+    assert(vm_peek_value(vm)->kind == LISP_NIL ||
+           vm_peek_value(vm)->kind == LISP_CONS);
+
     size_t size = 0;
-    for (LispNode *curr = expr; curr->kind != LISP_NIL; curr = CDR(curr)) {
-        assert(curr->kind == LISP_CONS);
-        eval_expr(CAR(curr), vm);
+    while (vm_peek_value(vm)->kind != LISP_NIL) {
+        assert(vm_peek_value(vm)->kind == LISP_CONS);
+        // Evaluate head
+        vm_push_value(vm, CAR(vm_peek_value(vm)));
+        eval_expr(vm);
+        vm_swap_value(vm);
+
+        // Push tail
+        vm_push_value(vm, CDR(vm_peek_value(vm)));
+        vm_swap_value(vm);
+        vm_pop_value(vm);
         size++;
     }
+    vm_pop_value(vm); 
     return size;
 }
 
 void eval_current(VM *vm) {
     assert(VM_VALID(vm));
     
-    LispNode *stmt = vm_advance(vm);
-    eval_expr(stmt, vm);
+    vm_push_value(vm, vm_advance(vm));
+    eval_expr(vm);
     vm_pop_value(vm);
 }
 
@@ -128,41 +143,69 @@ void eval_all(VM *vm) {
     }
 }
 
-void eval_let_form(LispNode *symbol, LispNode *expr, VM *vm) {
-    assert(symbol->kind == LISP_SYMBOL);
-    eval_expr(expr, vm);
+// Node (value), Symbol (name) -> Node
+void eval_let_form(VM *vm) {
+    assert(vm_peek_value(vm)->kind == LISP_SYMBOL);
+    StringView name = vm_peek_value(vm)->as.symbol;
+    vm_pop_value(vm);
+    eval_expr(vm);
 
-    scope_define(CURR_SCOPE(vm), symbol->as.symbol, vm_peek_value(vm));
+    scope_define(CURR_SCOPE(vm), name, vm_peek_value(vm));
 }
 
-void eval_if_form(LispNode *condition, LispNode *if_true, LispNode *if_false, VM *vm) {
-    eval_expr(condition, vm);
-    if (vm_pop_value(vm)->kind == LISP_NIL) {
-        eval_expr(if_false, vm); 
-        return;
-    }
-    eval_expr(if_true, vm);
+// Node (is_false), Node (is_true), Node (condition) -> result
+void eval_if_form(VM *vm) {
+    eval_expr(vm);
+
+    bool is_positive = vm_peek_value(vm)->kind != LISP_NIL;
+    vm_pop_value(vm);
+
+    if (is_positive) {
+        vm_swap_value(vm);
+        vm_pop_value(vm);
+    } else
+        vm_pop_value(vm);
+
+    eval_expr(vm);
 }
 
-void eval_lambda_form(StringViewDA args, LispNode *subexpr, VM *vm) {
+// Node -> Lambda
+void eval_lambda_form(VM *vm, StringViewDA args) {
+    LispNode *subexpr = vm_peek_value(vm);
     LispNode *lambda_result = gc_alloc_node(vm->gc, LISP_LAMBDA);
+
+    vm_push_value(vm, lambda_result);
 
     lambda_result->as.lambda.args = args;
     lambda_result->as.lambda.expr = subexpr;
     lambda_result->as.lambda.scope = CURR_SCOPE(vm);
-
-    vm_push_value(vm, lambda_result);
+    
+    vm_swap_value(vm);
+    vm_pop_value(vm);
 }
 
-void eval_lambda_call(LispNode *lambda, VM *vm) {
+// Node * n (args), Node (lambda) -> Node (result)
+void eval_lambda_call(VM *vm) {
+    LispNode *lambda = vm_peek_value(vm);
+
     vm_push_scope(vm, lambda->as.lambda.scope);
     vm_push_scope(vm, gc_alloc_scope(vm->gc, CURR_SCOPE(vm)));
 
-    for (size_t i = 0; i < lambda->as.lambda.args.size; i++)
-        scope_define(CURR_SCOPE(vm), da_at(lambda->as.lambda.args, lambda->as.lambda.args.size - i - 1),
-                   vm_pop_value(vm));
+    for (size_t i = 0; i < lambda->as.lambda.args.size; i++) {
+        vm_swap_value(vm);
+        scope_define(CURR_SCOPE(vm),
+                     da_at(lambda->as.lambda.args,
+                           lambda->as.lambda.args.size - i - 1),
+                     vm_peek_value(vm));
+        vm_pop_value(vm);
+    }
+    
+    vm_push_value(vm, lambda->as.lambda.expr);
+    eval_expr(vm);
 
-    eval_expr(lambda->as.lambda.expr, vm);
+    vm_swap_value(vm);
+    vm_pop_value(vm);
+
     vm_pop_scope(vm);
     vm_pop_scope(vm);
 }
@@ -175,22 +218,32 @@ bool dispatch_special_form(LispNode *head, LispNode *args, VM *vm) {
         LispNode *condition = CAR(args);
         LispNode *if_true = CAR(CDR(args));
         LispNode *if_false = CAR(CDR(CDR(args)));
+        
+        vm_push_value(vm, if_false);
+        vm_push_value(vm, if_true);
+        vm_push_value(vm, condition);
 
-        eval_if_form(condition, if_true, if_false, vm);
+        eval_if_form(vm);
+
+        vm_swap_value(vm);
+        vm_pop_value(vm);
+
         return true;
     }
 
     if (sv_eq(head->as.symbol, sv_mk("let"))) {
         assert(args->kind == LISP_CONS);
 
-        LispNode *symbol = args->as.cons.car;
-        LispNode *value_cons = args->as.cons.cdr;
+        LispNode *symbol = CAR(args);
+        LispNode *value = CAR(CDR(args));
+        
+        vm_push_value(vm, value);
+        vm_push_value(vm, symbol);
+        eval_let_form(vm);
 
-        assert(symbol->kind == LISP_SYMBOL);
-        assert(value_cons->kind == LISP_CONS);
-        assert(value_cons->as.cons.cdr->kind == LISP_NIL);
+        vm_swap_value(vm);
+        vm_pop_value(vm);
 
-        eval_let_form(symbol, value_cons->as.cons.car, vm);
         return true;
     }
 
@@ -205,14 +258,21 @@ bool dispatch_special_form(LispNode *head, LispNode *args, VM *vm) {
         for (; lambda_args_list->kind != LISP_NIL;
                lambda_args_list = lambda_args_list->as.cons.cdr)
             da_push(lambda_args, CAR(lambda_args_list)->as.symbol);
-        eval_lambda_form(lambda_args, lambda_subexpr, vm);
+        vm_push_value(vm, lambda_subexpr);
+        eval_lambda_form(vm, lambda_args);
+
+        vm_swap_value(vm);
+        vm_pop_value(vm);
+
         return true;
     }
     
     return false;
 }
 
-void eval_cons(LispNode *expr, VM *vm) {
+// Node (Cons) -> Node
+void eval_cons(VM *vm) {
+    LispNode *expr = vm_peek_value(vm);
     assert(expr->kind == LISP_CONS);
 
     LispNode *head = expr->as.cons.car; 
@@ -222,20 +282,24 @@ void eval_cons(LispNode *expr, VM *vm) {
 
     if (is_special_form) return;
 
-    eval_expr(head, vm);
-    LispNode *evaluated_head = vm_pop_value(vm);
+    vm_push_value(vm, head);
 
-    size_t args_count = eval_list(args, vm);
+    eval_expr(vm);
+    LispNode *evaluated_head = vm_peek_value(vm);
+    vm_pop_value(vm);
+
+    vm_push_value(vm, args);
+
+    size_t args_count = eval_list(vm);
 
     switch (evaluated_head->kind) {
         case LISP_LAMBDA:
-            eval_lambda_call(evaluated_head, vm);
-            return;
+            vm_push_value(vm, evaluated_head);
+            eval_lambda_call(vm);
         break;
 
         case LISP_BUILTIN:
-            evaluated_head->as.builtin(args_count, vm);
-            return;
+            evaluated_head->as.builtin(vm, args_count);
         break;
 
         case LISP_CONS:
@@ -246,30 +310,40 @@ void eval_cons(LispNode *expr, VM *vm) {
             assert(0 && "Can't call this kind of object.");
         break;
     }
-
-    UNREACHABLE();
+    
+    vm_swap_value(vm);
+    vm_pop_value(vm);
 }
 
-void eval_expr(LispNode *expr, VM *vm) {
-    switch (expr->kind) {
+// Symbol -> Node
+void eval_symbol(VM *vm) {
+    assert(vm_peek_value(vm)->kind == LISP_SYMBOL);
+    StringView name = vm_peek_value(vm)->as.symbol;
+    vm_pop_value(vm);
+
+    if (sv_eq(name, sv_mk("NIL"))) vm_push_value(vm, gc_alloc_node(vm->gc, LISP_NIL));
+    else vm_push_value(vm, scope_get(CURR_SCOPE(vm), name));
+}
+
+// Node -> Node
+void eval_expr(VM *vm) {
+    switch (vm_peek_value(vm)->kind) {
         case LISP_NIL:
         case LISP_INTEGER:
         case LISP_STRING:
         case LISP_BUILTIN:
         case LISP_LAMBDA:
-            vm_push_value(vm, expr);
+            // Do nothing
             return;
         break;
 
         case LISP_SYMBOL:
-            if (sv_eq(expr->as.symbol, sv_mk("NIL")))
-                vm_push_value(vm, gc_alloc_node(vm->gc, LISP_NIL));
-            else vm_push_value(vm, scope_get(CURR_SCOPE(vm), expr->as.symbol));
+            eval_symbol(vm);
             return;
         break;
 
         case LISP_CONS:
-            eval_cons(expr, vm);
+            eval_cons(vm);
             return;
         break;
     }

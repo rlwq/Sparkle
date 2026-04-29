@@ -100,9 +100,6 @@ void gc_free_scope(GC *gc, Scope *scope) {
 }
 
 void gc_sweep(GC *gc) {
-    // printf("OBJECTS BEFORE CLEANUP: %zu\n",
-    //        gc->scopes_count + gc->nodes_count);
-
     LispNode **curr_node = &(gc->nodes_heap);
 
     while (*curr_node) {
@@ -130,9 +127,6 @@ void gc_sweep(GC *gc) {
             gc_free_scope(gc, dead);
         }
     }
-
-    // printf("OBJECTS  AFTER CLEANUP: %zu\n\n",
-    //        gc->scopes_count + gc->nodes_count);
 }
 
 void gc_mark_node(LispNode *expr) {
