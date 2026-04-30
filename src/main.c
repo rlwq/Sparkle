@@ -53,6 +53,26 @@ void lisp_print(VM *vm, size_t args_count) {
     vm_push_value(vm, gc_alloc_node(vm->gc, LISP_NIL));
 }
 
+void lisp_cons(VM *vm, size_t args_count) {
+    assert(args_count == 2);
+    vm_new_value(vm, LISP_CONS);
+    vm_peek_value(vm)->as.cons.cdr = da_at_end(vm->value_stack, 1);
+    vm_peek_value(vm)->as.cons.car = da_at_end(vm->value_stack, 2);
+    vm_pop_prev_value(vm);
+    vm_pop_prev_value(vm);
+}
+
+void lisp_car(VM *vm, size_t args_count) {
+    assert(args_count == 1);
+    vm_push_value(vm, CAR(vm_peek_value(vm)));
+    vm_pop_prev_value(vm);
+}
+
+void lisp_cdr(VM *vm, size_t args_count) {
+    assert(args_count == 1);
+    vm_push_value(vm, CDR(vm_peek_value(vm)));
+    vm_pop_prev_value(vm);
+}
 
 void lisp_add(VM *vm, size_t args_count) {
     int result_value = 0;
@@ -133,6 +153,9 @@ int main(int argc, char** argv) {
     vm_register_builtin(vm, sv_mk("-"), lisp_sub);
     vm_register_builtin(vm, sv_mk("="), lisp_int_eq);
     vm_register_builtin(vm, sv_mk("print"), lisp_print);
+    vm_register_builtin(vm, sv_mk("cons"), lisp_cons);
+    vm_register_builtin(vm, sv_mk("car"), lisp_car);
+    vm_register_builtin(vm, sv_mk("cdr"), lisp_cdr);
     eval_all(vm);
 
     vm_free(vm);
