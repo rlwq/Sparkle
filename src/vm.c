@@ -193,31 +193,6 @@ void eval_all(VM *vm) {
     }
 }
 
-// Symbol (name), Node (value) -> Node
-void eval_let_form(VM *vm) {
-    vm_swap_value(vm);
-    assert(vm_peek_value(vm)->kind == LISP_SYMBOL);
-    StringView name = vm_peek_value(vm)->as.symbol;
-    vm_pop_value(vm);
-    eval_expr(vm);
-
-    scope_define(CURR_SCOPE(vm), name, vm_peek_value(vm));
-}
-
-// Node (condition), Node (is_true), Node (is_false) -> result
-void eval_if_form(VM *vm) {
-    vm_rot_value(vm);
-    eval_expr(vm);
-
-    bool is_positive = vm_peek_value(vm)->kind != LISP_NIL;
-    vm_pop_value(vm);
-
-    if (is_positive) vm_pop_value(vm);
-    else vm_pop_prev_value(vm);
-
-    eval_expr(vm);
-}
-
 // Node (Cons) -> Node (Tail), Node (Head)
 void unpack_cons(VM *vm) {
     assert(vm_peek_value(vm)->kind == LISP_CONS);
@@ -244,7 +219,31 @@ size_t unpack_list(VM *vm) {
 
     vm_pop_value(vm); 
     return size;
+}
 
+// Symbol (name), Node (value) -> Node
+void eval_let_form(VM *vm) {
+    vm_swap_value(vm);
+    assert(vm_peek_value(vm)->kind == LISP_SYMBOL);
+    StringView name = vm_peek_value(vm)->as.symbol;
+    vm_pop_value(vm);
+    eval_expr(vm);
+
+    scope_define(CURR_SCOPE(vm), name, vm_peek_value(vm));
+}
+
+// Node (condition), Node (is_true), Node (is_false) -> result
+void eval_if_form(VM *vm) {
+    vm_rot_value(vm);
+    eval_expr(vm);
+
+    bool is_positive = vm_peek_value(vm)->kind != LISP_NIL;
+    vm_pop_value(vm);
+
+    if (is_positive) vm_pop_value(vm);
+    else vm_pop_prev_value(vm);
+
+    eval_expr(vm);
 }
 
 // Cons (Args list), Node (subexpr) -> Lambda
@@ -259,7 +258,6 @@ void eval_lambda_form(VM *vm) {
         da_push(args, vm_peek_value(vm)->as.symbol);
         vm_pop_value(vm);
     }
-
 
     LispNode *subexpr = vm_peek_value(vm);
 
@@ -289,34 +287,28 @@ void eval_lambda_call(VM *vm) {
     vm_pop_scope(vm);
 }
 
-// Node (Args), Node (Head) -> Node
+// Node (Args), Node (Head) -> Node (Maybe :3)
 bool try_dispatch_special_form(VM *vm) {
     if (vm_peek_value(vm)->kind != LISP_SYMBOL) return false;
 
-    if (sv_eq(vm_peek_value(vm)->as.symbol, sv_mk("if"))) {
+    SpecialFormHandler handler = NULL;
+
+    if (sv_eq(vm_peek_value(vm)->as.symbol, sv_mk("if")))
+        handler = eval_if_form;
+
+    else if (sv_eq(vm_peek_value(vm)->as.symbol, sv_mk("let")))
+        handler = eval_let_form;
+
+    else if (sv_eq(vm_peek_value(vm)->as.symbol, sv_mk("lambda")))
+        handler = eval_lambda_form;
+   
+    if (handler) {
         vm_pop_value(vm);
         unpack_list(vm);
-
-        eval_if_form(vm);
+        handler(vm);
         return true;
     }
 
-    if (sv_eq(vm_peek_value(vm)->as.symbol, sv_mk("let"))) {
-        vm_pop_value(vm);
-        unpack_list(vm);
-
-        eval_let_form(vm);
-        return true;
-    }
-
-    if (sv_eq(vm_peek_value(vm)->as.symbol, sv_mk("lambda"))) {
-        vm_pop_value(vm);
-        unpack_list(vm);
-
-        eval_lambda_form(vm);
-        return true;
-    }
-    
     return false;
 }
 

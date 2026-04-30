@@ -13,10 +13,10 @@ The **AST-walking interpreter** is written from scratch in **ISO C11**, no depen
 * [**Homoiconicity**](https://en.wikipedia.org/wiki/Homoiconicity) - code is represented as data, allowing the program to manipulate and modify its own structure at runtime
 * [**First-class functions**](https://en.wikipedia.org/wiki/First-class_function) - anonymous functions and functions as objects
 * [**Lexical closures**](https://en.wikipedia.org/wiki/Closure_(computer_programming)) - functions capture their lexical environment
+* [**Mark-and-sweep GC**](https://en.wikipedia.org/wiki/Tracing_garbage_collection) - automatic memory management (in progress of integration)
 
 ### To be done
 
-* [**Mark-and-sweep GC**](https://en.wikipedia.org/wiki/Tracing_garbage_collection) - automatic memory management (in progress of integration)
 * **REPL** - interactive read-eval-print loop for live code interaction
 * **Standard library** - a rich set of general-purpose functions and modules 
 * **Modular system** - organize code into reusable, importable modules

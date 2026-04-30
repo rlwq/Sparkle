@@ -22,6 +22,8 @@ struct VM {
     bool is_err;
 };
 
+typedef void (*SpecialFormHandler) (VM *vm);
+
 VM *vm_alloc(LispNodePtrDA exprs, GC *gc);
 void vm_free(VM *vm);
 
