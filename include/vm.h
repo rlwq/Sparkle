@@ -34,13 +34,13 @@ void vm_push_scope(VM *vm, Scope *scope);
 void vm_pop_scope(VM *vm);
 void vm_scope_define(VM *vm, StringView name);
 
-void vm_new_value(VM *vm, LispNodeKind kind); // TODO: should be removed
+void vm_new_value(VM *vm, LispNodeKind kind);
 void vm_build_integer(VM *vm, int value);
 void vm_build_builtin(VM *vm, LispBuiltin value);
 void vm_build_nil(VM *vm);
-void vm_build_lambda(VM *vm, StringViewDA args);
+void vm_build_lambda(VM *vm, StringViewDA args, LispNode *expr, Scope *scope);
 void vm_build_symbol(VM *vm, StringView value);
-void vm_build_string(VM *vm, StringView string);
+void vm_build_string(VM *vm, StringView value);
 
 void vm_push_value(VM *vm, LispNode *value);
 void vm_swap_value(VM *vm);

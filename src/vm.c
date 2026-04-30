@@ -64,6 +64,27 @@ void vm_new_value(VM *vm, LispNodeKind kind) {
     vm_push_value(vm, gc_alloc_node(vm->gc, kind));
 }
 
+void vm_build_integer(VM *vm, int value) {
+    vm_new_value(vm, LISP_INTEGER);
+    vm_peek_value(vm)->as.integer = value;
+}
+
+void vm_build_builtin(VM *vm, LispBuiltin value) {
+    vm_new_value(vm, LISP_BUILTIN);
+    vm_peek_value(vm)->as.builtin = value;
+}
+
+void vm_build_nil(VM *vm) {
+    vm_new_value(vm, LISP_NIL);
+}
+
+void vm_build_lambda(VM *vm, StringViewDA args, LispNode *expr, Scope *scope) {
+    vm_new_value(vm, LISP_LAMBDA);
+    vm_peek_value(vm)->as.lambda.args = args;
+    vm_peek_value(vm)->as.lambda.expr = expr;
+    vm_peek_value(vm)->as.lambda.scope = scope;
+}
+
 // 1 -> 0
 void vm_pop_value(VM *vm) {
     assert(vm->value_stack.size);
@@ -91,7 +112,6 @@ void vm_rot_value(VM *vm) {
     da_at_end(vm->value_stack, 2) = da_at_end(vm->value_stack, 1);
     da_at_end(vm->value_stack, 1) = curr;
 }
-
 
 LispNode *vm_peek_value(VM *vm) {
     assert(vm->value_stack.size);
@@ -155,9 +175,7 @@ void eval_current(VM *vm) {
 }
 
 void vm_register_builtin(VM *vm, StringView name, LispBuiltin func_ptr) {
-    vm_new_value(vm, LISP_BUILTIN);
-    vm_peek_value(vm)->as.builtin = func_ptr;
-
+    vm_build_builtin(vm, func_ptr);
     vm_scope_define(vm, name);
 }
 
@@ -199,12 +217,7 @@ void eval_if_form(VM *vm) {
 void eval_lambda_form(VM *vm, StringViewDA args) {
     LispNode *subexpr = vm_peek_value(vm);
 
-    vm_new_value(vm, LISP_LAMBDA);
-
-    vm_peek_value(vm)->as.lambda.args = args;
-    vm_peek_value(vm)->as.lambda.expr = subexpr;
-    vm_peek_value(vm)->as.lambda.scope = CURR_SCOPE(vm);
-
+    vm_build_lambda(vm, args, subexpr, CURR_SCOPE(vm));
     vm_pop_prev_value(vm);
 }
 
@@ -349,7 +362,7 @@ void eval_symbol(VM *vm) {
     StringView name = vm_peek_value(vm)->as.symbol;
     vm_pop_value(vm);
 
-    if (sv_eq(name, sv_mk("NIL"))) vm_new_value(vm, LISP_NIL);
+    if (sv_eq(name, sv_mk("NIL"))) vm_build_nil(vm);
     else vm_push_value(vm, scope_get(CURR_SCOPE(vm), name));
 }
 
