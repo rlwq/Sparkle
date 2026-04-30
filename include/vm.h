@@ -31,10 +31,11 @@ void eval_current(VM *vm);
 void eval_all(VM *vm);
 
 void vm_push_scope(VM *vm, Scope *scope);
+void vm_build_scope(VM *vm);
 void vm_pop_scope(VM *vm);
 void vm_scope_define(VM *vm, StringView name);
 
-void vm_new_value(VM *vm, LispNodeKind kind);
+void vm_build_value(VM *vm, LispNodeKind kind);
 void vm_build_integer(VM *vm, int value);
 void vm_build_builtin(VM *vm, LispBuiltin value);
 void vm_build_nil(VM *vm);

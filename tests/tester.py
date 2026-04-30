@@ -14,12 +14,14 @@ def find_tests(folder: str) -> list[str]:
         if f.endswith('.rkl')
     )
 
+
 def read_expected(rkl_path: str) -> str | None:
     out_path = rkl_path[:-4] + '.out'
     if not os.path.exists(out_path):
         return None
     with open(out_path) as f:
         return f.read().strip()
+
 
 def run_test(binary: str, rkl_path: str) -> tuple[str, int]:
     result = subprocess.run(
@@ -30,37 +32,20 @@ def run_test(binary: str, rkl_path: str) -> tuple[str, int]:
     return result.stdout.strip(), result.returncode
 
 
-def main():
-    if len(sys.argv) not in (3, 4):
-        print('Usage: tester.py <executable> <tests_folder> [--rewrite]')
-        sys.exit(1)
+def rewrite(binary: str, tests: list[str], tests_folder: str) -> None:
+    for rkl_path in tests:
+        name = os.path.relpath(rkl_path, tests_folder)
+        output, code = run_test(binary, rkl_path)
+        if code:
+            print(f'{RED}CAN\'T RUN TEST {name}{RESET}')
+            sys.exit(1)
+        with open(rkl_path[:-4] + '.out', 'w') as f:
+            print(output, file=f)
 
-    binary = sys.argv[1]
-    tests_folder = sys.argv[2]
-    do_rewrite = False
-
-    if len(sys.argv) >= 4:
-        do_rewrite = (sys.argv[3] == '--rewrite')
-
-    tests = find_tests(tests_folder)
-    
-    if do_rewrite:
-        for rkl_path in tests:
-            name = os.path.relpath(rkl_path, tests_folder)
-            output, code = run_test(binary, rkl_path)
-
-            if code:
-                print(f'{RED}CAN\'T RUN TEST {name} {RESET}')
-                sys.exit(1) 
-
-            with open(rkl_path[:-4] + '.out', 'w') as out_file:
-                _ = out_file.write(output)
-
-        return
-
- 
+def run_all(binary: str, tests: list[str], tests_folder: str) -> None:
     passed = failed = skipped = 0
  
+    print()
     for rkl_path in tests:
         name = os.path.relpath(rkl_path, tests_folder)
  
@@ -93,11 +78,28 @@ def main():
  
     print('-----------------')
     print('Results:',
-          f'    {passed} passed, ',
-          f'    {failed} failed, ',
-          f'    {skipped} skipped', sep='\n')
+          f'    {GREEN}{passed} passed{RESET}',
+          f'    {YELLOW}{skipped} skipped{RESET}',
+          f'    {RED}{failed} failed{RESET}',
+          sep='\n', end='\n\n')
  
     sys.exit(1 if (failed or skipped) else 0)
  
+
+def main():
+    if len(sys.argv) not in (3, 4):
+        print('Usage: tester.py <executable> <tests_folder> [--rewrite]')
+        sys.exit(1)
+
+    binary = sys.argv[1]
+    tests_folder = sys.argv[2]
+    tests = find_tests(tests_folder)
+
+    if len(sys.argv) == 4 and sys.argv[3] == '--rewrite':
+        rewrite(binary, tests, tests_folder)
+    else:
+        run_all(binary, tests, tests_folder)
+ 
+
 if __name__ == '__main__':
     main()

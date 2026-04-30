@@ -39,6 +39,11 @@ void vm_push_scope(VM *vm, Scope *scope) {
     da_push(vm->scope_stack, scope);
 }
 
+void vm_build_scope(VM *vm) {
+    vm_push_scope(vm, gc_alloc_scope(vm->gc, CURR_SCOPE(vm)));
+}
+
+
 void vm_pop_scope(VM *vm) {
     assert(vm->scope_stack.size);
     da_pop(vm->scope_stack);
@@ -54,7 +59,7 @@ void vm_push_value(VM *vm, LispNode *value) {
     da_push(vm->value_stack, value);
 }
 
-void vm_new_value(VM *vm, LispNodeKind kind) {
+void vm_build_value(VM *vm, LispNodeKind kind) {
     if (gc_check_bounds(vm->gc)) {
         vm_mark(vm);
         gc_sweep(vm->gc);
@@ -63,21 +68,21 @@ void vm_new_value(VM *vm, LispNodeKind kind) {
 }
 
 void vm_build_integer(VM *vm, int value) {
-    vm_new_value(vm, LISP_INTEGER);
+    vm_build_value(vm, LISP_INTEGER);
     vm_peek_value(vm)->as.integer = value;
 }
 
 void vm_build_builtin(VM *vm, LispBuiltin value) {
-    vm_new_value(vm, LISP_BUILTIN);
+    vm_build_value(vm, LISP_BUILTIN);
     vm_peek_value(vm)->as.builtin = value;
 }
 
 void vm_build_nil(VM *vm) {
-    vm_new_value(vm, LISP_NIL);
+    vm_build_value(vm, LISP_NIL);
 }
 
 void vm_build_lambda(VM *vm, StringViewDA args, LispNode *expr, Scope *scope) {
-    vm_new_value(vm, LISP_LAMBDA);
+    vm_build_value(vm, LISP_LAMBDA);
     vm_peek_value(vm)->as.lambda.args = args;
     vm_peek_value(vm)->as.lambda.expr = expr;
     vm_peek_value(vm)->as.lambda.scope = scope;
@@ -88,7 +93,6 @@ void vm_pop_value(VM *vm) {
     assert(vm->value_stack.size);
     da_pop(vm->value_stack);
 }
-
 
 void vm_pop_prev_value(VM *vm) {
     assert(vm->value_stack.size >= 2);
@@ -150,6 +154,7 @@ size_t eval_list(VM *vm) {
     size_t size = 0;
     while (vm_peek_value(vm)->kind != LISP_NIL) {
         assert(vm_peek_value(vm)->kind == LISP_CONS);
+
         // Evaluate head
         vm_push_value(vm, CAR(vm_peek_value(vm)));
         eval_expr(vm);
@@ -188,8 +193,9 @@ void eval_all(VM *vm) {
     }
 }
 
-// Node (value), Symbol (name) -> Node
+// Symbol (name), Node (value) -> Node
 void eval_let_form(VM *vm) {
+    vm_swap_value(vm);
     assert(vm_peek_value(vm)->kind == LISP_SYMBOL);
     StringView name = vm_peek_value(vm)->as.symbol;
     vm_pop_value(vm);
@@ -198,48 +204,18 @@ void eval_let_form(VM *vm) {
     scope_define(CURR_SCOPE(vm), name, vm_peek_value(vm));
 }
 
-// Node (is_false), Node (is_true), Node (condition) -> result
+// Node (condition), Node (is_true), Node (is_false) -> result
 void eval_if_form(VM *vm) {
+    vm_rot_value(vm);
     eval_expr(vm);
 
     bool is_positive = vm_peek_value(vm)->kind != LISP_NIL;
     vm_pop_value(vm);
 
-    if (is_positive) vm_pop_prev_value(vm);
-    else vm_pop_value(vm);
+    if (is_positive) vm_pop_value(vm);
+    else vm_pop_prev_value(vm);
 
     eval_expr(vm);
-}
-
-// Node -> Lambda
-void eval_lambda_form(VM *vm, StringViewDA args) {
-    LispNode *subexpr = vm_peek_value(vm);
-
-    vm_build_lambda(vm, args, subexpr, CURR_SCOPE(vm));
-    vm_pop_prev_value(vm);
-}
-
-// Node * n (args), Node (lambda) -> Node (result)
-void eval_lambda_call(VM *vm) {
-    LispNode *lambda = vm_peek_value(vm);
-
-    vm_push_scope(vm, lambda->as.lambda.scope);
-    vm_push_scope(vm, gc_alloc_scope(vm->gc, CURR_SCOPE(vm)));
-
-
-    for (size_t i = 0; i < lambda->as.lambda.args.size; i++) {
-        vm_swap_value(vm);
-        vm_scope_define(vm, da_at(lambda->as.lambda.args, i));
-    }
-    
-    vm_push_value(vm, lambda->as.lambda.expr);
-    
-    eval_expr(vm);
-    
-    vm_pop_prev_value(vm);
-
-    vm_pop_scope(vm);
-    vm_pop_scope(vm);
 }
 
 // Node (Cons) -> Node (Tail), Node (Head)
@@ -271,6 +247,48 @@ size_t unpack_list(VM *vm) {
 
 }
 
+// Cons (Args list), Node (subexpr) -> Lambda
+void eval_lambda_form(VM *vm) {
+    vm_swap_value(vm);
+    size_t args_count = unpack_list(vm);
+
+    StringViewDA args;
+    da_init(args);
+
+    for (size_t i = 0; i < args_count; i++) {
+        da_push(args, vm_peek_value(vm)->as.symbol);
+        vm_pop_value(vm);
+    }
+
+
+    LispNode *subexpr = vm_peek_value(vm);
+
+    vm_build_lambda(vm, args, subexpr, CURR_SCOPE(vm));
+    vm_pop_prev_value(vm);
+}
+
+// Node * n (args), Node (lambda) -> Node (result)
+void eval_lambda_call(VM *vm) {
+    LispNode *lambda = vm_peek_value(vm);
+
+    vm_push_scope(vm, lambda->as.lambda.scope);
+    vm_build_scope(vm);
+
+    for (size_t i = 0; i < lambda->as.lambda.args.size; i++) {
+        vm_swap_value(vm);
+        vm_scope_define(vm, da_at(lambda->as.lambda.args, i));
+    }
+    
+    vm_push_value(vm, lambda->as.lambda.expr);
+    
+    eval_expr(vm);
+    
+    vm_pop_prev_value(vm);
+
+    vm_pop_scope(vm);
+    vm_pop_scope(vm);
+}
+
 // Node (Args), Node (Head) -> Node
 bool try_dispatch_special_form(VM *vm) {
     if (vm_peek_value(vm)->kind != LISP_SYMBOL) return false;
@@ -278,40 +296,24 @@ bool try_dispatch_special_form(VM *vm) {
     if (sv_eq(vm_peek_value(vm)->as.symbol, sv_mk("if"))) {
         vm_pop_value(vm);
         unpack_list(vm);
-        vm_swap_value(vm);
-        vm_rot_value(vm);
 
         eval_if_form(vm);
-
         return true;
     }
 
     if (sv_eq(vm_peek_value(vm)->as.symbol, sv_mk("let"))) {
         vm_pop_value(vm);
-    
         unpack_list(vm);
-        vm_swap_value(vm);
 
         eval_let_form(vm);
-
         return true;
     }
 
     if (sv_eq(vm_peek_value(vm)->as.symbol, sv_mk("lambda"))) {
         vm_pop_value(vm);
         unpack_list(vm);
-        vm_swap_value(vm);
-        size_t args_count = unpack_list(vm);
 
-        StringViewDA lambda_args;
-        da_init(lambda_args);
-
-        for (size_t i = 0; i < args_count; i++) {
-            da_push(lambda_args, vm_peek_value(vm)->as.symbol);
-            vm_pop_value(vm);
-        }
-
-        eval_lambda_form(vm, lambda_args);
+        eval_lambda_form(vm);
         return true;
     }
     

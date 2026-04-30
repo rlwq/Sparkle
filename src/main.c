@@ -55,7 +55,7 @@ void lisp_print(VM *vm, size_t args_count) {
 
 void lisp_cons(VM *vm, size_t args_count) {
     assert(args_count == 2);
-    vm_new_value(vm, LISP_CONS);
+    vm_build_value(vm, LISP_CONS);
     vm_peek_value(vm)->as.cons.cdr = da_at_end(vm->value_stack, 1);
     vm_peek_value(vm)->as.cons.car = da_at_end(vm->value_stack, 2);
     vm_pop_prev_value(vm);
