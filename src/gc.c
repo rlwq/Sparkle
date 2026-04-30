@@ -18,6 +18,8 @@ GC *gc_alloc(void) {
     gc->scopes_heap = NULL;
     gc->scopes_count = 0;
 
+    gc->capacity = INIT_GC_CAPACITY;
+
     return gc;
 }
 

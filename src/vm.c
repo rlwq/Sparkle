@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #include "gc.h"
@@ -43,9 +44,24 @@ void vm_pop_scope(VM *vm) {
     da_pop(vm->scope_stack);
 }
 
+void vm_scope_define(VM *vm, StringView name) {
+    scope_define(CURR_SCOPE(vm), name, vm_peek_value(vm));
+    vm_pop_value(vm);
+}
+
 // 0 -> 1
 void vm_push_value(VM *vm, LispNode *value) {
     da_push(vm->value_stack, value);
+}
+
+void vm_new_value(VM *vm, LispNodeKind kind) {
+    if (vm->gc->nodes_count + vm->gc->scopes_count >= vm->gc->capacity) {
+        // TODO: Isolate logic
+        vm->gc->capacity *= 2;
+        vm_mark(vm);
+        gc_sweep(vm->gc);
+    }
+    vm_push_value(vm, gc_alloc_node(vm->gc, kind));
 }
 
 // 1 -> 0
@@ -139,10 +155,10 @@ void eval_current(VM *vm) {
 }
 
 void vm_register_builtin(VM *vm, StringView name, LispBuiltin func_ptr) {
-    LispNode *builtin = gc_alloc_node(vm->gc, LISP_BUILTIN);
-    builtin->as.builtin = func_ptr;
+    vm_new_value(vm, LISP_BUILTIN);
+    vm_peek_value(vm)->as.builtin = func_ptr;
 
-    scope_define(CURR_SCOPE(vm), name, builtin);
+    vm_scope_define(vm, name);
 }
 
 void eval_all(VM *vm) {
@@ -182,12 +198,12 @@ void eval_if_form(VM *vm) {
 // Node -> Lambda
 void eval_lambda_form(VM *vm, StringViewDA args) {
     LispNode *subexpr = vm_peek_value(vm);
-    LispNode *lambda_result = gc_alloc_node(vm->gc, LISP_LAMBDA);
 
-    lambda_result->as.lambda.args = args;
-    lambda_result->as.lambda.expr = subexpr;
-    lambda_result->as.lambda.scope = CURR_SCOPE(vm);
-    vm_push_value(vm, lambda_result);
+    vm_new_value(vm, LISP_LAMBDA);
+
+    vm_peek_value(vm)->as.lambda.args = args;
+    vm_peek_value(vm)->as.lambda.expr = subexpr;
+    vm_peek_value(vm)->as.lambda.scope = CURR_SCOPE(vm);
 
     vm_pop_prev_value(vm);
 }
@@ -202,10 +218,7 @@ void eval_lambda_call(VM *vm) {
 
     for (size_t i = 0; i < lambda->as.lambda.args.size; i++) {
         vm_swap_value(vm);
-        scope_define(CURR_SCOPE(vm),
-                     da_at(lambda->as.lambda.args, i),
-                     vm_peek_value(vm));
-        vm_pop_value(vm);
+        vm_scope_define(vm, da_at(lambda->as.lambda.args, i));
     }
     
     vm_push_value(vm, lambda->as.lambda.expr);
@@ -336,7 +349,7 @@ void eval_symbol(VM *vm) {
     StringView name = vm_peek_value(vm)->as.symbol;
     vm_pop_value(vm);
 
-    if (sv_eq(name, sv_mk("NIL"))) vm_push_value(vm, gc_alloc_node(vm->gc, LISP_NIL));
+    if (sv_eq(name, sv_mk("NIL"))) vm_new_value(vm, LISP_NIL);
     else vm_push_value(vm, scope_get(CURR_SCOPE(vm), name));
 }
 

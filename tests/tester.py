@@ -31,14 +31,33 @@ def run_test(binary: str, rkl_path: str) -> tuple[str, int]:
 
 
 def main():
-    if len(sys.argv) < 2:
-        print('Usage: tester.py <executable> <tests_folder>')
+    if len(sys.argv) not in (3, 4):
+        print('Usage: tester.py <executable> <tests_folder> [--rewrite]')
         sys.exit(1)
 
     binary = sys.argv[1]
     tests_folder = sys.argv[2]
+    do_rewrite = False
+
+    if len(sys.argv) >= 4:
+        do_rewrite = (sys.argv[3] == '--rewrite')
 
     tests = find_tests(tests_folder)
+    
+    if do_rewrite:
+        for rkl_path in tests:
+            name = os.path.relpath(rkl_path, tests_folder)
+            output, code = run_test(binary, rkl_path)
+
+            if code:
+                print(f'{RED}CAN\'T RUN TEST {name} {RESET}')
+                sys.exit(1) 
+
+            with open(rkl_path[:-4] + '.out', 'w') as out_file:
+                _ = out_file.write(output)
+
+        return
+
  
     passed = failed = skipped = 0
  

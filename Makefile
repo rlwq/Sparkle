@@ -10,6 +10,7 @@ TARGET := ./build/sparkle
 
 TESTER := ./tests/tester.py
 TESTS_FOLDER := ./tests/cases/
+PYTHON := python3
 
 debug: $(SRC) $(HEADERS)
 	@mkdir -p ./build/
@@ -19,13 +20,17 @@ build: $(SRC) $(HEADERS)
 	@mkdir -p ./build/
 	$(CC) $(CFLAGS) $(SRC) $(BUILD_FLAGS) -o $(TARGET)
 
-run: $(TARGET)
-	$(TARGET)
+run:
+	@$(TARGET)
 
 clean:
-	rm -rf ./build *.plist
+	@rm -rf ./build *.plist
 
 test:
-	python $(TESTER) $(TARGET) $(TESTS_FOLDER)
+	@python $(TESTER) $(TARGET) $(TESTS_FOLDER)
 
-.PHONY: build debug run clean
+rewrite_tests:
+	@$(PYTHON) $(TESTER) $(TARGET) $(TESTS_FOLDER) --rewrite
+
+
+.PHONY: build debug run clean test rewrite_tests

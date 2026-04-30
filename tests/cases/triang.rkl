@@ -1,0 +1,7 @@
+(let trig (lambda (n) (if (= n 0) 0 (+ n (trig (- n 1))))))
+
+(print (trig 5))
+(print (trig 15))
+(print (trig 25))
+(print (trig 50))
+(print (trig 100))

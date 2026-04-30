@@ -32,8 +32,10 @@ void eval_all(VM *vm);
 
 void vm_push_scope(VM *vm, Scope *scope);
 void vm_pop_scope(VM *vm);
+void vm_scope_define(VM *vm, StringView name);
 
 void vm_push_value(VM *vm, LispNode *value);
+void vm_new_value(VM *vm, LispNodeKind kind);
 void vm_swap_value(VM *vm);
 void vm_pop_value(VM *vm);
 void vm_pop_prev_value(VM *vm);

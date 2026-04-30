@@ -3,12 +3,16 @@
 
 #include "lisp_node.h"
 
+#define INIT_GC_CAPACITY 64
+
 struct GC {
     LispNode *nodes_heap;
     size_t nodes_count;
 
     Scope *scopes_heap;
     size_t scopes_count;
+
+    size_t capacity;
 };
 
 GC *gc_alloc(void);
