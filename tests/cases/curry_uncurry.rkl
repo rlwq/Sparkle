@@ -1,0 +1,13 @@
+(let curry (lambda (f)
+    (lambda (x)
+     (lambda (y) (f x y)))))
+
+(let uncurry (lambda (f)
+    (lambda (x y) ((f x) y))))
+
+(let add (lambda (x y) (+ x y)))
+(let addc (curry add))
+(let addu (uncurry addc))
+
+(print ((addc 3) 6))
+(print (addu 5 -10))

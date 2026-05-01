@@ -69,6 +69,21 @@ void lexer_skip_ws(Lexer *lexer) {
         lexer_advance(lexer);
 }
 
+void lexer_skip_line_comment(Lexer *lexer) {
+    assert(CURR(lexer) == ';');
+    lexer_advance(lexer);
+    while (VALID(lexer) && CURR(lexer) != '\n')
+        lexer_advance(lexer);
+}
+
+void lexer_skip_to_token(Lexer *lexer) {
+    while (VALID(lexer)) {
+        if (isspace(CURR(lexer))) lexer_skip_ws(lexer);
+        if (CURR(lexer) == ';') lexer_skip_line_comment(lexer);
+        else break;
+    }
+}
+
 Token lex_integer(Lexer *lexer) {
     assert(VALID(lexer));
 
@@ -109,7 +124,7 @@ Token lex_symbol(Lexer *lexer) {
 Token lex_token(Lexer *lexer) {
     assert(!lexer->is_err);
     
-    lexer_skip_ws(lexer);
+    lexer_skip_to_token(lexer);
     
     if (lexer->is_eof)
         return EMIT_TOKEN(lexer, TK_EOF);

@@ -1,0 +1,17 @@
+(print 1)  ; Hey! It should print "1" here
+; a line comment between the statements
+(print 2)
+
+(let add3     ; The name of the functions
+  (lambda     ; The lambda keyword
+    (x        ; First number to be added
+     y        ; Second one
+   ; n          is not included
+     z)       ; And the third one
+    (+
+     x y z
+)))
+
+(print (add3 1 45 5))
+
+; line comment with no action at the end
