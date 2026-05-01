@@ -1,0 +1,34 @@
+(print 1234321)              ; 1234321
+(print NIL)                  ; NIL
+(print ())                   ; NIL
+(print (quote Hello!))       ; Hello!
+(print (quote (1 2 3 4 5)))  ; 1 2 3 4 5
+(print (cons 1 2))           ; (cons 1 2)
+
+;      o
+;     / \
+;    o   2
+;   / \
+;  1  NIL
+(print (cons (quote (1)) 2))  ; (cons (1) 2)
+(print (quote (cons (1) 2)))  ; (cons (1) 2)
+
+
+;        o
+;      /   \
+;    o       o
+;   / \     / \
+;  1   2   3   4
+(let x (cons (cons 1 2) (cons 3 4)))
+(print x)
+
+
+;         o
+;     o       o
+;   o   o   o   o
+;  1 2 3 4 5 6 7 8
+(let y (cons (cons (cons 1 2) (cons 3 4)) (cons (cons 5 6) (cons 7 8))))
+(print y)
+
+(print ())
+(print (cons () ()))
