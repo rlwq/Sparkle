@@ -1,20 +1,38 @@
 # TODO
 
-## Language Features
+## Language Core
 
-* [ ] `set` special form - variable mutation
-* [ ] `begin` special form - sequential expressions in one block
-* [ ] Comments - `;` to end of line
-* [ ] Proper API to register built-in functions
 * [ ] `bool` type - some kind of unified representation of True/False values
-* [ ] `'expr` - syntactic sugar for `(quote expr)`
 * [ ] Variadic lambdas - `(lambda (x . rest) ...)`
 * [ ] Error handling & recovery - runtime errors with catch possibilities
+    * [-] Identifing sources
+        * [x] Calls of uncallable objects
+        * [x] Symbols with no definition
+        * [x] Lambda calls with wrong arity
+        * [ ] Built-in calls with wrong arity
+        * [ ] Special forms with wrong arity
+        * [ ] Special forms with garbage with improper arguments
+    * [ ] Proper rewinding mechanism
+        * [ ] Value stack with spans allocated to aspecific scope
+        * [ ] Guarded scopes (`try/catch` blocks)
+    * [ ] Error messaging
+        * [ ] Error message information with proper error code/name
+
+## Language features
+
+* [ ] `'symbol` - syntactic sugar for `(quote symbol)`
+* [ ] `(a . b)` - syntactic sugar for `(cons a b)`
+* [ ] `set` special form - variable mutation
+* [ ] `begin` special form - sequential expressions in one block
 
 ## Built-ins
 
 * [ ] Arithmetic & comparison: `*`, `/`, `%`, `<`, `>`, `<=`, `>=`
 * [ ] Lists: `list`, `length`, `append`, `map`, `filter`
+
+## Optimization
+
+* [ ] Tail Call Optimization
 
 ## Infrastructure
 
@@ -22,9 +40,9 @@
 * [ ] Macro system
 * [ ] Module system - `(load "file.rkl")`
 
-## Bugs
+## Done
+* [x] `print_cons` - crashes on empty list (`NIL`)
+* [x] `print_expr` - crashes on an `cons` with its `cdr` not equal to `NIL` 
+* [x] Comments - `;` to end of line
 
-* [ ] `print_cons` - crashes on empty list (`NIL`)
-* [ ] `print_expr` - crashes on an `cons` with its `cdr` not equal to `NIL` 
-* [ ] Lambda calls have no arity check
 

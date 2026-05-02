@@ -1,12 +1,16 @@
 # Sparkle
 
 Sparkle is a [Lisp](https://en.wikipedia.org/wiki/Lisp_(programming_language)) dialect designed to be intuitive and extensible.
-The **AST-walking interpreter** is written from scratch in **ISO C11**, no dependencies required.
+The **AST-walking interpreter** is written from scratch in **ISO C11**, no dependencies required. For a full language reference, see [Sparkle.md](./Sparkle.md).
 
 > [!WARNING]
 > This project is currently under active development.
 > Bugs, memory leaks, and undefined behavior are to be expected.
 > Some features are incomplete, experimental, or in a raw state.
+
+> [!WARNING]
+> Not all features described in [Sparkle.md](./Sparkle.md) are yet implemented.
+> The language specification is under active development - some described behaviour may differ from the actual interpreter.
 
 ## Main features
 
@@ -70,9 +74,7 @@ Sparkle supports lexical closures, allowing functions to capture their defining 
 (let add5 (adder_factory 5))
 
 (print (add3 (add5 7)))  ; 15
-
 ```
-
 
 ## Internal Design
 
@@ -91,3 +93,4 @@ Lambda functions capture the scope in which they are defined, allowing them to a
 ## License
 
 This project is licensed under the [MIT LICENSE](./LICENSE).
+
