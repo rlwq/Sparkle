@@ -1,6 +1,28 @@
-# Sparkle programming language
+# Sparkle Language Specification
 
-## Types
+This document defines the semantics of Sparkle as a development & documental reference.
+
+## Program model
+
+- A **program** is a sequence of **s-expressions**.
+- Expressions are evaluated in order, top to bottom.
+- Sparkle uses strict evaluation (call-by-value): in ordinary function calls, arguments are evaluated before the call.
+- Argument evaluation order is left-to-right.
+
+## Core Types
+
+Sparkle has the following types:
+
+- `Nil`
+- `Bool`
+- `Integer`
+- `String`
+- `Symbol`
+- `Cons`
+- `Lambda`
+- `Builtin`
+
+`()` is exactly `Nil`.
 
 ### Nil
 
@@ -15,17 +37,7 @@ Use `(? value)` to explicitly cast any value to `Bool`.
 - `Nil` → `False`
 - `Integer` → `False` if `0`, otherwise `True`
 - `String` → `False` if empty, otherwise `True`
-- `Cons` → always `True`
-- `Lambda`, `Builtin` → always `True`
-
-```lisp
-(? 0)    ; False
-(? 1)    ; True
-(? Nil)  ; False
-(? "")   ; False
-(< 2 3)  ; True
-(= 1 2)  ; False
-```
+- `Cons` → always `True`- `Lambda`, `Builtin` → always `True`
 
 ### Symbol
 
@@ -86,7 +98,7 @@ Lists are not a separate type - they are a convention built on `Cons` cells.
 A **proper list** is a chain of Cons cells terminated by `Nil`.
 
 ```lisp
-(cons 1 (cons 2 (cons 3 Nil)))  ; (1 2 3)
+econs 1 (cons 2 (cons 3 Nil)))  ; (1 2 3)
 (car '(1 2 3 4 5))              ; 1
 (cdr '(1 2 3 4 5))              ; (2 3 4 5)
 ```
@@ -98,17 +110,49 @@ An **improper list** is a Cons chain where the last `cdr` is not `Nil`.
 (cons 1 (cons 2 3))  ; (1 2 . 3) - improper
 ```
 
-## Special Forms
+
+### Truthness and Bool Conversion
+
+Any value can be converted to `Bool` via `(? x)`.
+
+- `Nil` -> `False`
+- `Integer` -> `False` iff value is `0`
+- `String` -> `False` iff empty string `""`
+- `Cons`/`Lambda`/`Builtin`/`Symbol` -> Always `True`
+
+```lisp
+(? 0)    ; False
+(? 1)    ; True
+(? Nil)  ; False
+(? "")   ; False
+(< 2 3)  ; True
+(= 1 2)  ; False
+```
+
+## Special Forms & Flow Control
 
 Special forms look like function calls but are evaluated differently - arguments are not evaluated before being passed and are not bound to any scope - there is no function-like machinery involved.
+Special forms are usually used for flow control or state mutation.
 
 ### let
 
-Binds a value to a name in the current scope.
+`let` introduces a lexical bining in the current scope.
+Bining an already binded symbol is a runtime error.
 
 ```lisp
 (let x 42)
 (let add (lambda (x y) (+ x y)))
+```
+
+### set
+
+`set` updates an existing binding.
+Using set on an unbound name is a runtime error.
+
+```lisp
+(let x 1)
+(set x 2)
+x ; 2
 ```
 
 ### if
@@ -143,15 +187,16 @@ Returns its argument unevaluated.
 (quote (1 2 3))  ; (1 2 3) - a list, not a call
 ```
 
-## Lambda Functions
+## Function definition and calls
 
 Sparkle supports first-class anonymous functions defined with the `lambda` keyword.
+It is possible to define variadic lambda functions.
 Combined with `let` form, can define named functions.
 
 ```lisp
 (let square (lambda (x) (* x x)))
 (print (square 5))             ; 25
-((lambda (x y) (x + y)) 11 12) ; 23
+((lambda (x y) (+ x y)) 11 12) ; 23
 ```
 
 ### Closures
@@ -174,21 +219,14 @@ Functions can be passed as arguments and returned as values.
 ```lisp
 (let map (lambda (f l)
     (if l
-        NIL
-        (cons (f (car l)) (map f (cdr l))))))
+        (cons (f (car l)) (map f (cdr l)))))
+        NIL)
 
 (let double (lambda (x) (+ x x)))
 (print (map double (range 1 5)))  ; (2 4 6 8 10)
 ```
 
-### Macros
+## Error handling
 
 This part of the language is currently being developed and is not yet fully specified.
 
-### Error handling
-
-This part of the language is currently being developed and is not yet fully specified.
-
-### Module system
-
-This part of the language is currently being developed and is not yet fully specified.

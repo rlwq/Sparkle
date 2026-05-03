@@ -22,9 +22,8 @@ The **AST-walking interpreter** is written from scratch in **ISO C11**, no depen
 * [**Homoiconicity**](https://en.wikipedia.org/wiki/Homoiconicity) - code is represented as data, allowing the program to manipulate and modify its own structure at runtime
 * [**First-class functions**](https://en.wikipedia.org/wiki/First-class_function) - anonymous functions and functions as objects
 * [**Lexical closures**](https://en.wikipedia.org/wiki/Closure_(computer_programming)) - functions capture their lexical environment
-* [**Mark-and-sweep GC**](https://en.wikipedia.org/wiki/Tracing_garbage_collection) - automatic memory management * **Error handling** - descriptive runtime errors with stack traces
-
-To see what's currently being worked on or what's coming next, check out the [TODO.md](./TODO.md) file.
+* [**Mark-and-sweep GC**](https://en.wikipedia.org/wiki/Tracing_garbage_collection) - automatic memory management
+* **Exception handling** - the ability to catch and handle runtime errors.
 
 ### To be done
 
@@ -32,6 +31,8 @@ To see what's currently being worked on or what's coming next, check out the [TO
 * **Standard library** - a rich set of general-purpose functions and modules 
 * **Modular system** - organize code into reusable, importable modules
 * **Macro system** - code transformation before evaluation (Lisp-style macros)
+
+To see what's currently being worked on or what's coming next, check out the [TODO.md](./TODO.md) file.
 
 ## Build
 
@@ -51,7 +52,7 @@ make debug
 
 ## Examples
 
-Sparkle provides imperative semantics for general-purpose programming
+Sparkle supports both imperative and functional programming styles.
 
 ```lisp
 (print "Hello, World!")  ; Hello, World!
