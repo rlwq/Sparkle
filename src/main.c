@@ -77,7 +77,10 @@ int main(int argc, char** argv) {
     for (size_t i = 0; i < BUILTINS_COUNT; i++)
         vm_register_builtin(vm, sv_mk(BUILTINS[i].name), BUILTINS[i].func);
 
-    vm_eval_all(vm);
+    if (VM_VALID(vm))
+        vm_eval_all(vm);
+
+    bool in_err = vm->is_err;
 
     vm_free(vm);
     da_free(exprs);
@@ -89,6 +92,11 @@ int main(int argc, char** argv) {
 
     lexer_free(lexer);
     free(src);
+
+    if (in_err) {
+        printf("[ERROR] Something went wrong...\n");
+        return 1;
+    }
 
     return 0;
 }

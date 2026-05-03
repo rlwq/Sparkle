@@ -4,11 +4,18 @@
 #include "lisp_node.h"
 #include "string_view.h"
 #include "forwards.h"
+#include <setjmp.h>
 
 #define VM_DONE(e_) ((e_)->stmts_count == 0)
 #define VM_VALID(e_) (!VM_DONE(e_) && !(e_)->is_err)
 
-#define CURR_SCOPE(e_) (da_at((e_)->scope_stack, (e_)->scope_stack.size-1))
+#define VM_CURR_SCOPE(e_) (da_at((e_)->scope_stack, (e_)->scope_stack.size-1))
+
+typedef struct {
+    jmp_buf *jmp;
+    size_t values_count;
+    size_t scopes_count;
+} RecoveryStackEntry;
 
 struct VM {
     LispNode **stmts;
@@ -16,6 +23,7 @@ struct VM {
 
     DA(Scope *) scope_stack;
     DA(LispNode *) value_stack;
+    DA(RecoveryStackEntry) recovery_stack;
 
     GC *gc;
 
@@ -30,10 +38,11 @@ void vm_free(VM *vm);
 void vm_register_builtin(VM *vm, StringView name, LispBuiltin func_ptr);
 
 void vm_eval_expr(VM *vm);
-void vm_eval_current(VM *vm);
 void vm_eval_all(VM *vm);
 
-void vm_push_error(VM *vm);
+void vm_recover(VM *vm);
+void vm_push_recovery(VM *vm, jmp_buf *jmp);
+void vm_pop_recovery(VM *vm);
 
 void vm_push_scope(VM *vm, Scope *scope);
 void vm_build_scope(VM *vm);
