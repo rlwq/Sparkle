@@ -1,6 +1,7 @@
 # Sparkle
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-2c7887.svg)](https://opensource.org/licenses/MIT)
+![Dialect](https://img.shields.io/badge/dialect-Lisp-2c7887)
 ![Status](https://img.shields.io/badge/status-active_development-2c7887)
 ![ISO C11](https://img.shields.io/badge/language-ISO_C11-2c7887)
 ![Dependencies](https://img.shields.io/badge/dependencies-none-2c7887)
