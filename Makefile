@@ -20,14 +20,11 @@ build: $(SRC) $(HEADERS)
 	@mkdir -p ./build/
 	$(CC) $(CFLAGS) $(SRC) $(BUILD_FLAGS) -o $(TARGET)
 
-run:
-	@$(TARGET)
-
 clean:
 	@rm -rf ./build *.plist
 
 test:
-	@python $(TESTER) $(TARGET) $(TESTS_FOLDER)
+	@$(PYTHON) $(TESTER) $(TARGET) $(TESTS_FOLDER)
 
 rewrite_tests:
 	@$(PYTHON) $(TESTER) $(TARGET) $(TESTS_FOLDER) --rewrite
@@ -35,4 +32,5 @@ rewrite_tests:
 format:
 	clang-format -i $(SRC) $(HEADERS)
 
-.PHONY: build debug run clean test rewrite_tests format
+.PHONY: build debug clean test rewrite_tests format
+

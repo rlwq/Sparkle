@@ -17,10 +17,13 @@ This document outlines the features and fixes planned for Sparkle.
 ## Optimizations
 
 * [ ] Refactor `gc_mark_node` to be iterative. 
+* [ ] Introduce `StringName` data type for constant time string comparison.
 
 ## Language Semanatics
 
 * [ ] `Bool` data type & logical functions.
 * [ ] `String` data type & basic string manipulation.
+* [ ] `Exception` data type for expressive error reporting & powerful catch mechanism.
 * [ ] Variadic functions support using dotted-tail notation (`(lambda (x . rest) ...)`).
 * [ ] Distinct error types and descriptive messages.
+
