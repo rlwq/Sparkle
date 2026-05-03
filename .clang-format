@@ -1,0 +1,12 @@
+BasedOnStyle: LLVM
+
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+
+BreakBeforeBraces: Attach
+PointerAlignment: Right
+ColumnLimit: 100
+SpaceBeforeParens: ControlStatements
+SpacesInParentheses: false
+AllowShortIfStatementsOnASingleLine: Never

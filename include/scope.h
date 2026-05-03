@@ -2,8 +2,8 @@
 #define SCOPE_H
 
 #include "forwards.h"
-#include "string_view.h"
 #include "stdbool.h"
+#include "string_view.h"
 
 typedef struct {
     StringView key;
@@ -12,7 +12,7 @@ typedef struct {
 
 struct Scope {
     Scope *parent;
-    
+
     DA(ScopeItem) items;
 
     Scope *heap_next;

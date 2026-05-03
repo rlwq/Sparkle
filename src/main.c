@@ -3,11 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "gc.h"
 #include "dynamic_array.h"
-#include "string_view.h"
+#include "gc.h"
 #include "lexer.h"
 #include "parser.h"
+#include "string_view.h"
 #include "vm.h"
 
 #include "builtins.h"
@@ -30,44 +30,42 @@ char *read_file(const char *path) {
     return src;
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
     if (argc != 2) {
         printf("USAGE: %s source.rkl\n", argv[0]);
         return 1;
     }
-    
+
     char *src = read_file(argv[1]);
     StringView prog = sv_mk(src);
 
     Lexer *lexer = lexer_alloc(prog);
     lex_all(lexer);
-    
+
     if (lexer->is_err) {
-        printf("%s:%zu:%zu: [ERROR] Unexpected character: " SV_FMT "\n",
-                argv[1], lexer->line + 1, lexer->column + 1,
-                SV_ARGS(sv_take(lexer->src, sv_find(lexer->src, '\n'))));
-        
+        printf("%s:%zu:%zu: [ERROR] Unexpected character: " SV_FMT "\n", argv[1], lexer->line + 1,
+               lexer->column + 1, SV_ARGS(sv_take(lexer->src, sv_find(lexer->src, '\n'))));
+
         free(src);
         lexer_free(lexer);
         return 1;
     }
-  
+
     TokenDA tokens = extract_tokens(lexer);
-    
+
     GC *gc = gc_alloc();
     Parser *parser = parser_alloc(tokens, gc);
     parse_all(parser);
 
     if (parser->is_err) {
-        printf("%s:%zu:%zu: [ERROR] Unexpected token \""SV_FMT"\".\n",
-                argv[1], parser->tokens->line + 1, parser->tokens->column + 1,
-                SV_ARGS(parser->tokens->src));
-        
+        printf("%s:%zu:%zu: [ERROR] Unexpected token \"" SV_FMT "\".\n", argv[1],
+               parser->tokens->line + 1, parser->tokens->column + 1, SV_ARGS(parser->tokens->src));
+
         free(src);
         lexer_free(lexer);
         return 1;
     }
-    
+
     LispNodePtrDA exprs = extract_exprs(parser);
 
     VM *vm = vm_alloc(exprs, gc);
@@ -87,7 +85,7 @@ int main(int argc, char** argv) {
 
     parser_free(parser);
     da_free(tokens);
-    
+
     gc_free(gc);
 
     lexer_free(lexer);
@@ -100,4 +98,3 @@ int main(int argc, char** argv) {
 
     return 0;
 }
-

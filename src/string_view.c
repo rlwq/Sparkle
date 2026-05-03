@@ -1,9 +1,11 @@
-#include <assert.h>
-#include <string.h>
 #include "string_view.h"
 #include "ctype.h"
+#include <assert.h>
+#include <string.h>
 
-#define TRUNC(x_, y_) if ((x_) > (y_)) (x_) = (y_)
+#define TRUNC(x_, y_)                                                                              \
+    if ((x_) > (y_))                                                                               \
+    (x_) = (y_)
 
 StringView sv_drop(StringView sv, size_t size) {
     TRUNC(size, sv.size);
@@ -12,7 +14,7 @@ StringView sv_drop(StringView sv, size_t size) {
     return sv;
 }
 
-StringView sv_take(StringView sv, size_t size) { 
+StringView sv_take(StringView sv, size_t size) {
     TRUNC(size, sv.size);
     sv.size = size;
     return sv;
@@ -24,21 +26,21 @@ StringView sv_drop_end(StringView sv, size_t size) {
     return sv;
 }
 
-StringView sv_take_end(StringView sv, size_t size) { 
+StringView sv_take_end(StringView sv, size_t size) {
     TRUNC(size, sv.size);
     sv.data += sv.size - size;
     sv.size = size;
     return sv;
 }
 
-StringView sv_shrink(StringView sv, size_t size) { 
+StringView sv_shrink(StringView sv, size_t size) {
     TRUNC(size, sv.size);
-    
+
     if (2 * size >= sv.size) {
         sv.size = 0;
         return sv;
     }
-    
+
     sv.size -= 2 * size;
     sv.data += size;
     return sv;
@@ -52,12 +54,14 @@ size_t sv_prefix_size(StringView sv, char c) {
 }
 
 char sv_head(StringView sv) {
-    if (sv.size == 0) return '\0';
+    if (sv.size == 0)
+        return '\0';
     return sv.data[0];
 }
 
 char sv_next(StringView sv) {
-    if (sv.size < 2) return '\0';
+    if (sv.size < 2)
+        return '\0';
     return sv.data[1];
 }
 
@@ -68,7 +72,8 @@ size_t sv_find(StringView sv, char c) {
 
 StringView sv_drop_ws(StringView sv) {
     size_t size = 0;
-    while (size < sv.size && isspace(sv_at(sv, size))) size++;
+    while (size < sv.size && isspace(sv_at(sv, size)))
+        size++;
     return sv_drop(sv, size);
 }
 
@@ -86,7 +91,6 @@ int svtoi(StringView sv) {
         sign = -1;
     }
 
-
     for (size_t i = 0; i < sv.size; i++) {
         assert(isdigit(sv_at(sv, i)));
         result = 10 * result + sv_at(sv, i) - '0';
@@ -94,5 +98,3 @@ int svtoi(StringView sv) {
 
     return sign * result;
 }
-
-

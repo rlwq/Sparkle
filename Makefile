@@ -32,5 +32,7 @@ test:
 rewrite_tests:
 	@$(PYTHON) $(TESTER) $(TARGET) $(TESTS_FOLDER) --rewrite
 
+format:
+	clang-format -i $(SRC) $(HEADERS)
 
-.PHONY: build debug run clean test rewrite_tests
+.PHONY: build debug run clean test rewrite_tests format

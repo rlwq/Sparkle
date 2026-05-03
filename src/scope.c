@@ -13,7 +13,7 @@ bool scope_define(Scope *scope, StringView name, LispNode *value) {
     }
     if (is_defined)
         return false;
-    ScopeItem item = { .key = name, .value = value };
+    ScopeItem item = {.key = name, .value = value};
     da_push(scope->items, item);
     return true;
 }
@@ -28,4 +28,3 @@ LispNode *scope_get(Scope *scope, StringView name) {
     }
     return NULL;
 }
-

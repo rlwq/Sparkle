@@ -1,20 +1,13 @@
 #include <stdio.h>
 
 #include "builtins.h"
-#include "vm.h"
 #include "debug.h"
+#include "vm.h"
 
 const BuiltinDef BUILTINS[] = {
-    { "+", rkl_add },
-    { "-", rkl_sub },
-    { "=", rkl_int_eq },
-    { ">", rkl_gt },
-    { "print", rkl_print },
-    { "cons", rkl_cons },
-    { "car", rkl_car },
-    { "cdr", rkl_cdr },
-    { "eval", rkl_eval },
-    { "nil?", rkl_is_nil },
+    {"+", rkl_add},       {"-", rkl_sub},       {"=", rkl_int_eq}, {">", rkl_gt},
+    {"print", rkl_print}, {"cons", rkl_cons},   {"car", rkl_car},  {"cdr", rkl_cdr},
+    {"eval", rkl_eval},   {"nil?", rkl_is_nil},
 };
 
 const size_t BUILTINS_COUNT = sizeof(BUILTINS) / sizeof(BUILTINS[0]);
@@ -26,8 +19,10 @@ void rkl_int_eq(VM *vm, size_t args_count) {
     int value1 = vm_peek_value(vm)->as.integer;
     vm_pop_value(vm);
 
-    if (value1 == value2) vm_build_integer(vm, 1);
-    else vm_build_nil(vm);
+    if (value1 == value2)
+        vm_build_integer(vm, 1);
+    else
+        vm_build_nil(vm);
 }
 
 void rkl_sub(VM *vm, size_t args_count) {
@@ -36,7 +31,7 @@ void rkl_sub(VM *vm, size_t args_count) {
     vm_pop_value(vm);
     int value1 = vm_peek_value(vm)->as.integer;
     vm_pop_value(vm);
-    
+
     vm_build_integer(vm, value1 - value2);
 }
 
@@ -79,7 +74,7 @@ void rkl_add(VM *vm, size_t args_count) {
         result_value += popped->as.integer;
         vm_pop_value(vm);
     }
-    vm_build_integer(vm, result_value); 
+    vm_build_integer(vm, result_value);
 }
 
 void rkl_gt(VM *vm, size_t args_count) {
@@ -89,23 +84,25 @@ void rkl_gt(VM *vm, size_t args_count) {
     int value1 = vm_peek_value(vm)->as.integer;
     vm_pop_value(vm);
 
-    if (value1 > value2) vm_build_integer(vm, 1);
-    else vm_build_nil(vm);
+    if (value1 > value2)
+        vm_build_integer(vm, 1);
+    else
+        vm_build_nil(vm);
 }
 
 void rkl_is_nil(VM *vm, size_t args_count) {
     assert(args_count == 1);
 
-    bool is_nil = vm_peek_value(vm)->kind == LISP_NIL; 
+    bool is_nil = vm_peek_value(vm)->kind == LISP_NIL;
     vm_pop_value(vm);
 
-    if (is_nil) vm_build_integer(vm, 1);
-    else vm_build_nil(vm);
+    if (is_nil)
+        vm_build_integer(vm, 1);
+    else
+        vm_build_nil(vm);
 }
 
 void rkl_eval(VM *vm, size_t args_count) {
     assert(args_count == 1);
     vm_eval_expr(vm);
 }
-
-
