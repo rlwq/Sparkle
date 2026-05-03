@@ -22,15 +22,15 @@ The **AST-walking interpreter** is written from scratch in **ISO C11**, no depen
 * [**Homoiconicity**](https://en.wikipedia.org/wiki/Homoiconicity) - code is represented as data, allowing the program to manipulate and modify its own structure at runtime
 * [**First-class functions**](https://en.wikipedia.org/wiki/First-class_function) - anonymous functions and functions as objects
 * [**Lexical closures**](https://en.wikipedia.org/wiki/Closure_(computer_programming)) - functions capture their lexical environment
-* [**Mark-and-sweep GC**](https://en.wikipedia.org/wiki/Tracing_garbage_collection) - automatic memory management 
+* [**Mark-and-sweep GC**](https://en.wikipedia.org/wiki/Tracing_garbage_collection) - automatic memory management * **Error handling** - descriptive runtime errors with stack traces
+
+To see what's currently being worked on or what's coming next, check out the [TODO.md](./TODO.md) file.
 
 ### To be done
 
 * **REPL** - interactive read-eval-print loop for live code interaction
 * **Standard library** - a rich set of general-purpose functions and modules 
 * **Modular system** - organize code into reusable, importable modules
-* **Error handling** - descriptive runtime errors with stack traces
-* [**Tail call optimization**](https://en.wikipedia.org/wiki/Tail_call) - efficient recursion without stack overflow
 * **Macro system** - code transformation before evaluation (Lisp-style macros)
 
 ## Build
