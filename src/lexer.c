@@ -2,13 +2,14 @@
 #include <ctype.h>
 #include <stdlib.h>
 
-#include "lexer.h"
 #include "dynamic_array.h"
+#include "lexer.h"
 #include "string_view.h"
 
 #define CURR(l_) (sv_head((l_)->src))
 #define VALID(l_) (!(l_)->is_err && !(l_)->is_eof)
-#define EMIT_TOKEN(l_, k_) ((Token) { .kind = (k_), .src = sv(NULL, 0), .line = (l_)->line, .column = (l_)->column })
+#define EMIT_TOKEN(l_, k_)                                                                         \
+    ((Token){.kind = (k_), .src = sv(NULL, 0), .line = (l_)->line, .column = (l_)->column})
 
 Lexer *lexer_alloc(StringView src) {
     Lexer *lexer = malloc(sizeof(Lexer));
@@ -26,22 +27,21 @@ Lexer *lexer_alloc(StringView src) {
     return lexer;
 }
 
-void lexer_free(Lexer *lexer) {
-    free(lexer);
-}
+void lexer_free(Lexer *lexer) { free(lexer); }
 
 char lexer_advance(Lexer *lexer) {
-    if (!VALID(lexer)) return '\0';
+    if (!VALID(lexer))
+        return '\0';
 
     char curr = sv_head(lexer->src);
     lexer->src = sv_drop(lexer->src, 1);
-    
+
     lexer->column++;
     if (curr == '\n') {
         lexer->column = 0;
         lexer->line++;
     }
-    
+
     if (!lexer->src.size)
         lexer->is_eof = true;
 
@@ -59,13 +59,12 @@ Token lex_char_token(Lexer *lexer, TokenKind kind) {
     return result;
 }
 
-
 bool issymbolchar(char c) {
-    return (unsigned char) c <= 127 && !isspace(c) && c != '(' && c != ')' && c != '"';
+    return (unsigned char)c <= 127 && !isspace(c) && c != '(' && c != ')' && c != '"';
 }
 
 void lexer_skip_ws(Lexer *lexer) {
-    while(VALID(lexer) && isspace(sv_head(lexer->src)))
+    while (VALID(lexer) && isspace(sv_head(lexer->src)))
         lexer_advance(lexer);
 }
 
@@ -78,17 +77,20 @@ void lexer_skip_line_comment(Lexer *lexer) {
 
 void lexer_skip_to_token(Lexer *lexer) {
     while (VALID(lexer)) {
-        if (isspace(CURR(lexer))) lexer_skip_ws(lexer);
-        if (CURR(lexer) == ';') lexer_skip_line_comment(lexer);
-        else break;
+        if (isspace(CURR(lexer)))
+            lexer_skip_ws(lexer);
+        if (CURR(lexer) == ';')
+            lexer_skip_line_comment(lexer);
+        else
+            break;
     }
 }
 
 Token lex_integer(Lexer *lexer) {
     assert(VALID(lexer));
 
-    Token result = EMIT_TOKEN(lexer, TK_INTEGER); 
-    
+    Token result = EMIT_TOKEN(lexer, TK_INTEGER);
+
     StringView src = lexer->src;
     size_t size = 0;
     if (CURR(lexer) == '+' || CURR(lexer) == '-') {
@@ -100,32 +102,32 @@ Token lex_integer(Lexer *lexer) {
         size++;
         lexer_advance(lexer);
     }
-    
+
     result.src = sv_take(src, size);
     return result;
 }
 
-Token lex_symbol(Lexer *lexer) { 
+Token lex_symbol(Lexer *lexer) {
     assert(VALID(lexer));
 
-    Token result = EMIT_TOKEN(lexer, TK_SYMBOL); 
-     
+    Token result = EMIT_TOKEN(lexer, TK_SYMBOL);
+
     StringView src = lexer->src;
     size_t size = 0;
     while (VALID(lexer) && issymbolchar(CURR(lexer))) {
         size++;
         lexer_advance(lexer);
     }
-    
+
     result.src = sv_take(src, size);
     return result;
 }
 
 Token lex_token(Lexer *lexer) {
     assert(!lexer->is_err);
-    
+
     lexer_skip_to_token(lexer);
-    
+
     if (lexer->is_eof)
         return EMIT_TOKEN(lexer, TK_EOF);
 
@@ -134,13 +136,10 @@ Token lex_token(Lexer *lexer) {
 
     if (curr == '(')
         return lex_char_token(lexer, TK_L_PAREN);
-
     if (curr == ')')
         return lex_char_token(lexer, TK_R_PAREN);
-
     if (isdigit(curr) || ((curr == '+' || curr == '-') && isdigit(next)))
         return lex_integer(lexer);
-    
     if (issymbolchar(curr))
         return lex_symbol(lexer);
 
@@ -156,7 +155,7 @@ void lex_current(Lexer *lexer) {
 void lex_all(Lexer *lexer) {
     assert(VALID(lexer));
 
-    while(VALID(lexer))
+    while (VALID(lexer))
         lex_current(lexer);
 }
 

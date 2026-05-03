@@ -23,19 +23,19 @@ typedef struct {
 } LispConsNode;
 
 typedef struct {
-    StringViewDA args; 
+    StringViewDA args;
     LispNode *expr;
     Scope *scope;
 } LispLambdaNode;
 
-typedef void (*LispBuiltin) (VM *vm, size_t args_count);
+typedef void (*LispBuiltin)(VM *vm, size_t args_count);
 
 struct LispNode {
     LispNodeKind kind;
     bool marked;
 
     LispNode *heap_next;
-    
+
     union {
         StringView symbol;
         StringView string;

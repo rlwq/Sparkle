@@ -31,13 +31,14 @@ typedef struct {
 
     size_t line;
     size_t column;
-    
+
     bool is_eof;
     bool is_err;
 } Lexer;
 
 #define TOKEN_FMT "<%d (%zu:%zu) \"%.*s\">"
-#define TOKEN_ARGS(t_) (t_).kind, ((t_).line + 1), ((t_).column + 1), (int) (t_).src.size, (t_).src.data
+#define TOKEN_ARGS(t_)                                                                             \
+    (t_).kind, ((t_).line + 1), ((t_).column + 1), (int)(t_).src.size, (t_).src.data
 
 Lexer *lexer_alloc(StringView src);
 void lexer_free(Lexer *lexer);

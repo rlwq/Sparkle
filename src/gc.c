@@ -2,11 +2,11 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#include "gc.h"
 #include "dynamic_array.h"
+#include "forwards.h"
+#include "gc.h"
 #include "lisp_node.h"
 #include "scope.h"
-#include "forwards.h"
 
 GC *gc_alloc(void) {
     GC *gc = malloc(sizeof(GC));
@@ -29,7 +29,7 @@ void gc_free(GC *gc) {
         gc_free_node(gc, gc->nodes_heap);
         gc->nodes_heap = next;
     }
-    
+
     while (gc->scopes_heap) {
         Scope *next = gc->scopes_heap->heap_next;
         gc_free_scope(gc, gc->scopes_heap);
@@ -48,14 +48,14 @@ bool gc_check_bounds(GC *gc) {
 
 LispNode *gc_alloc_node(GC *gc, LispNodeKind kind) {
     LispNode *node = malloc(sizeof(LispNode));
-    assert(node); //TODO: add some error reporting 
-      
+    assert(node); // TODO: add some error reporting
+
     gc->nodes_count++;
-    node->kind = kind;   
+    node->kind = kind;
 
     node->marked = false;
-    node->heap_next = gc->nodes_heap; 
-    gc->nodes_heap = node; 
+    node->heap_next = gc->nodes_heap;
+    gc->nodes_heap = node;
 
     return node;
 }
@@ -65,18 +65,18 @@ void gc_free_node(GC *gc, LispNode *expr) {
     gc->nodes_count--;
 
     switch (expr->kind) {
-        case LISP_NIL:
-        case LISP_INTEGER:
-        case LISP_CONS:
-        case LISP_SYMBOL:
-        case LISP_BUILTIN:
-        case LISP_STRING:
-            free(expr);
+    case LISP_NIL:
+    case LISP_INTEGER:
+    case LISP_CONS:
+    case LISP_SYMBOL:
+    case LISP_BUILTIN:
+    case LISP_STRING:
+        free(expr);
         break;
 
-        case LISP_LAMBDA:
-            da_free(expr->as.lambda.args);
-            free(expr);
+    case LISP_LAMBDA:
+        da_free(expr->as.lambda.args);
+        free(expr);
         break;
     }
 }
@@ -92,7 +92,7 @@ Scope *gc_alloc_scope(GC *gc, Scope *parent) {
     scope->heap_next = gc->scopes_heap;
     gc->scopes_heap = scope;
     gc->scopes_count++;
-    
+
     scope->parent = parent;
 
     return scope;
@@ -100,7 +100,7 @@ Scope *gc_alloc_scope(GC *gc, Scope *parent) {
 
 void gc_free_scope(GC *gc, Scope *scope) {
     da_free(scope->items);
-    
+
     gc->scopes_count--;
     free(scope);
 }
@@ -112,8 +112,7 @@ void gc_sweep(GC *gc) {
         if ((*curr_node)->marked) {
             (*curr_node)->marked = false;
             curr_node = &((*curr_node)->heap_next);
-        }
-        else {
+        } else {
             LispNode *dead = *curr_node;
             *curr_node = dead->heap_next;
             gc_free_node(gc, dead);
@@ -126,8 +125,7 @@ void gc_sweep(GC *gc) {
         if ((*curr_scope)->marked) {
             (*curr_scope)->marked = false;
             curr_scope = &((*curr_scope)->heap_next);
-        }
-        else {
+        } else {
             Scope *dead = *curr_scope;
             *curr_scope = dead->heap_next;
             gc_free_scope(gc, dead);
@@ -137,28 +135,29 @@ void gc_sweep(GC *gc) {
 
 void gc_mark_node(LispNode *expr) {
     assert(expr);
-    
-    if (expr->marked) return;
+
+    if (expr->marked)
+        return;
 
     expr->marked = true;
 
     switch (expr->kind) {
-        case LISP_NIL:
-        case LISP_SYMBOL:
-        case LISP_INTEGER:
-        case LISP_STRING:
-        case LISP_BUILTIN:
-            // Do nothin
+    case LISP_NIL:
+    case LISP_SYMBOL:
+    case LISP_INTEGER:
+    case LISP_STRING:
+    case LISP_BUILTIN:
+        // Do nothin
         break;
 
-        case LISP_LAMBDA:
-            gc_mark_node(expr->as.lambda.expr);
-            gc_mark_scope(expr->as.lambda.scope);
+    case LISP_LAMBDA:
+        gc_mark_node(expr->as.lambda.expr);
+        gc_mark_scope(expr->as.lambda.scope);
         break;
 
-        case LISP_CONS:
-            gc_mark_node(expr->as.cons.car);
-            gc_mark_node(expr->as.cons.cdr);
+    case LISP_CONS:
+        gc_mark_node(expr->as.cons.car);
+        gc_mark_node(expr->as.cons.cdr);
         break;
     }
 }
@@ -167,11 +166,10 @@ void gc_mark_scope(Scope *scope) {
     assert(scope);
 
     scope->marked = true;
-   
+
     for (size_t i = 0; i < scope->items.size; i++)
         gc_mark_node(da_at(scope->items, i).value);
 
     if (scope->parent)
         gc_mark_scope(scope->parent);
 }
-

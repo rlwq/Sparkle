@@ -1,15 +1,15 @@
 #ifndef VM_H
 #define VM_H
 
+#include "forwards.h"
 #include "lisp_node.h"
 #include "string_view.h"
-#include "forwards.h"
 #include <setjmp.h>
 
 #define VM_DONE(e_) ((e_)->stmts_count == 0)
 #define VM_VALID(e_) (!VM_DONE(e_) && !(e_)->is_err)
 
-#define VM_CURR_SCOPE(e_) (da_at((e_)->scope_stack, (e_)->scope_stack.size-1))
+#define VM_CURR_SCOPE(e_) (da_at((e_)->scope_stack, (e_)->scope_stack.size - 1))
 
 typedef struct {
     jmp_buf *jmp;
@@ -30,7 +30,7 @@ struct VM {
     bool is_err;
 };
 
-typedef void (*SpecialFormHandler) (VM *vm);
+typedef void (*SpecialFormHandler)(VM *vm);
 
 VM *vm_alloc(LispNodePtrDA exprs, GC *gc);
 void vm_free(VM *vm);
