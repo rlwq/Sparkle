@@ -26,9 +26,14 @@ typedef struct {
     StringViewDA args;
     LispNode *expr;
     Scope *scope;
+    bool is_variadic;
 } LispLambdaNode;
 
-typedef void (*LispBuiltin)(VM *vm, size_t args_count);
+typedef struct {
+    void (*func)(VM *vm);
+    size_t arity;
+    bool is_variadic;
+} LispBuiltin;
 
 struct LispNode {
     LispNodeKind kind;
@@ -48,5 +53,8 @@ struct LispNode {
 
 #define CAR(n_) ((n_)->as.cons.car)
 #define CDR(n_) ((n_)->as.cons.cdr)
+
+#define LAMBDA_ARGS_N(n_) ((n_)->as.lambda.args.size)
+#define BUILTIN_ARGS_N(n_) ((n_)->as.builtin.arity)
 
 #endif

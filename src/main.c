@@ -71,7 +71,6 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-
     VM *vm = vm_alloc(exprs, gc);
 
     vm_push_scope(vm, gc_alloc_scope(gc, NULL));

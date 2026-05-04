@@ -88,9 +88,10 @@ void vm_build_builtin(VM *vm, LispBuiltin value) {
 
 void vm_build_nil(VM *vm) { vm_build_value(vm, LISP_NIL); }
 
-void vm_build_lambda(VM *vm, StringViewDA args, LispNode *expr, Scope *scope) {
+void vm_build_lambda(VM *vm, StringViewDA args, bool is_variadic, LispNode *expr, Scope *scope) {
     vm_build_value(vm, LISP_LAMBDA);
     vm_peek_value(vm)->as.lambda.args = args;
+    vm_peek_value(vm)->as.lambda.is_variadic = is_variadic;
     vm_peek_value(vm)->as.lambda.expr = expr;
     vm_peek_value(vm)->as.lambda.scope = scope;
 }
@@ -203,6 +204,9 @@ void vm_eval_all(VM *vm) {
             vm_push_value(vm, vm_advance(vm));
             vm_eval_expr(vm);
             vm_pop_value(vm);
+            assert(vm->recovery_stack.size == 1);
+            assert(vm->scope_stack.size == 1);
+            assert(vm->value_stack.size == 0);
         }
     }
     vm_pop_recovery(vm);
@@ -277,7 +281,7 @@ void eval_lambda_form(VM *vm) {
 
     LispNode *subexpr = vm_peek_value(vm);
 
-    vm_build_lambda(vm, args, subexpr, VM_CURR_SCOPE(vm));
+    vm_build_lambda(vm, args, false, subexpr, VM_CURR_SCOPE(vm));
     vm_pop_prev_value(vm);
 }
 
@@ -330,25 +334,20 @@ bool try_dispatch_special_form(VM *vm) {
 
     SpecialFormHandler handler = NULL;
 
-    if (sv_eq(vm_peek_value(vm)->as.symbol, sv_mk("if"))) {
+    if (sv_eq(vm_peek_value(vm)->as.symbol, sv_mk("if")))
         handler = eval_if_form;
-    }
 
-    else if (sv_eq(vm_peek_value(vm)->as.symbol, sv_mk("let"))) {
+    else if (sv_eq(vm_peek_value(vm)->as.symbol, sv_mk("let")))
         handler = eval_let_form;
-    }
 
-    else if (sv_eq(vm_peek_value(vm)->as.symbol, sv_mk("lambda"))) {
+    else if (sv_eq(vm_peek_value(vm)->as.symbol, sv_mk("lambda")))
         handler = eval_lambda_form;
-    }
 
-    else if (sv_eq(vm_peek_value(vm)->as.symbol, sv_mk("quote"))) {
+    else if (sv_eq(vm_peek_value(vm)->as.symbol, sv_mk("quote")))
         handler = eval_quote_form;
-    }
 
-    else if (sv_eq(vm_peek_value(vm)->as.symbol, sv_mk("try"))) {
+    else if (sv_eq(vm_peek_value(vm)->as.symbol, sv_mk("try")))
         handler = eval_try_form;
-    }
 
     if (handler) {
         vm_pop_value(vm);
@@ -358,6 +357,37 @@ bool try_dispatch_special_form(VM *vm) {
     }
 
     return false;
+}
+
+// Node (cons) -> Node (cons)
+size_t eval_list_inplace(VM *vm) {
+    size_t length = 0;
+    while (vm_peek_value(vm)->kind == LISP_CONS) {
+        unpack_cons(vm);
+        vm_eval_expr(vm);
+        vm_swap_value(vm);
+        length++;
+    }
+
+    assert(vm_peek_value(vm)->kind == LISP_NIL);
+
+    for (size_t i = 0; i < length; i++) {
+        vm_build_value(vm, LISP_CONS);
+        CDR(vm_peek_value(vm)) = da_at_end(vm->value_stack, 1);
+        CAR(vm_peek_value(vm)) = da_at_end(vm->value_stack, 2);
+        vm_pop_prev_value(vm);
+        vm_pop_prev_value(vm);
+    }
+
+    return length;
+}
+
+void unpack_list_n(VM *vm, size_t n) {
+    for (; n > 0; n--) {
+        assert(vm_peek_value(vm)->kind == LISP_CONS);
+        unpack_cons(vm);
+        vm_swap_value(vm);
+    }
 }
 
 // ConsNode -> Node
@@ -371,26 +401,52 @@ void eval_cons(VM *vm) {
         return;
 
     vm_eval_expr(vm);
-    LispNode *head = vm_peek_value(vm);
-    vm_swap_value(vm);
-    size_t args_count = eval_list(vm);
 
-    switch (head->kind) {
-    case LISP_LAMBDA:
+    switch (vm_peek_value(vm)->kind) {
+    case LISP_LAMBDA: {
+        LispNode *lambda = vm_peek_value(vm);
+        vm_swap_value(vm);
+        size_t args_count = eval_list_inplace(vm);
+
         // [CAUTION] Exception source: wrong lambda arity
-        if (args_count != head->as.lambda.args.size) {
-            vm_build_nil(vm);
-            // vm_push_error(vm);
-            return;
+
+        if (!lambda->as.lambda.is_variadic) {
+            if (args_count != LAMBDA_ARGS_N(lambda))
+                vm_recover(vm);
+            unpack_list(vm);
         }
 
-        vm_push_value(vm, head);
+        if (lambda->as.lambda.is_variadic) {
+            if (args_count < LAMBDA_ARGS_N(lambda))
+                vm_recover(vm);
+            unpack_list_n(vm, LAMBDA_ARGS_N(lambda));
+        }
+
+        vm_push_value(vm, lambda);
         eval_lambda_call(vm);
         break;
+    }
 
-    case LISP_BUILTIN:
-        head->as.builtin(vm, args_count);
+    case LISP_BUILTIN: {
+        LispNode *builtin = vm_peek_value(vm);
+        vm_swap_value(vm);
+        size_t args_count = eval_list_inplace(vm);
+
+        // [CAUTION] Exception source: wrong builtin arity
+        if (!builtin->as.builtin.is_variadic) {
+            if (args_count != BUILTIN_ARGS_N(builtin))
+                vm_recover(vm);
+            unpack_list(vm);
+        }
+
+        if (builtin->as.builtin.is_variadic) {
+            if (args_count < BUILTIN_ARGS_N(builtin))
+                vm_recover(vm);
+            unpack_list_n(vm, BUILTIN_ARGS_N(builtin));
+        }
+        builtin->as.builtin.func(vm);
         break;
+    }
 
     case LISP_CONS:
     case LISP_SYMBOL:
@@ -398,8 +454,7 @@ void eval_cons(VM *vm) {
     case LISP_STRING:
     case LISP_NIL:
         // [CAUTION] Exception source: uncallale object call
-        vm_build_nil(vm);
-        // vm_push_error(vm);
+        vm_recover(vm);
         break;
     }
 
@@ -410,7 +465,6 @@ void vm_scope_get(VM *vm, StringView name) {
     LispNode *lookup_result = scope_get(VM_CURR_SCOPE(vm), name);
     if (!lookup_result) {
         // [CAUTION] Exception source: symbol with no definition
-        // vm_build_nil(vm);
         vm_recover(vm);
         return;
     }

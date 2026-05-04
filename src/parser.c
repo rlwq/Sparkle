@@ -45,7 +45,8 @@ Token parser_advance(Parser *parser) {
 }
 
 bool parser_eat(Parser *parser, TokenKind kind) {
-    if(PARSER_DONE(parser)) return false;
+    if (PARSER_DONE(parser))
+        return false;
 
     if (CURR(parser).kind != kind)
         return false;
@@ -80,7 +81,7 @@ LispNode *parse_expr(Parser *parser) {
         LispNode *subexpr = parse_expr(parser);
         LispNode *result = gc_alloc_node(parser->gc, LISP_CONS);
         CAR(result) = gc_alloc_node(parser->gc, LISP_SYMBOL);
-        CAR(result)->as.symbol = sv_mk("quote");  // TODO: hardcoded value
+        CAR(result)->as.symbol = sv_mk("quote"); // TODO: hardcoded value
         CDR(result) = gc_alloc_node(parser->gc, LISP_CONS);
         CAR(CDR(result)) = subexpr;
         CDR(CDR(result)) = gc_alloc_node(parser->gc, LISP_NIL);
@@ -89,30 +90,41 @@ LispNode *parse_expr(Parser *parser) {
 
     // S-expr
     if (parser_eat(parser, TK_L_PAREN)) {
+        if (parser_eat(parser, TK_DOT)) {
+            LispNode *result = gc_alloc_node(parser->gc, LISP_CONS);
+            CAR(result) = gc_alloc_node(parser->gc, LISP_NIL);
+            CDR(result) = parse_expr(parser);
+            parser_expect(parser, TK_R_PAREN);
+            return result;
+        }
+
         DA(LispNode *) args;
         da_init(args);
 
-        while (PARSER_VALID(parser) && !parser_match(parser, TK_R_PAREN) && !parser_match(parser, TK_DOT))
+        while (PARSER_VALID(parser) && !parser_match(parser, TK_R_PAREN) &&
+               !parser_match(parser, TK_DOT))
             da_push(args, parse_expr(parser));
 
-        bool is_improper = parser_eat(parser, TK_DOT);
-        
-        LispNode *node = is_improper ? parse_expr(parser) : gc_alloc_node(parser->gc, LISP_NIL);
-
-        if (is_improper && args.size == 0) {
+        if (parser_eat(parser, TK_DOT)) {
+            if (parser_eat(parser, TK_R_PAREN)) {
+                da_push(args, gc_alloc_node(parser->gc, LISP_NIL));
+            } else {
+                da_push(args, parse_expr(parser));
+                parser_expect(parser, TK_R_PAREN);
+            }
+        } else if (parser_eat(parser, TK_R_PAREN)) {
+            da_push(args, gc_alloc_node(parser->gc, LISP_NIL));
+        } else {
             da_free(args);
+            parser->is_err = true;
             return NULL;
         }
 
-        if (!parser_expect(parser, TK_R_PAREN)) {
-            da_free(args);
-            return NULL;
-        }
-
-        for (size_t i = 0; i < args.size; i++) {
+        LispNode *node = da_at_end(args, 0);
+        for (size_t i = 1; i < args.size; i++) {
             LispNode *head = gc_alloc_node(parser->gc, LISP_CONS);
             head->as.cons.cdr = node;
-            head->as.cons.car = da_at(args, args.size - i - 1);
+            head->as.cons.car = da_at_end(args, i);
             node = head;
         }
 
