@@ -7,7 +7,7 @@
 
 void print_cons(LispNode *expr) {
     assert(expr->kind == LISP_CONS);
-    
+
     printf("(");
     for (; CDR(expr)->kind == LISP_CONS; expr = CDR(expr)) {
         print_expr(CAR(expr));

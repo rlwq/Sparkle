@@ -4,8 +4,6 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Syntax & Parser
 
-* [ ] Support for quotation syntax (`'a`).
-* [ ] Dotted pair construction (`(a . b)`).
 
 ## Special Forms & Control Flow 
 
@@ -24,6 +22,19 @@ This document outlines the features and fixes planned for Sparkle.
 * [ ] `Bool` data type & logical functions.
 * [ ] `String` data type & basic string manipulation.
 * [ ] `Exception` data type for expressive error reporting & powerful catch mechanism.
-* [ ] Variadic functions support using dotted-tail notation (`(lambda (x . rest) ...)`).
-* [ ] Distinct error types and descriptive messages.
+* [-] Variadic functions support using dotted-tail notation (`(lambda (x . rest) ...)`).
+    * [ ] Implement variadic lambda declaration
 
+## Documentation & Presentation
+
+* [ ] Write about `(x .)` & `(. x)` syntax.
+
+## Bugs & Fixes
+
+* [ ] Two error handler invocations behave differently: one duplicates the expression before entering the frame, the other does not.
+
+## Done
+
+* [x] Support for quotation syntax (`'a`).
+* [x] Dotted pair construction (`(a . b)`).
+* [x] Arity check for functions and lambdas.

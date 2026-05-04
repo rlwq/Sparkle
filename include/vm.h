@@ -54,7 +54,7 @@ void vm_build_value(VM *vm, LispNodeKind kind);
 void vm_build_integer(VM *vm, int value);
 void vm_build_builtin(VM *vm, LispBuiltin value);
 void vm_build_nil(VM *vm);
-void vm_build_lambda(VM *vm, StringViewDA args, LispNode *expr, Scope *scope);
+void vm_build_lambda(VM *vm, StringViewDA args, bool is_variadic, LispNode *expr, Scope *scope);
 void vm_build_symbol(VM *vm, StringView value);
 void vm_build_string(VM *vm, StringView value);
 
