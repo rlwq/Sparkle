@@ -56,6 +56,7 @@ int main(int argc, char **argv) {
     GC *gc = gc_alloc();
     Parser *parser = parser_alloc(tokens, gc);
     parse_all(parser);
+    LispNodePtrDA exprs = extract_exprs(parser);
 
     if (parser->is_err) {
         printf("%s:%zu:%zu: [ERROR] Unexpected token \"" SV_FMT "\".\n", argv[1],
@@ -63,10 +64,13 @@ int main(int argc, char **argv) {
 
         free(src);
         lexer_free(lexer);
+        parser_free(parser);
+        da_free(tokens);
+        da_free(exprs);
+        gc_free(gc);
         return 1;
     }
 
-    LispNodePtrDA exprs = extract_exprs(parser);
 
     VM *vm = vm_alloc(exprs, gc);
 

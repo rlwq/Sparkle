@@ -5,52 +5,21 @@
 #include <assert.h>
 #include <stdio.h>
 
-bool is_proper_list(LispNode *expr) {
-    for (; expr->kind == LISP_CONS; expr = CDR(expr))
-        ;
-    return expr->kind == LISP_NIL;
-}
-
-void print_proper_list(LispNode *expr) {
-    assert(expr->kind == LISP_CONS || expr->kind == LISP_NIL);
-
-    printf("(");
-
-    if (expr->kind != LISP_NIL) {
-        print_expr(CAR(expr));
-        expr = CDR(expr);
-    }
-    for (; expr->kind != LISP_NIL; expr = CDR(expr)) {
-        printf(" ");
-        print_expr(CAR(expr));
-    }
-
-    printf(")");
-}
-
-void print_improper_list(LispNode *expr) {
-    assert(expr->kind == LISP_CONS || expr->kind == LISP_NIL);
-
-    size_t depth = 0;
-
-    for (; expr->kind == LISP_CONS; expr = CDR(expr)) {
-        printf("(cons ");
-        print_expr(CAR(expr));
-        printf(" ");
-        depth++;
-    }
-    print_expr(expr);
-    for (size_t i = 0; i < depth; i++)
-        printf(")");
-}
-
 void print_cons(LispNode *expr) {
     assert(expr->kind == LISP_CONS);
-
-    if (is_proper_list(expr))
-        print_proper_list(expr);
-    else
-        print_improper_list(expr);
+    
+    printf("(");
+    for (; CDR(expr)->kind == LISP_CONS; expr = CDR(expr)) {
+        print_expr(CAR(expr));
+        printf(" ");
+    }
+    print_expr(CAR(expr));
+    expr = CDR(expr);
+    if (expr->kind != LISP_NIL) {
+        printf(" . ");
+        print_expr(expr);
+    }
+    printf(")");
 }
 
 void print_lambda(LispNode *expr) {

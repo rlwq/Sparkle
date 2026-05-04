@@ -138,6 +138,10 @@ Token lex_token(Lexer *lexer) {
         return lex_char_token(lexer, TK_L_PAREN);
     if (curr == ')')
         return lex_char_token(lexer, TK_R_PAREN);
+    if (curr == '.')
+        return lex_char_token(lexer, TK_DOT);
+    if (curr == '\'')
+        return lex_char_token(lexer, TK_QUOTE);
     if (isdigit(curr) || ((curr == '+' || curr == '-') && isdigit(next)))
         return lex_integer(lexer);
     if (issymbolchar(curr))
