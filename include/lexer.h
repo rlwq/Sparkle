@@ -6,8 +6,11 @@
 typedef enum {
     TK_L_PAREN,
     TK_R_PAREN,
-    TK_SYMBOL,
 
+    TK_DOT,
+    TK_QUOTE,
+
+    TK_SYMBOL,
     TK_INTEGER,
     TK_STRING,
 

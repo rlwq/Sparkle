@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include "dynamic_array.h"
+#include "forwards.h"
 #include "gc.h"
 #include "lexer.h"
 #include "lisp_node.h"
@@ -44,7 +45,7 @@ Token parser_advance(Parser *parser) {
 }
 
 bool parser_eat(Parser *parser, TokenKind kind) {
-    assert(PARSER_VALID(parser));
+    if(PARSER_DONE(parser)) return false;
 
     if (CURR(parser).kind != kind)
         return false;
@@ -75,20 +76,38 @@ LispNode *parse_expr(Parser *parser) {
         return NULL;
     }
 
+    if (parser_eat(parser, TK_QUOTE)) {
+        LispNode *subexpr = parse_expr(parser);
+        LispNode *result = gc_alloc_node(parser->gc, LISP_CONS);
+        CAR(result) = gc_alloc_node(parser->gc, LISP_SYMBOL);
+        CAR(result)->as.symbol = sv_mk("quote");  // TODO: hardcoded value
+        CDR(result) = gc_alloc_node(parser->gc, LISP_CONS);
+        CAR(CDR(result)) = subexpr;
+        CDR(CDR(result)) = gc_alloc_node(parser->gc, LISP_NIL);
+        return result;
+    }
+
     // S-expr
     if (parser_eat(parser, TK_L_PAREN)) {
         DA(LispNode *) args;
         da_init(args);
 
-        while (PARSER_VALID(parser) && !parser_match(parser, TK_R_PAREN))
+        while (PARSER_VALID(parser) && !parser_match(parser, TK_R_PAREN) && !parser_match(parser, TK_DOT))
             da_push(args, parse_expr(parser));
+
+        bool is_improper = parser_eat(parser, TK_DOT);
+        
+        LispNode *node = is_improper ? parse_expr(parser) : gc_alloc_node(parser->gc, LISP_NIL);
+
+        if (is_improper && args.size == 0) {
+            da_free(args);
+            return NULL;
+        }
 
         if (!parser_expect(parser, TK_R_PAREN)) {
             da_free(args);
             return NULL;
         }
-
-        LispNode *node = gc_alloc_node(parser->gc, LISP_NIL);
 
         for (size_t i = 0; i < args.size; i++) {
             LispNode *head = gc_alloc_node(parser->gc, LISP_CONS);
