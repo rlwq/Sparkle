@@ -60,17 +60,54 @@ A signed integer value. `42`, `-7`, `+3`.
 
 An immutable sequence of characters. `"hello"`, `"world"`.
 
-### Cons
+### Cons Cells & Lists
 
-An ordered pair of two values.
+A **Cons Cell** is an ordered pair of two values. Its "left" and "right" slots are named `car` and `cdr` respectively.
+
+* Use the `cons` function to build a new cell. 
+* Use the `car` and `cdr` functions to retrieve values from the slots.
+* Use `setcar` and `setcdr` to update the values within an existing cell.
+
+#### Cons Cells Syntax
+
+* `(x . y)` A cell where `car` is `x` and `cdr` is `y`.
+* `(x .  )` Evaluates as `(x . Nil)`.
+* `(  . x)` Evaluates as `(Nil . x)`.
 
 ```lisp
 (cons 1 2)        ; a pair
 (car (cons 1 2))  ; 1
 (cdr (cons 1 2))  ; 2
+```
 
+#### Lists
+
+Lists are not a separate type - they are a convention built on nested `Cons` cells.
+A **proper list** is a chain of Cons cells terminated by `Nil`.
+
+#### Lists syntax
+
+A sequence of values enclosed in parentheses defines a proper list. In this form, the interpreter automatically terminates the chain with Nil.
+* **Example**: `(a b c d e)` defines a Nil-terminated list.
+
+```lisp
 ; Lists are nested cons cells terminated by Nil
 (cons 1 (cons 2 (cons 3 Nil)))  ; (1 2 3)
+
+(car '(1 2 3 4 5))              ; 1
+(cdr '(1 2 3 4 5))              ; (2 3 4 5)
+```
+
+An **improper list** is a **Cons** chain where the last `cdr` is not `Nil`.
+
+A sequence of values enclosed in parentheses where the finl element is preceded by a dot defines an improper list.
+In this form, the list is terminated by the object following the dot.
+Example: `(1 2 3 4 . 5)` defines an improper list with `5` as its terminal value.
+
+```lisp
+(cons 1 2)           ; (1 . 2)   - improper
+(cons 1 (cons 2 3))  ; (1 2 . 3) - improper
+(1 2 3 . 4)          ; (1 2 3 . 4) - improper
 ```
 
 ### Built-in functions
@@ -93,23 +130,6 @@ An anonymous function. A callable object that can be stored and passed around.
 ```
 
 ### Lists
-
-Lists are not a separate type - they are a convention built on `Cons` cells.
-A **proper list** is a chain of Cons cells terminated by `Nil`.
-
-```lisp
-econs 1 (cons 2 (cons 3 Nil)))  ; (1 2 3)
-(car '(1 2 3 4 5))              ; 1
-(cdr '(1 2 3 4 5))              ; (2 3 4 5)
-```
-
-An **improper list** is a Cons chain where the last `cdr` is not `Nil`.
-
-```lisp
-(cons 1 2)           ; (1 . 2)   - improper
-(cons 1 (cons 2 3))  ; (1 2 . 3) - improper
-```
-
 
 ### Truthness and Bool Conversion
 
