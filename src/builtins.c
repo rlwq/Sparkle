@@ -100,4 +100,6 @@ void rkl_is_nil(VM *vm) {
         vm_build_nil(vm);
 }
 
-void rkl_eval(VM *vm) { vm_eval_expr(vm); }
+void rkl_eval(VM *vm) {
+    vm_eval_expr(vm);
+}

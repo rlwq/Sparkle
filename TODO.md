@@ -21,6 +21,7 @@ This document outlines the features and fixes planned for Sparkle.
 * [ ] Refactor `gc_mark_node` to be iterative. 
 * [ ] Introduce `StringName` data type for constant time string comparison.
     * [ ] Hash tables for fast search in scopes.
+* [ ] `Nil` type as singleton.
 * [ ] Arena allocations instead of an linked list in GC.
 * [ ] An attempt/research on TCO.
 
@@ -31,7 +32,8 @@ This document outlines the features and fixes planned for Sparkle.
 * [ ] `String` data type & basic string manipulation.
 * [ ] `Exception` data type for expressive error reporting & powerful catch mechanism.
 * [-] Variadic functions support using dotted-tail notation (`(lambda (x . rest) ...)`).
-    * [ ] Implement variadic lambda declaration
+    * [x] Implement variadic lambda declaration
+    * [ ] Implement expetion calls when improper lambda definition/call is used.
 * [ ] Exception reporting on all failed form calls (`lambda`, `if`, `let`, `quote`...)
 * [ ] Type checking & exception throwing on incorrect data types in built-in functions.
 * [ ] Macro support
@@ -58,20 +60,19 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Documentation & Presentation
 
+* [ ] Which kind of lisp is that.
 * [ ] Write about `(x .)` & `(. x)` syntax.
 
-## Code base
+## Code base, bugs, & fixes
 
 * [ ] Assertions on values on stack in `eval_` functions.
+* [ ] `'x` syntax when printing quoted values.
+* [ ] Two error handler invocations behave differently: one duplicates the expression before entering the frame, the other does not.
 
 ## Tooling
 
 * [ ] Negative tests. Error message validation.
 * [ ] Evaluation time of tests.
-
-## Bugs & Fixes
-
-* [ ] Two error handler invocations behave differently: one duplicates the expression before entering the frame, the other does not.
 
 ## UX
 
