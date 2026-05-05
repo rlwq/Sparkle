@@ -151,7 +151,7 @@ void gc_mark_node(LispNode *expr) {
         break;
 
     case LISP_LAMBDA:
-        gc_mark_node(expr->as.lambda.expr);
+        gc_mark_node(expr->as.lambda.subexpr);
         gc_mark_scope(expr->as.lambda.scope);
         break;
 

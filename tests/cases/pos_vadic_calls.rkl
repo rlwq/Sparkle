@@ -6,7 +6,7 @@
 (let drop (lambda (a . b) (print b)))
 (drop 1 2 3 4 5)
 (drop 1)
-(let x (lambda (. y) (print y)))
+(let x (lambda y (print y)))
 (x 1 2 3 4 5)
 (let y (lambda (a b c . d) (print d a b c)))
 (y 1 2 3 4 5)

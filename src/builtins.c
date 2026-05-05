@@ -17,10 +17,10 @@ const BuiltinDef BUILTINS[] = {
 const size_t BUILTINS_COUNT = sizeof(BUILTINS) / sizeof(BUILTINS[0]);
 
 void rkl_int_eq(VM *vm) {
-    int value2 = vm_peek_value(vm)->as.integer;
-    vm_pop_value(vm);
-    int value1 = vm_peek_value(vm)->as.integer;
-    vm_pop_value(vm);
+    int value2 = vm_peek(vm)->as.integer;
+    vm_pop(vm);
+    int value1 = vm_peek(vm)->as.integer;
+    vm_pop(vm);
 
     if (value1 == value2)
         vm_build_integer(vm, 1);
@@ -29,60 +29,60 @@ void rkl_int_eq(VM *vm) {
 }
 
 void rkl_sub(VM *vm) {
-    int value2 = vm_peek_value(vm)->as.integer;
-    vm_pop_value(vm);
-    int value1 = vm_peek_value(vm)->as.integer;
-    vm_pop_value(vm);
+    int value2 = vm_peek(vm)->as.integer;
+    vm_pop(vm);
+    int value1 = vm_peek(vm)->as.integer;
+    vm_pop(vm);
 
     vm_build_integer(vm, value1 - value2);
 }
 
 void rkl_print(VM *vm) {
-    LispNode *list = vm_peek_value(vm);
+    LispNode *list = vm_peek(vm);
     while (list->kind == LISP_CONS) {
         print_expr(CAR(list));
         printf("\n");
         list = CDR(list);
     }
-    vm_pop_value(vm);
+    vm_pop(vm);
     vm_build_nil(vm);
 }
 
 void rkl_cons(VM *vm) {
     vm_build_value(vm, LISP_CONS);
-    vm_peek_value(vm)->as.cons.cdr = da_at_end(vm->value_stack, 1);
-    vm_peek_value(vm)->as.cons.car = da_at_end(vm->value_stack, 2);
-    vm_pop_prev_value(vm);
-    vm_pop_prev_value(vm);
+    vm_peek(vm)->as.cons.cdr = da_at_end(vm->value_stack, 1);
+    vm_peek(vm)->as.cons.car = da_at_end(vm->value_stack, 2);
+    vm_pop_prev(vm);
+    vm_pop_prev(vm);
 }
 
 void rkl_car(VM *vm) {
-    vm_push_value(vm, CAR(vm_peek_value(vm)));
-    vm_pop_prev_value(vm);
+    vm_push(vm, CAR(vm_peek(vm)));
+    vm_pop_prev(vm);
 }
 
 void rkl_cdr(VM *vm) {
-    vm_push_value(vm, CDR(vm_peek_value(vm)));
-    vm_pop_prev_value(vm);
+    vm_push(vm, CDR(vm_peek(vm)));
+    vm_pop_prev(vm);
 }
 
 void rkl_add(VM *vm) {
     int result_value = 0;
 
-    LispNode *list = vm_peek_value(vm);
+    LispNode *list = vm_peek(vm);
     while (list->kind == LISP_CONS) {
         result_value += CAR(list)->as.integer;
         list = CDR(list);
     }
-    vm_pop_value(vm);
+    vm_pop(vm);
     vm_build_integer(vm, result_value);
 }
 
 void rkl_gt(VM *vm) {
-    int value2 = vm_peek_value(vm)->as.integer;
-    vm_pop_value(vm);
-    int value1 = vm_peek_value(vm)->as.integer;
-    vm_pop_value(vm);
+    int value2 = vm_peek(vm)->as.integer;
+    vm_pop(vm);
+    int value1 = vm_peek(vm)->as.integer;
+    vm_pop(vm);
 
     if (value1 > value2)
         vm_build_integer(vm, 1);
@@ -91,8 +91,8 @@ void rkl_gt(VM *vm) {
 }
 
 void rkl_is_nil(VM *vm) {
-    bool is_nil = vm_peek_value(vm)->kind == LISP_NIL;
-    vm_pop_value(vm);
+    bool is_nil = vm_peek(vm)->kind == LISP_NIL;
+    vm_pop(vm);
 
     if (is_nil)
         vm_build_integer(vm, 1);

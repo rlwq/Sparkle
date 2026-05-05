@@ -31,9 +31,6 @@ This document outlines the features and fixes planned for Sparkle.
 * [ ] `Float` data type.
 * [ ] `String` data type & basic string manipulation.
 * [ ] `Exception` data type for expressive error reporting & powerful catch mechanism.
-* [-] Variadic functions support using dotted-tail notation (`(lambda (x . rest) ...)`).
-    * [x] Implement variadic lambda declaration
-    * [ ] Implement expetion calls when improper lambda definition/call is used.
 * [ ] Exception reporting on all failed form calls (`lambda`, `if`, `let`, `quote`...)
 * [ ] Type checking & exception throwing on incorrect data types in built-in functions.
 * [ ] Macro support
@@ -68,6 +65,7 @@ This document outlines the features and fixes planned for Sparkle.
 * [ ] Assertions on values on stack in `eval_` functions.
 * [ ] `'x` syntax when printing quoted values.
 * [ ] Two error handler invocations behave differently: one duplicates the expression before entering the frame, the other does not.
+* [ ] Exception call when trying to evaluate an improper list.
 
 ## Tooling
 
@@ -84,4 +82,7 @@ This document outlines the features and fixes planned for Sparkle.
 * [x] Support for quotation syntax (`'a`).
 * [x] Dotted pair construction (`(a . b)`).
 * [x] Arity check for functions and lambdas.
-
+* [x] Variadic functions support using dotted-tail notation (`(lambda (x . rest) ...)`).
+    * [x] Implement variadic lambda declaration
+    * [x] Implement `(lambda args ...)` syntax for variadic-only lambdas.
+    * [x] Implement exception calls when improper lambda definition/call is used.
