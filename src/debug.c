@@ -38,7 +38,7 @@ void print_lambda(LispNode *expr) {
         printf(" . " SV_FMT, SV_ARGS(da_at_end(expr->as.lambda.args, 0)));
     }
     printf(") ");
-    print_expr(expr->as.lambda.expr);
+    print_expr(expr->as.lambda.subexpr);
     printf(")");
 }
 

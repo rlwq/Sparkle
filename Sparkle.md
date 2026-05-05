@@ -129,8 +129,6 @@ An anonymous function. A callable object that can be stored and passed around.
 (add5 3)  ; 8
 ```
 
-### Lists
-
 ### Truthness and Bool Conversion
 
 Any value can be converted to `Bool` via `(? x)`.

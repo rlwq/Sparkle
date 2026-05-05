@@ -58,11 +58,11 @@ void vm_build_lambda(VM *vm, StringViewDA args, bool is_variadic, LispNode *expr
 void vm_build_symbol(VM *vm, StringView value);
 void vm_build_string(VM *vm, StringView value);
 
-void vm_push_value(VM *vm, LispNode *value);
-void vm_swap_value(VM *vm);
-void vm_pop_value(VM *vm);
-void vm_pop_prev_value(VM *vm);
-LispNode *vm_peek_value(VM *vm);
+void vm_push(VM *vm, LispNode *value);
+void vm_swap(VM *vm);
+void vm_pop(VM *vm);
+void vm_pop_prev(VM *vm);
+LispNode *vm_peek(VM *vm);
 
 void vm_mark(VM *vm);
 
