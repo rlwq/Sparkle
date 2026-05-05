@@ -51,11 +51,17 @@ void vm_pop_recovery(VM *vm) {
     da_pop(vm->recovery_stack);
 }
 
-void vm_push_scope(VM *vm, Scope *scope) { da_push(vm->scope_stack, scope); }
+void vm_push_scope(VM *vm, Scope *scope) {
+    da_push(vm->scope_stack, scope);
+}
 
-void vm_build_scope(VM *vm) { vm_push_scope(vm, gc_alloc_scope(vm->gc, VM_CURR_SCOPE(vm))); }
+void vm_build_scope(VM *vm) {
+    vm_push_scope(vm, gc_alloc_scope(vm->gc, VM_CURR_SCOPE(vm)));
+}
 
-void vm_pop_scope(VM *vm) { da_pop(vm->scope_stack); }
+void vm_pop_scope(VM *vm) {
+    da_pop(vm->scope_stack);
+}
 
 void vm_scope_define(VM *vm, StringView name) {
     scope_define(VM_CURR_SCOPE(vm), name, vm_peek_value(vm));
@@ -86,13 +92,15 @@ void vm_build_builtin(VM *vm, LispBuiltin value) {
     vm_peek_value(vm)->as.builtin = value;
 }
 
-void vm_build_nil(VM *vm) { vm_build_value(vm, LISP_NIL); }
+void vm_build_nil(VM *vm) {
+    vm_build_value(vm, LISP_NIL);
+}
 
 void vm_build_lambda(VM *vm, StringViewDA args, bool is_variadic, LispNode *expr, Scope *scope) {
     vm_build_value(vm, LISP_LAMBDA);
     vm_peek_value(vm)->as.lambda.args = args;
     vm_peek_value(vm)->as.lambda.is_variadic = is_variadic;
-    vm_peek_value(vm)->as.lambda.expr = expr;
+    vm_peek_value(vm)->as.lambda.subexpr = expr;
     vm_peek_value(vm)->as.lambda.scope = scope;
 }
 
@@ -243,7 +251,7 @@ size_t unpack_list(VM *vm) {
 void eval_let_form(VM *vm) {
     vm_swap_value(vm);
     assert(vm_peek_value(vm)->kind == LISP_SYMBOL);
-    StringView name = vm_peek_value(vm)->as.symbol;
+    StringView name = SYMBOL(vm_peek_value(vm));
     vm_pop_value(vm);
     vm_eval_expr(vm);
 
@@ -268,20 +276,36 @@ void eval_if_form(VM *vm) {
 
 // Cons (Args list), Node (subexpr) -> Lambda
 void eval_lambda_form(VM *vm) {
+    // TODO: add assertions
     vm_swap_value(vm);
-    size_t args_count = unpack_list(vm);
 
     StringViewDA args;
+    bool is_variadic = false;
     da_init(args);
+    
+    // TODO: add vm_expect_kind function
+    if (vm_peek_value(vm)->kind != LISP_CONS)
+        vm_recover(vm); // TODO: free before recovering
 
-    for (size_t i = 0; i < args_count; i++) {
-        da_push(args, vm_peek_value(vm)->as.symbol);
-        vm_pop_value(vm);
+    // Variadic function with no positional arguments
+    if (CAR(vm_peek_value(vm))->kind == LISP_NIL) {
+        if (CDR(vm_peek_value(vm))->kind != LISP_SYMBOL) vm_recover(vm); // TODO: free before recovering
+        da_push(args, SYMBOL(CDR(vm_peek_value(vm))));
+        is_variadic = true;
+    } else {
+        // TODO: assert there is a list
+        LispNode *curr = vm_peek_value(vm);
+        for (; curr->kind == LISP_CONS; curr = CDR(curr))
+            da_push(args, SYMBOL(CAR(curr)));
+        if (curr->kind == LISP_SYMBOL) {
+            is_variadic = true;
+            da_push(args, SYMBOL(curr));
+        }
     }
-
+    vm_pop_value(vm);
     LispNode *subexpr = vm_peek_value(vm);
-
-    vm_build_lambda(vm, args, false, subexpr, VM_CURR_SCOPE(vm));
+    
+    vm_build_lambda(vm, args, is_variadic, subexpr, VM_CURR_SCOPE(vm));
     vm_pop_prev_value(vm);
 }
 
@@ -305,21 +329,29 @@ void eval_try_form(VM *vm) {
 }
 
 // Node -> Node
-void eval_quote_form(VM *vm) { assert(vm->value_stack.size > 0); }
+void eval_quote_form(VM *vm) {
+    assert(vm->value_stack.size > 0);
+}
 
-// Node * n (args), Node (lambda) -> Node (result)
+// Cons (args), Node (lambda) -> Node (result)
 void eval_lambda_call(VM *vm) {
     LispNode *lambda = vm_peek_value(vm);
+    vm_swap_value(vm);
 
-    vm_push_scope(vm, lambda->as.lambda.scope);
+    vm_push_scope(vm, LAMBDA_SCOPE(lambda));
     vm_build_scope(vm);
-
-    for (size_t i = 0; i < lambda->as.lambda.args.size; i++) {
-        vm_swap_value(vm);
-        vm_scope_define(vm, da_at(lambda->as.lambda.args, i));
+    
+    for (size_t i = 0; i < LAMBDA_POS_ARGS_N(lambda); i++) {
+        unpack_cons(vm);
+        vm_scope_define(vm, da_at(LAMBDA_ARGS(lambda), i));
     }
 
-    vm_push_value(vm, lambda->as.lambda.expr);
+    if (LAMBDA_IS_VARIADIC(lambda)) {
+        vm_scope_define(vm, da_at_end(LAMBDA_ARGS(lambda), 0));
+    }
+    else vm_pop_value(vm);
+
+    vm_push_value(vm, LAMBDA_SUBEXPR(lambda));
     vm_eval_expr(vm);
     vm_pop_prev_value(vm);
 
@@ -334,19 +366,19 @@ bool try_dispatch_special_form(VM *vm) {
 
     SpecialFormHandler handler = NULL;
 
-    if (sv_eq(vm_peek_value(vm)->as.symbol, sv_mk("if")))
+    if (sv_eq(SYMBOL(vm_peek_value(vm)), sv_mk("if")))
         handler = eval_if_form;
 
-    else if (sv_eq(vm_peek_value(vm)->as.symbol, sv_mk("let")))
+    else if (sv_eq(SYMBOL(vm_peek_value(vm)), sv_mk("let")))
         handler = eval_let_form;
 
-    else if (sv_eq(vm_peek_value(vm)->as.symbol, sv_mk("lambda")))
+    else if (sv_eq(SYMBOL(vm_peek_value(vm)), sv_mk("lambda")))
         handler = eval_lambda_form;
 
-    else if (sv_eq(vm_peek_value(vm)->as.symbol, sv_mk("quote")))
+    else if (sv_eq(SYMBOL(vm_peek_value(vm)), sv_mk("quote")))
         handler = eval_quote_form;
 
-    else if (sv_eq(vm_peek_value(vm)->as.symbol, sv_mk("try")))
+    else if (sv_eq(SYMBOL(vm_peek_value(vm)), sv_mk("try")))
         handler = eval_try_form;
 
     if (handler) {
@@ -407,20 +439,9 @@ void eval_cons(VM *vm) {
         LispNode *lambda = vm_peek_value(vm);
         vm_swap_value(vm);
         size_t args_count = eval_list_inplace(vm);
-
+        
+        // TODO: \/ add this \/
         // [CAUTION] Exception source: wrong lambda arity
-
-        if (!lambda->as.lambda.is_variadic) {
-            if (args_count != LAMBDA_ARGS_N(lambda))
-                vm_recover(vm);
-            unpack_list(vm);
-        }
-
-        if (lambda->as.lambda.is_variadic) {
-            if (args_count < LAMBDA_ARGS_N(lambda))
-                vm_recover(vm);
-            unpack_list_n(vm, LAMBDA_ARGS_N(lambda));
-        }
 
         vm_push_value(vm, lambda);
         eval_lambda_call(vm);
@@ -475,7 +496,7 @@ void vm_scope_get(VM *vm, StringView name) {
 void eval_symbol(VM *vm) {
     assert(vm_peek_value(vm)->kind == LISP_SYMBOL);
 
-    StringView name = vm_peek_value(vm)->as.symbol;
+    StringView name = SYMBOL(vm_peek_value(vm));
     vm_pop_value(vm);
 
     if (sv_eq(name, sv_mk("NIL")))
@@ -504,3 +525,4 @@ void vm_eval_expr(VM *vm) {
         break;
     }
 }
+

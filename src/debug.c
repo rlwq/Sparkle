@@ -26,13 +26,16 @@ void print_lambda(LispNode *expr) {
     assert(expr->kind == LISP_LAMBDA);
 
     printf("(lambda (");
-    if (expr->as.lambda.args.size > 0) {
+    if (expr->as.lambda.args.size > (expr->as.lambda.is_variadic ? 1 : 0)) {
         StringView curr = da_at(expr->as.lambda.args, 0);
         printf(SV_FMT, SV_ARGS(curr));
     }
-    for (size_t i = 1; i < expr->as.lambda.args.size; i++) {
+    for (size_t i = 1; i < expr->as.lambda.args.size - (expr->as.lambda.is_variadic ? 1 : 0); i++) {
         StringView curr = da_at(expr->as.lambda.args, i);
         printf(" " SV_FMT, SV_ARGS(curr));
+    }
+    if (expr->as.lambda.is_variadic) {
+        printf(" . " SV_FMT, SV_ARGS(da_at_end(expr->as.lambda.args, 0)));
     }
     printf(") ");
     print_expr(expr->as.lambda.expr);

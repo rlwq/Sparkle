@@ -24,7 +24,7 @@ typedef struct {
 
 typedef struct {
     StringViewDA args;
-    LispNode *expr;
+    LispNode *subexpr;
     Scope *scope;
     bool is_variadic;
 } LispLambdaNode;
@@ -54,7 +54,13 @@ struct LispNode {
 #define CAR(n_) ((n_)->as.cons.car)
 #define CDR(n_) ((n_)->as.cons.cdr)
 
-#define LAMBDA_ARGS_N(n_) ((n_)->as.lambda.args.size)
+#define SYMBOL(n_) ((n_)->as.symbol)
+
+#define LAMBDA_POS_ARGS_N(n_) ((n_)->as.lambda.args.size - ((n_)->as.lambda.is_variadic ? 1 : 0))
+#define LAMBDA_ARGS(n_) ((n_)->as.lambda.args)
+#define LAMBDA_SUBEXPR(n_) ((n_)->as.lambda.subexpr)
+#define LAMBDA_IS_VARIADIC(n_) ((n_)->as.lambda.is_variadic)
+#define LAMBDA_SCOPE(n_) ((n_)->as.lambda.scope)
 #define BUILTIN_ARGS_N(n_) ((n_)->as.builtin.arity)
 
 #endif

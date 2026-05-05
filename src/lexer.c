@@ -27,7 +27,9 @@ Lexer *lexer_alloc(StringView src) {
     return lexer;
 }
 
-void lexer_free(Lexer *lexer) { free(lexer); }
+void lexer_free(Lexer *lexer) {
+    free(lexer);
+}
 
 char lexer_advance(Lexer *lexer) {
     if (!VALID(lexer))

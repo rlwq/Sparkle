@@ -26,7 +26,9 @@ Parser *parser_alloc(TokenDA tokens, GC *gc) {
     return parser;
 }
 
-void parser_free(Parser *parser) { free(parser); }
+void parser_free(Parser *parser) {
+    free(parser);
+}
 
 bool parser_match(Parser *parser, TokenKind kind) {
     if (!PARSER_VALID(parser))
