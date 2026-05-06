@@ -10,13 +10,9 @@
 #include "scope.h"
 #include "string_view.h"
 #include "vm.h"
+#include "speical_forms.h"
 
 #define CURR(e_) (*((e_)->stmts))
-#define ASSERT_HAS(e_, n_) (assert((e_)->value_stack.size >= (n_)))
-#define ASSERT_KIND(e_, k_) (assert(da_at_end((e_)->value_stack, 0)->kind == (k_)))
-#define ASSERT_LIST(e_) (assert(da_at_end((e_)->value_stack, 0)->kind == LISP_NIL || \
-                                da_at_end((e_)->value_stack, 0)->kind == LISP_CONS))
-
 
 VM *vm_alloc(LispNodePtrDA exprs, GC *gc) {
     VM *vm = malloc(sizeof(VM));
@@ -206,6 +202,38 @@ void vm_register_builtin(VM *vm, StringView name, LispBuiltin func_ptr) {
     vm_scope_define(vm, name);
 }
 
+// Cons (args), Node (lambda) -> Node (result)
+void eval_lambda_call(VM *vm) {
+    ASSERT_HAS(vm, 2);
+
+    LispNode *lambda = vm_peek(vm);
+    vm_swap(vm);
+
+    vm_push_scope(vm, LAMBDA_SCOPE(lambda));
+    vm_build_scope(vm);
+
+    for (size_t i = 0; i < LAMBDA_POS_ARGS_N(lambda); i++) {
+        if (vm_peek(vm)->kind != LISP_CONS) vm_recover(vm);
+        unpack_cons(vm);
+        vm_scope_define(vm, da_at(LAMBDA_ARGS(lambda), i));
+    }
+
+    if (!LAMBDA_IS_VARIADIC(lambda) && vm_peek(vm)->kind != LISP_NIL)
+        vm_recover(vm);
+
+    if (LAMBDA_IS_VARIADIC(lambda)) {
+        vm_scope_define(vm, da_at_end(LAMBDA_ARGS(lambda), 0));
+    }
+    else vm_pop(vm);
+
+    vm_push(vm, LAMBDA_SUBEXPR(lambda));
+    vm_eval_expr(vm);
+    vm_pop_prev(vm);
+
+    vm_pop_scope(vm);
+    vm_pop_scope(vm);
+}
+
 void vm_eval_all(VM *vm) {
     assert(VM_VALID(vm));
 
@@ -254,180 +282,6 @@ size_t unpack_list(VM *vm) {
 
     vm_pop(vm);
     return size;
-}
-
-// Symbol (name), Node (value) -> Node
-void eval_let_form(VM *vm) {
-    ASSERT_HAS(vm, 2);
-
-    vm_swap(vm);
-    assert(vm_peek(vm)->kind == LISP_SYMBOL);
-    StringView name = SYMBOL(vm_peek(vm));
-    vm_pop(vm);
-    vm_eval_expr(vm);
-
-    scope_define(VM_CURR_SCOPE(vm), name, vm_peek(vm));
-}
-
-// Node (condition), Node (is_true), Node (is_false) -> result
-void eval_if_form(VM *vm) {
-    ASSERT_HAS(vm, 3);
-
-    vm_rot(vm);
-    vm_eval_expr(vm);
-
-    bool is_positive = vm_peek(vm)->kind != LISP_NIL;
-    vm_pop(vm);
-
-    if (is_positive)
-        vm_pop(vm);
-    else
-        vm_pop_prev(vm);
-
-    vm_eval_expr(vm);
-}
-
-// Cons (Args list), Node (subexpr) -> Lambda
-void eval_lambda_form(VM *vm) {
-    ASSERT_HAS(vm, 2);
-
-    vm_swap(vm);
-
-    StringViewDA args;
-    bool is_variadic = false;
-    da_init(args);
-    
-    if (vm_peek(vm)->kind != LISP_CONS && vm_peek(vm)->kind != LISP_SYMBOL) {
-        da_free(args);
-        vm_recover(vm);
-    }
-
-    // Variadic function with no positional arguments
-    if (vm_peek(vm)->kind == LISP_SYMBOL) {
-        is_variadic = true;
-        da_push(args, SYMBOL(vm_peek(vm)));
-    }
-
-    // Function with at least one positional argument
-    else {
-        LispNode *curr = vm_peek(vm);
-        for (; curr->kind == LISP_CONS; curr = CDR(curr)) {
-            if (CAR(curr)->kind != LISP_SYMBOL) {
-                da_free(args);
-                vm_recover(vm);
-            }
-            da_push(args, SYMBOL(CAR(curr)));
-        }
-
-        if (curr->kind != LISP_SYMBOL && curr->kind != LISP_NIL) {
-            da_free(args);
-            vm_recover(vm);
-        }
-
-        if (curr->kind == LISP_SYMBOL) {
-            is_variadic = true;
-            da_push(args, SYMBOL(curr));
-        }
-    }
-    vm_pop(vm);
-    LispNode *subexpr = vm_peek(vm);
-
-    vm_build_lambda(vm, args, is_variadic, subexpr, VM_CURR_SCOPE(vm));
-    vm_pop_prev(vm);
-}
-
-// Node -> Node
-void eval_try_form(VM *vm) {
-    ASSERT_HAS(vm, 1);
-
-    jmp_buf env;
-    vm_push_recovery(vm, &env);
-
-    if (setjmp(env)) {
-        vm_pop(vm);
-        vm_build_integer(vm, 1);
-    } else {
-        vm_push(vm, da_at_end(vm->value_stack, 0));
-        vm_eval_expr(vm);
-        vm_pop(vm);
-        vm_pop(vm);
-        vm_build_nil(vm);
-    }
-
-    vm_pop_recovery(vm);
-}
-
-// Node -> Node
-void eval_quote_form(VM *vm) {
-    ASSERT_HAS(vm, 1);
-
-    assert(vm->value_stack.size > 0);
-}
-
-// Cons (args), Node (lambda) -> Node (result)
-void eval_lambda_call(VM *vm) {
-    ASSERT_HAS(vm, 2);
-
-    LispNode *lambda = vm_peek(vm);
-    vm_swap(vm);
-
-    vm_push_scope(vm, LAMBDA_SCOPE(lambda));
-    vm_build_scope(vm);
-
-    for (size_t i = 0; i < LAMBDA_POS_ARGS_N(lambda); i++) {
-        if (vm_peek(vm)->kind != LISP_CONS) vm_recover(vm);
-        unpack_cons(vm);
-        vm_scope_define(vm, da_at(LAMBDA_ARGS(lambda), i));
-    }
-
-    if (!LAMBDA_IS_VARIADIC(lambda) && vm_peek(vm) != LISP_NIL)
-        vm_recover(vm);
-
-    if (LAMBDA_IS_VARIADIC(lambda)) {
-        vm_scope_define(vm, da_at_end(LAMBDA_ARGS(lambda), 0));
-    }
-    else vm_pop(vm);
-
-    vm_push(vm, LAMBDA_SUBEXPR(lambda));
-    vm_eval_expr(vm);
-    vm_pop_prev(vm);
-
-    vm_pop_scope(vm);
-    vm_pop_scope(vm);
-}
-
-// Node (Args), Node (Head) -> Node (Maybe :3)
-bool try_dispatch_special_form(VM *vm) {
-    ASSERT_HAS(vm, 2);
-
-    if (vm_peek(vm)->kind != LISP_SYMBOL)
-        return false;
-
-    SpecialFormHandler handler = NULL;
-
-    if (sv_eq(SYMBOL(vm_peek(vm)), sv_mk("if")))
-        handler = eval_if_form;
-
-    else if (sv_eq(SYMBOL(vm_peek(vm)), sv_mk("let")))
-        handler = eval_let_form;
-
-    else if (sv_eq(SYMBOL(vm_peek(vm)), sv_mk("lambda")))
-        handler = eval_lambda_form;
-
-    else if (sv_eq(SYMBOL(vm_peek(vm)), sv_mk("quote")))
-        handler = eval_quote_form;
-
-    else if (sv_eq(SYMBOL(vm_peek(vm)), sv_mk("try")))
-        handler = eval_try_form;
-
-    if (handler) {
-        vm_pop(vm);
-        unpack_list(vm);
-        handler(vm);
-        return true;
-    }
-
-    return false;
 }
 
 // Node (cons) -> Node (cons)

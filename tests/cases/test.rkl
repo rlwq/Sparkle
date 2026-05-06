@@ -1,2 +1,0 @@
-(let F (lambda (x y z . t) (+ x y z)))
-(print (F 1 2))

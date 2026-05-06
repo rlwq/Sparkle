@@ -7,18 +7,17 @@ This document outlines the features and fixes planned for Sparkle.
 * [ ] Multiline comments.
 * [ ] String escaping sequences.
 * [ ] More descriptive parsing errors (on expected tokens).
+* [ ] `'` at the end of file is handled inproperly.
 
 ## Special Forms & Control Flow 
 
 * [ ] `set` For variable mutation.
-* [ ] `if` Statement with optional else branch.
 * [ ] `while` Loops and loops in general.
 * [ ] `begin` Scoped lexical blocks & statement blocks.
 * [ ] Flow controling logical forms (`and`, `or`).
 
 ## Optimizations
 
-* [ ] Refactor `gc_mark_node` to be iterative. 
 * [ ] Introduce `StringName` data type for constant time string comparison.
     * [ ] Hash tables for fast search in scopes.
 * [ ] `Nil` type as singleton.
@@ -31,9 +30,9 @@ This document outlines the features and fixes planned for Sparkle.
 * [ ] `Float` data type.
 * [ ] `String` data type & basic string manipulation.
 * [ ] `Exception` data type for expressive error reporting & powerful catch mechanism.
-* [ ] Exception reporting on all failed form calls (`lambda`, `if`, `let`, `quote`...)
 * [ ] Type checking & exception throwing on incorrect data types in built-in functions.
-* [ ] Macro support
+* [ ] Macro support.
+* [ ] Lambda definitions with duplicated argument names.
 
 ## Base Library
 
@@ -54,6 +53,7 @@ This document outlines the features and fixes planned for Sparkle.
 * [ ] Type checking functions. (`Integer?`, `Cons?`, `List?`...)
 * [ ] System & OS
     * [ ] `exit`, `argc/argv`...
+* [ ] Proper type checking for all built-in functions.
 
 ## Documentation & Presentation
 
@@ -79,6 +79,9 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Done
 
+* [x] Exception reporting on all failed form calls (`lambda`, `if`, `let`, `quote`...)
+* [x] `if` Statement with optional else branch.
+* [x] Refactor `gc_mark_node` to be iterative. 
 * [x] Support for quotation syntax (`'a`).
 * [x] Dotted pair construction (`(a . b)`).
 * [x] Arity check for functions and lambdas.
@@ -86,3 +89,4 @@ This document outlines the features and fixes planned for Sparkle.
     * [x] Implement variadic lambda declaration
     * [x] Implement `(lambda args ...)` syntax for variadic-only lambdas.
     * [x] Implement exception calls when improper lambda definition/call is used.
+
