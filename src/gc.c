@@ -134,42 +134,52 @@ void gc_sweep(GC *gc) {
 }
 
 void gc_mark_node(LispNode *expr) {
-    assert(expr);
+    LispNodePtrDA to_mark;
+    da_init(to_mark);
 
-    if (expr->marked)
-        return;
+    da_push(to_mark, expr);
 
-    expr->marked = true;
+    while (to_mark.size > 0) {
+        LispNode *curr = da_at_end(to_mark, 0);
+        assert(curr);
+        da_pop(to_mark);
 
-    switch (expr->kind) {
-    case LISP_NIL:
-    case LISP_SYMBOL:
-    case LISP_INTEGER:
-    case LISP_STRING:
-    case LISP_BUILTIN:
-        // Do nothin
-        break;
+        if (curr->marked)
+            continue;
 
-    case LISP_LAMBDA:
-        gc_mark_node(expr->as.lambda.subexpr);
-        gc_mark_scope(expr->as.lambda.scope);
-        break;
+        curr->marked = true;
 
-    case LISP_CONS:
-        gc_mark_node(expr->as.cons.car);
-        gc_mark_node(expr->as.cons.cdr);
-        break;
+        switch (curr->kind) {
+            case LISP_NIL:
+            case LISP_SYMBOL:
+            case LISP_INTEGER:
+            case LISP_STRING:
+            case LISP_BUILTIN:
+                break;
+
+            case LISP_LAMBDA:
+                da_push(to_mark, LAMBDA_SUBEXPR(curr));
+                gc_mark_scope(LAMBDA_SCOPE(curr));
+                break;
+
+            case LISP_CONS:
+                da_push(to_mark, CAR(curr));
+                da_push(to_mark, CDR(curr));
+                break;
+        }
     }
+
+    da_free(to_mark);
 }
 
 void gc_mark_scope(Scope *scope) {
-    assert(scope);
+    while (scope && !scope->marked) {
+        scope->marked = true;
 
-    scope->marked = true;
+        for (size_t i = 0; i < scope->items.size; i++)
+            gc_mark_node(da_at(scope->items, i).value);
 
-    for (size_t i = 0; i < scope->items.size; i++)
-        gc_mark_node(da_at(scope->items, i).value);
-
-    if (scope->parent)
-        gc_mark_scope(scope->parent);
+        scope = scope->parent;
+    }
 }
+

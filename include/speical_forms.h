@@ -1,0 +1,16 @@
+#ifndef SPECIAL_FORMS_H
+#define SPECIAL_FORMS_H
+
+#include "vm.h"
+
+typedef void (*SpecialFormHandler)(VM *vm, size_t argc);
+
+bool try_dispatch_special_form(VM *vm);
+void eval_let_form(VM *vm, size_t argc);
+void eval_if_form(VM *vm, size_t argc);
+void eval_lambda_form(VM *vm, size_t argc);
+void eval_try_form(VM *vm, size_t argc);
+void eval_quote_form(VM *vm, size_t argc);
+
+#endif
+
