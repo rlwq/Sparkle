@@ -6,6 +6,7 @@
 
 #include "forwards.h"
 #include "lexer.h"
+#include "string_interner.h"
 
 #define PARSER_DONE(p_) ((p_)->tokens_count == 0)
 #define PARSER_VALID(p_) (!PARSER_DONE(p_) && !(p_)->is_err)
@@ -16,11 +17,12 @@ typedef struct {
     LispNodePtrDA exprs;
 
     GC *gc;
+    StringInterner *si;
 
     bool is_err;
 } Parser;
 
-Parser *parser_alloc(TokenDA tokens, GC *gc);
+Parser *parser_alloc(TokenDA tokens, GC *gc, StringInterner *si);
 void parser_free(Parser *parser);
 
 void parse_current(Parser *parser);
