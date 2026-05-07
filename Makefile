@@ -9,7 +9,7 @@ HEADERS := $(wildcard ./include/*.h)
 TARGET := ./build/sparkle
 
 TESTER := ./tests/tester.py
-TESTS_FOLDER := ./tests/cases/
+TESTS_FOLDER := ./tests/
 PYTHON := python3
 
 debug: $(SRC) $(HEADERS)
