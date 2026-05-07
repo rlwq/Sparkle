@@ -1,6 +1,17 @@
+#include "lisp_node.h"
 #include "speical_forms.h"
+#include "string_interner.h"
 #include "vm.h"
 #include "scope.h"
+
+SpecialFormDef SPECIAL_FORMS[] = {
+    { "let", eval_let_form },
+    { "lambda", eval_lambda_form },
+    { "quote", eval_quote_form },
+    { "try", eval_try_form },
+    { "if", eval_if_form }};
+
+size_t SPECIAL_FORMS_COUNT = sizeof(SPECIAL_FORMS) / sizeof(SPECIAL_FORMS[0]);
 
 // Node (Args), Node (Head) -> Node (Maybe :3)
 bool try_dispatch_special_form(VM *vm) {
@@ -11,20 +22,12 @@ bool try_dispatch_special_form(VM *vm) {
 
     SpecialFormHandler handler = NULL;
 
-    if (sv_eq(SYMBOL(vm_peek(vm)), sv_mk("if")))
-        handler = eval_if_form;
-
-    else if (sv_eq(SYMBOL(vm_peek(vm)), sv_mk("let")))
-        handler = eval_let_form;
-
-    else if (sv_eq(SYMBOL(vm_peek(vm)), sv_mk("lambda")))
-        handler = eval_lambda_form;
-
-    else if (sv_eq(SYMBOL(vm_peek(vm)), sv_mk("quote")))
-        handler = eval_quote_form;
-
-    else if (sv_eq(SYMBOL(vm_peek(vm)), sv_mk("try")))
-        handler = eval_try_form;
+    for (size_t i = 0; i < SPECIAL_FORMS_COUNT; i++) {
+        if (SYMBOL(vm_peek(vm)) == SPECIAL_FORMS[i].keyword) {
+            handler = SPECIAL_FORMS[i].func;
+            break;
+        }
+    }
 
     if (handler) {
         vm_pop(vm);
@@ -46,7 +49,7 @@ void eval_let_form(VM *vm, size_t argc) {
     if (vm_peek(vm)->kind != LISP_SYMBOL)
         vm_recover(vm, INVALID_LET_FORM);
 
-    StringView name = SYMBOL(vm_peek(vm));
+    StringName name = SYMBOL(vm_peek(vm));
     vm_pop(vm);
     vm_eval_expr(vm);
 
@@ -82,7 +85,7 @@ void eval_lambda_form(VM *vm, size_t argc) {
 
     vm_swap(vm);
 
-    StringViewDA args;
+    LambdaArgs args;
     bool is_variadic = false;
     da_init(args);
     

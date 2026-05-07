@@ -9,10 +9,12 @@
 #include "lexer.h"
 #include "lisp_node.h"
 #include "parser.h"
+#include "string_interner.h"
+#include "string_view.h"
 
 #define CURR(p_) (assert((p_)), *((p_)->tokens))
 
-Parser *parser_alloc(TokenDA tokens, GC *gc) {
+Parser *parser_alloc(TokenDA tokens, GC *gc, StringInterner *si) {
     Parser *parser = malloc(sizeof(Parser));
     assert(parser);
 
@@ -20,6 +22,7 @@ Parser *parser_alloc(TokenDA tokens, GC *gc) {
     parser->tokens_count = tokens.size;
     parser->is_err = false;
     parser->gc = gc;
+    parser->si = si;
 
     da_init(parser->exprs);
 
@@ -83,7 +86,7 @@ LispNode *parse_expr(Parser *parser) {
         LispNode *subexpr = parse_expr(parser);
         LispNode *result = gc_alloc_node(parser->gc, LISP_CONS);
         CAR(result) = gc_alloc_node(parser->gc, LISP_SYMBOL);
-        CAR(result)->as.symbol = sv_mk("quote"); // TODO: hardcoded value
+        CAR(result)->as.symbol = si_get(parser->si, "quote"); // TODO: hardcoded value
         CDR(result) = gc_alloc_node(parser->gc, LISP_CONS);
         CAR(CDR(result)) = subexpr;
         CDR(CDR(result)) = gc_alloc_node(parser->gc, LISP_NIL);
@@ -144,17 +147,19 @@ LispNode *parse_expr(Parser *parser) {
     // Symbol
     if (parser_match(parser, TK_SYMBOL)) {
         LispNode *ast = gc_alloc_node(parser->gc, LISP_SYMBOL);
-        ast->as.symbol = parser_advance(parser).src;
+        StringView symbol = parser_advance(parser).src;
+
+        ast->as.symbol = si_getn(parser->si, symbol.data, symbol.size);
         return ast;
     }
-
-    // String
-    if (parser_match(parser, TK_STRING)) {
-        LispNode *ast = gc_alloc_node(parser->gc, LISP_STRING);
-        ast->as.string = sv_shrink(parser_advance(parser).src, 1);
-        return ast;
-    }
-
+    //
+    // // String
+    // if (parser_match(parser, TK_STRING)) {
+    //     LispNode *ast = gc_alloc_node(parser->gc, LISP_STRING);
+    //     ast->as.string = sv_shrink(parser_advance(parser).src, 1);
+    //     return ast;
+    // }
+    //
     parser->is_err = true;
     return NULL;
 }

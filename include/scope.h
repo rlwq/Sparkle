@@ -3,10 +3,10 @@
 
 #include "forwards.h"
 #include "stdbool.h"
-#include "string_view.h"
+#include "string_interner.h"
 
 typedef struct {
-    StringView key;
+    StringName key;
     LispNode *value;
 } ScopeItem;
 
@@ -19,7 +19,7 @@ struct Scope {
     bool marked;
 };
 
-bool scope_define(Scope *scope, StringView name, LispNode *value);
-LispNode *scope_get(Scope *scope, StringView name);
+bool scope_define(Scope *scope, StringName name, LispNode *value);
+LispNode *scope_get(Scope *scope, StringName name);
 
 #endif

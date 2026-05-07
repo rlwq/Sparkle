@@ -3,7 +3,7 @@
 
 #include "forwards.h"
 #include "lisp_node.h"
-#include "string_view.h"
+#include "string_interner.h"
 #include <setjmp.h>
 
 #define VM_DONE(e_) ((e_)->stmts_count == 0)
@@ -45,15 +45,16 @@ struct VM {
     DA(RecoveryStackEntry) recovery_stack;
 
     GC *gc;
+    StringInterner *si;
 
     ExcepetionKind exception;
     bool is_err;
 };
 
-VM *vm_alloc(LispNodePtrDA exprs, GC *gc);
+VM *vm_alloc(LispNodePtrDA exprs, GC *gc, StringInterner *si);
 void vm_free(VM *vm);
 
-void vm_register_builtin(VM *vm, StringView name, LispBuiltin func_ptr);
+void vm_register_builtin(VM *vm, StringName name, LispBuiltin func_ptr);
 
 void vm_eval_expr(VM *vm);
 void vm_eval_all(VM *vm);
@@ -65,16 +66,16 @@ void vm_pop_recovery(VM *vm);
 void vm_push_scope(VM *vm, Scope *scope);
 void vm_build_scope(VM *vm);
 void vm_pop_scope(VM *vm);
-void vm_scope_define(VM *vm, StringView name);
-void vm_scope_get(VM *vm, StringView name);
+void vm_scope_define(VM *vm, StringName name);
+void vm_scope_get(VM *vm, StringName name);
 
 void vm_build_value(VM *vm, LispNodeKind kind);
 void vm_build_integer(VM *vm, int value);
 void vm_build_builtin(VM *vm, LispBuiltin value);
 void vm_build_nil(VM *vm);
-void vm_build_lambda(VM *vm, StringViewDA args, bool is_variadic, LispNode *expr, Scope *scope);
-void vm_build_symbol(VM *vm, StringView value);
-void vm_build_string(VM *vm, StringView value);
+void vm_build_lambda(VM *vm, LambdaArgs args, bool is_variadic, LispNode *expr, Scope *scope);
+void vm_build_symbol(VM *vm, StringName value);
+void vm_build_string(VM *vm, StringName value);
 
 void vm_push(VM *vm, LispNode *value);
 void vm_swap(VM *vm);

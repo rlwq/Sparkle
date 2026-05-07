@@ -8,13 +8,12 @@
 #include "gc.h"
 #include "lisp_node.h"
 #include "scope.h"
-#include "string_view.h"
 #include "vm.h"
 #include "speical_forms.h"
 
 #define CURR(e_) (*((e_)->stmts))
 
-VM *vm_alloc(LispNodePtrDA exprs, GC *gc) {
+VM *vm_alloc(LispNodePtrDA exprs, GC *gc, StringInterner *si) {
     VM *vm = malloc(sizeof(VM));
     assert(vm);
 
@@ -22,6 +21,7 @@ VM *vm_alloc(LispNodePtrDA exprs, GC *gc) {
     vm->stmts_count = exprs.size;
 
     vm->gc = gc;
+    vm->si = si;
 
     da_init(vm->scope_stack);
     da_init(vm->value_stack);
@@ -64,7 +64,7 @@ void vm_pop_scope(VM *vm) {
     da_pop(vm->scope_stack);
 }
 
-void vm_scope_define(VM *vm, StringView name) {
+void vm_scope_define(VM *vm, StringName name) {
     scope_define(VM_CURR_SCOPE(vm), name, vm_peek(vm));
     vm_pop(vm);
 }
@@ -97,7 +97,7 @@ void vm_build_nil(VM *vm) {
     vm_build_value(vm, LISP_NIL);
 }
 
-void vm_build_lambda(VM *vm, StringViewDA args, bool is_variadic, LispNode *expr, Scope *scope) {
+void vm_build_lambda(VM *vm, LambdaArgs args, bool is_variadic, LispNode *expr, Scope *scope) {
     vm_build_value(vm, LISP_LAMBDA);
     vm_peek(vm)->as.lambda.args = args;
     vm_peek(vm)->as.lambda.is_variadic = is_variadic;
@@ -198,7 +198,7 @@ void vm_recover(VM *vm, ExcepetionKind exception) {
     longjmp(*(recovery.jmp), 1);
 }
 
-void vm_register_builtin(VM *vm, StringView name, LispBuiltin func_ptr) {
+void vm_register_builtin(VM *vm, StringName name, LispBuiltin func_ptr) {
     vm_build_builtin(vm, func_ptr);
     vm_scope_define(vm, name);
 }
@@ -378,7 +378,7 @@ void eval_cons(VM *vm) {
     vm_pop_prev(vm);
 }
 
-void vm_scope_get(VM *vm, StringView name) {
+void vm_scope_get(VM *vm, StringName name) {
     LispNode *lookup_result = scope_get(VM_CURR_SCOPE(vm), name);
     if (!lookup_result) {
         // [CAUTION] Exception source: symbol with no definition
@@ -393,10 +393,10 @@ void eval_symbol(VM *vm) {
     ASSERT_HAS(vm, 1);
     assert(vm_peek(vm)->kind == LISP_SYMBOL);
 
-    StringView name = SYMBOL(vm_peek(vm));
+    StringName name = SYMBOL(vm_peek(vm));
     vm_pop(vm);
 
-    if (sv_eq(name, sv_mk("NIL")))
+    if (name == si_get(vm->si, "NIL"))
         vm_build_nil(vm);
     else
         vm_scope_get(vm, name);

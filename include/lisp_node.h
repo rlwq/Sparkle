@@ -5,7 +5,7 @@
 #include <stddef.h>
 
 #include "forwards.h"
-#include "string_view.h"
+#include "string_interner.h"
 
 typedef enum {
     LISP_NIL,
@@ -22,8 +22,10 @@ typedef struct {
     LispNode *cdr;
 } LispConsNode;
 
+typedef DA(StringName) LambdaArgs;
+
 typedef struct {
-    StringViewDA args;
+    LambdaArgs args;
     LispNode *subexpr;
     Scope *scope;
     bool is_variadic;
@@ -42,12 +44,11 @@ struct LispNode {
     LispNode *heap_next;
 
     union {
-        StringView symbol;
-        StringView string;
+        StringName symbol;
         LispBuiltin builtin;
         LispLambdaNode lambda;
         LispConsNode cons;
-        int integer;
+        long long int integer;
     } as;
 };
 

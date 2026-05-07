@@ -3,11 +3,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "debug.h"
 #include "dynamic_array.h"
 #include "gc.h"
 #include "lexer.h"
 #include "parser.h"
+#include "speical_forms.h"
+#include "string_interner.h"
 #include "string_view.h"
 #include "vm.h"
 
@@ -40,6 +41,12 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    StringInterner *si = si_alloc();
+
+    // TODO: Refator this. Needs some kind of special form registry
+    for (size_t i = 0; i < SPECIAL_FORMS_COUNT; i++)
+        SPECIAL_FORMS[i].keyword = si_get(si, SPECIAL_FORMS[i].keyword);
+    
     char *src = read_file(argv[1]);
     StringView prog = sv_mk(src);
 
@@ -52,13 +59,15 @@ int main(int argc, char **argv) {
 
         free(src);
         lexer_free(lexer);
+        si_free(si);
         return 1;
     }
 
     TokenDA tokens = extract_tokens(lexer);
 
+
     GC *gc = gc_alloc();
-    Parser *parser = parser_alloc(tokens, gc);
+    Parser *parser = parser_alloc(tokens, gc, si);
     parse_all(parser);
     LispNodePtrDA exprs = extract_exprs(parser);
 
@@ -72,15 +81,16 @@ int main(int argc, char **argv) {
         da_free(tokens);
         da_free(exprs);
         gc_free(gc);
+        si_free(si);
         return 1;
     }
 
-    VM *vm = vm_alloc(exprs, gc);
+    VM *vm = vm_alloc(exprs, gc, si);
 
     vm_push_scope(vm, gc_alloc_scope(gc, NULL));
 
     for (size_t i = 0; i < BUILTINS_COUNT; i++)
-        vm_register_builtin(vm, sv_mk(BUILTINS[i].name), BUILTINS[i].func);
+        vm_register_builtin(vm, si_get(si, BUILTINS[i].name), BUILTINS[i].func);
         
     if (!VM_DONE(vm))
         vm_eval_all(vm);
@@ -100,6 +110,8 @@ int main(int argc, char **argv) {
     lexer_free(lexer);
     free(src);
 
+    si_free(si);
+    
     if (!in_err)
         return 0;
 
