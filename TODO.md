@@ -62,10 +62,10 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Code base, bugs, & fixes
 
-* [ ] Assertions on values on stack in `eval_` functions.
 * [ ] `'x` syntax when printing quoted values.
 * [ ] Two error handler invocations behave differently: one duplicates the expression before entering the frame, the other does not.
 * [ ] Exception call when trying to evaluate an improper list.
+* [ ] Invalid parser output when feeded an empty file.
 
 ## Tooling
 
@@ -79,6 +79,7 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Done
 
+* [x] Assertions on values on stack in `eval_` functions.
 * [x] Exception reporting on all failed form calls (`lambda`, `if`, `let`, `quote`...)
 * [x] `if` Statement with optional else branch.
 * [x] Refactor `gc_mark_node` to be iterative. 

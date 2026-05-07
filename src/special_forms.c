@@ -39,12 +39,12 @@ bool try_dispatch_special_form(VM *vm) {
 // Symbol (name), Node (value) -> Node
 void eval_let_form(VM *vm, size_t argc) {
     if (argc != 2)
-        vm_recover(vm);
+        vm_recover(vm, INVALID_LET_FORM);
 
     vm_swap(vm);
 
     if (vm_peek(vm)->kind != LISP_SYMBOL)
-        vm_recover(vm);
+        vm_recover(vm, INVALID_LET_FORM);
 
     StringView name = SYMBOL(vm_peek(vm));
     vm_pop(vm);
@@ -56,7 +56,7 @@ void eval_let_form(VM *vm, size_t argc) {
 // Node (condition), Node (is_true), Node (is_false) -> result
 void eval_if_form(VM *vm, size_t argc) {
     if (argc != 3 && argc != 2)
-        vm_recover(vm);
+        vm_recover(vm, INVALID_IF_FORM);
 
     if (argc == 2)
         vm_build_nil(vm);
@@ -78,7 +78,7 @@ void eval_if_form(VM *vm, size_t argc) {
 // Cons (Args list), Node (subexpr) -> Lambda
 void eval_lambda_form(VM *vm, size_t argc) {
     if (argc != 2)
-        vm_recover(vm);
+        vm_recover(vm, INVALID_LAMBDA_FORM);
 
     vm_swap(vm);
 
@@ -88,7 +88,7 @@ void eval_lambda_form(VM *vm, size_t argc) {
     
     if (vm_peek(vm)->kind != LISP_CONS && vm_peek(vm)->kind != LISP_SYMBOL) {
         da_free(args);
-        vm_recover(vm);
+        vm_recover(vm, INVALID_LAMBDA_FORM);
     }
 
     // Variadic function with no positional arguments
@@ -103,14 +103,14 @@ void eval_lambda_form(VM *vm, size_t argc) {
         for (; curr->kind == LISP_CONS; curr = CDR(curr)) {
             if (CAR(curr)->kind != LISP_SYMBOL) {
                 da_free(args);
-                vm_recover(vm);
+                vm_recover(vm, INVALID_LAMBDA_FORM);
             }
             da_push(args, SYMBOL(CAR(curr)));
         }
 
         if (curr->kind != LISP_SYMBOL && curr->kind != LISP_NIL) {
             da_free(args);
-            vm_recover(vm);
+            vm_recover(vm, INVALID_LAMBDA_FORM);
         }
 
         if (curr->kind == LISP_SYMBOL) {
@@ -128,7 +128,7 @@ void eval_lambda_form(VM *vm, size_t argc) {
 // Node -> Node
 void eval_try_form(VM *vm, size_t argc) {
     if (argc != 1)
-        vm_recover(vm);
+        vm_recover(vm, INVALID_TRY_FORM);
 
     jmp_buf env;
     vm_push_recovery(vm, &env);
@@ -150,6 +150,6 @@ void eval_try_form(VM *vm, size_t argc) {
 // Node -> Node
 void eval_quote_form(VM *vm, size_t argc) {
     if (argc != 1)
-        vm_recover(vm);
+        vm_recover(vm, INVALID_QUOTE_FORM);
 }
 
