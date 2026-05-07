@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "debug.h"
 #include "dynamic_array.h"
 #include "gc.h"
 #include "lexer.h"
@@ -11,6 +12,9 @@
 #include "vm.h"
 
 #include "builtins.h"
+
+#define RED "\033[31m"
+#define RESET "\033[0m"
 
 char *read_file(const char *path) {
     FILE *file = fopen(path, "rb");
@@ -43,7 +47,7 @@ int main(int argc, char **argv) {
     lex_all(lexer);
 
     if (lexer->is_err) {
-        printf("%s:%zu:%zu: [ERROR] Unexpected character: " SV_FMT "\n", argv[1], lexer->line + 1,
+        printf(RED "%s:%zu:%zu: [PARSE ERROR] Unexpected character: " SV_FMT "\n" RESET, argv[1], lexer->line + 1,
                lexer->column + 1, SV_ARGS(sv_take(lexer->src, sv_find(lexer->src, '\n'))));
 
         free(src);
@@ -59,7 +63,7 @@ int main(int argc, char **argv) {
     LispNodePtrDA exprs = extract_exprs(parser);
 
     if (parser->is_err) {
-        printf("%s:%zu:%zu: [ERROR] Unexpected token \"" SV_FMT "\".\n", argv[1],
+        printf(RED "%s:%zu:%zu: [PARSE ERROR] Unexpected token \"" SV_FMT "\".\n" RESET, argv[1],
                parser->tokens->line + 1, parser->tokens->column + 1, SV_ARGS(parser->tokens->src));
 
         free(src);
@@ -77,11 +81,13 @@ int main(int argc, char **argv) {
 
     for (size_t i = 0; i < BUILTINS_COUNT; i++)
         vm_register_builtin(vm, sv_mk(BUILTINS[i].name), BUILTINS[i].func);
-
-    if (VM_VALID(vm))
+        
+    if (!VM_DONE(vm))
         vm_eval_all(vm);
 
     bool in_err = vm->is_err;
+    ExcepetionKind exception;
+    if (in_err) exception = vm->exception;
 
     vm_free(vm);
     da_free(exprs);
@@ -94,10 +100,40 @@ int main(int argc, char **argv) {
     lexer_free(lexer);
     free(src);
 
-    if (in_err) {
-        printf("[ERROR] Something went wrong...\n");
-        return 1;
-    }
+    if (!in_err)
+        return 0;
 
-    return 0;
+    printf(RED "[RUNTIME ERROR] ");
+    switch (exception) {
+        case INVALID_QUOTE_FORM:
+            printf("Invalid quote form.");
+            break;
+        case INVALID_LET_FORM:
+            printf("Invalid let form.");
+            break;
+        case INVALID_LAMBDA_FORM:
+            printf("Invalid lambda form.");
+            break;
+        case INVALID_TRY_FORM:
+            printf("Invalid try form.");
+            break;
+        case INVALID_IF_FORM:
+            printf("Invalid if form.");
+            break;
+        case SYMBOL_REBINDING:
+            printf("Symbol is already binded.");
+            break;
+        case SYMBOL_UNDEFINED:
+            printf("Symbol has no definition.");
+            break;
+        case UNCALLABLE_CALL:
+            printf("Can't use this kind of object as a function.");
+            break;
+        case WRONG_ARITY:
+            printf("Wrong arity for a function call.");
+            break;
+        }
+    printf("\n" RESET);
+    return 1;
 }
+

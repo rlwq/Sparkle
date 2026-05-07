@@ -186,13 +186,14 @@ size_t eval_list(VM *vm) {
     return size;
 }
 
-void vm_recover(VM *vm) {
+void vm_recover(VM *vm, ExcepetionKind exception) {
     assert(vm->recovery_stack.size > 0);
 
     RecoveryStackEntry recovery = da_at_end(vm->recovery_stack, 0);
 
     vm->value_stack.size = recovery.values_count;
     vm->scope_stack.size = recovery.scopes_count;
+    vm->exception = exception;
 
     longjmp(*(recovery.jmp), 1);
 }
@@ -213,13 +214,13 @@ void eval_lambda_call(VM *vm) {
     vm_build_scope(vm);
 
     for (size_t i = 0; i < LAMBDA_POS_ARGS_N(lambda); i++) {
-        if (vm_peek(vm)->kind != LISP_CONS) vm_recover(vm);
+        if (vm_peek(vm)->kind != LISP_CONS) vm_recover(vm, INVALID_LAMBDA_FORM);
         unpack_cons(vm);
         vm_scope_define(vm, da_at(LAMBDA_ARGS(lambda), i));
     }
 
     if (!LAMBDA_IS_VARIADIC(lambda) && vm_peek(vm)->kind != LISP_NIL)
-        vm_recover(vm);
+        vm_recover(vm, WRONG_ARITY);
 
     if (LAMBDA_IS_VARIADIC(lambda)) {
         vm_scope_define(vm, da_at_end(LAMBDA_ARGS(lambda), 0));
@@ -336,10 +337,7 @@ void eval_cons(VM *vm) {
         case LISP_LAMBDA: {
                               LispNode *lambda = vm_peek(vm);
                               vm_swap(vm);
-                              size_t args_count = eval_list_inplace(vm);
-
-                              // TODO: \/ add this \/
-                              // [CAUTION] Exception source: wrong lambda arity
+                              eval_list_inplace(vm);
 
                               vm_push(vm, lambda);
                               eval_lambda_call(vm);
@@ -354,13 +352,13 @@ void eval_cons(VM *vm) {
                                // [CAUTION] Exception source: wrong builtin arity
                                if (!builtin->as.builtin.is_variadic) {
                                    if (args_count != BUILTIN_ARGS_N(builtin))
-                                       vm_recover(vm);
+                                       vm_recover(vm, WRONG_ARITY);
                                    unpack_list(vm);
                                }
 
                                if (builtin->as.builtin.is_variadic) {
                                    if (args_count < BUILTIN_ARGS_N(builtin))
-                                       vm_recover(vm);
+                                       vm_recover(vm, WRONG_ARITY);
                                    unpack_list_n(vm, BUILTIN_ARGS_N(builtin));
                                }
                                builtin->as.builtin.func(vm);
@@ -373,7 +371,7 @@ void eval_cons(VM *vm) {
         case LISP_STRING:
         case LISP_NIL:
                            // [CAUTION] Exception source: uncallale object call
-                           vm_recover(vm);
+                           vm_recover(vm, UNCALLABLE_CALL);
                            break;
     }
 
@@ -384,7 +382,7 @@ void vm_scope_get(VM *vm, StringView name) {
     LispNode *lookup_result = scope_get(VM_CURR_SCOPE(vm), name);
     if (!lookup_result) {
         // [CAUTION] Exception source: symbol with no definition
-        vm_recover(vm);
+        vm_recover(vm, SYMBOL_UNDEFINED);
         return;
     }
     vm_push(vm, lookup_result);

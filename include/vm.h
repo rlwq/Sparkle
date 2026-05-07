@@ -16,6 +16,20 @@
 #define ASSERT_LIST(e_) (assert(da_at_end((e_)->value_stack, 0)->kind == LISP_NIL || \
                                 da_at_end((e_)->value_stack, 0)->kind == LISP_CONS))
 
+
+typedef enum {
+    INVALID_LET_FORM,
+    INVALID_IF_FORM,
+    INVALID_LAMBDA_FORM,
+    INVALID_TRY_FORM,
+    INVALID_QUOTE_FORM,
+    
+    SYMBOL_REBINDING,
+    SYMBOL_UNDEFINED,
+    UNCALLABLE_CALL,
+    WRONG_ARITY,
+} ExcepetionKind;
+
 typedef struct {
     jmp_buf *jmp;
     size_t values_count;
@@ -32,6 +46,7 @@ struct VM {
 
     GC *gc;
 
+    ExcepetionKind exception;
     bool is_err;
 };
 
@@ -43,7 +58,7 @@ void vm_register_builtin(VM *vm, StringView name, LispBuiltin func_ptr);
 void vm_eval_expr(VM *vm);
 void vm_eval_all(VM *vm);
 
-void vm_recover(VM *vm);
+void vm_recover(VM *vm, ExcepetionKind exception);
 void vm_push_recovery(VM *vm, jmp_buf *jmp);
 void vm_pop_recovery(VM *vm);
 
