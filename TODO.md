@@ -69,7 +69,8 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Tooling
 
-* [ ] Negative tests. Error message validation.
+* [ ] Full `tester.py` refactor.
+    * [ ] Negative tests. Error message validation.
 * [ ] Evaluation time of tests.
 
 ## UX
