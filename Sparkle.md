@@ -38,7 +38,7 @@ Use `(? value)` to explicitly cast any value to `Bool`.
 * `Nil` → `False`
 * `Integer`, `Float` → `False` if `0`, otherwise `True`
 * `String` → `False` if empty, otherwise `True`
-* `Cons`, `Lambda`, `Builtin` → `True`
+* `Cons`, `Lambda`, `Builtin`, `Symbol`, `Exception` → `True`
 
 ```lisp
 (? 0)    ; False
@@ -156,7 +156,7 @@ Special forms handle flow control and state mutation.
 
 `let` introduces a new binding in the current lexical scope.
 Allows shadowing of variables defined in parent-scopes.
-Rebinding an already binded symbol is a runtime error.
+Rebinding an already bound symbol is a runtime exception.
 
 ```lisp
 (let x 42)
@@ -175,7 +175,7 @@ Rebinding an already binded symbol is a runtime error.
 
 `set` updates an existing binding.
 Updates the binding in the local-most scope.
-Using set on an unbound name is a runtime error.
+Using set on an unbound name is a runtime exception.
 
 ```lisp
 (let x 1)
@@ -256,29 +256,130 @@ Returns `Nil`.
 ### try
 
 Evaluates its argument.
-If a runtime error occurs, catches it and returns the `Exception` object;
+If a runtime exception occurs, catches it and returns the `Exception` object;
 otherwise returns `Nil`.
 
 ```lisp
-(try (car NIL))  ;  <WRONG_TYPE> - an exception was caught
-(try (+ 1 2))    ;  Nil - no exception occured
+(try (car Nil))  ;  <WRONG_TYPE> - an exception was caught
+(try (+ 1 2))    ;  Nil - no exception occurred
+```
+
+### and
+
+Evaluates arguments left-to-right and casts the result to `Bool`.
+As soon as any argument evaluates to `False` it stops the arguments evaluation and returns `False`.
+If all arguments evaluated to `True`, returns `True`.
+With no arguments, returns True.
+
+```lisp
+(and 1 2 3)        ; True
+(and 1 Nil 3)      ; False
+(and)              ; True
+```
+
+### or
+
+Evaluates arguments left-to-right and casts them to `Bool`.
+As soon as any argument evaluates to `True` it stops the arguments evaluation and returns `True`.
+If all arguments are evaluated to `False`, returns `False`.
+With no arguments, returns `False`.
+
+```lisp
+(or Nil NIL 3)     ; True
+(or Nil NIL)       ; False
+(or)               ; False
 ```
 
 ## Built-in Functions
 
-### Lisp Operations
+### List Operations
+ 
+* **`(cons x y)`** - constructs a **Cons cell** with `car = x`, `cdr = y`.
+* **`(car pair)`** - returns the `car` of a **Cons cell**.
+* **`(cdr pair)`** - returns the `cdr` of a **Cons cell**.
+* **`(list expr1 expr2 expr3 ...)`** - constructs a proper list from its arguments. With no arguments, returns `Nil`.
+* **`(setcar pair x)`** - updates the `car` of an existing Cons cell in place.
+* **`(setcdr pair x)`** - updates the `cdr` of an existing Cons cell in place.
 
 ### I/O
-
+ 
+* **`(show expr)`** - prints its argument in its proper lisp syntax format. Returns `Nil`.
+* **`(print fmt arg ...)`** - prints a formatted string. Placeholders `$0`, `$1`, ... are replaced with the corresponding arguments. If a placeholder index has no matching argument, a runtime exception is raised. Returns `Nil`.
+ 
+```lisp
+(print "Hello $0!" "World")       ; Hello World!
+(print "$0 + $0 = $1" 5 10)       ; 5 + 5 = 10
+(print "x = $0, y = $1" 1 2)      ; x = 1, y = 2
+```
+ 
 ### Evaluation
-
+ 
+* **`(eval expr)`** - evaluates `expr` as a Sparkle expression in the current scope.
+ 
+```lisp
+(eval '(+ 1 2))         ; 3
+(eval (list '+ 1 2))    ; 3
+ 
+(let x 10)
+(eval 'x)               ; 10
+```
+ 
 ### Arithmetic
 
+Arithmetic operations work on `Integer` and `Float` values only. Passing any other type is a runtime exception.
+If at least one argument is `Float`, the result is `Float`. Otherwise the result is `Integer`.
+Any kind of division by zero is a runtime exception.
+
+* **`(+ x y ...)`** - sum of all arguments. With no arguments, returns `0`.
+* **`(- x y1 y2 ...)`** - difference `x - y1 - y2 ...`.
+* **`(* x y ...)`** - product of all arguments. With no arguments, returns `1`.
+* **`(/ x y1 y2 ...)`** - floating-point division `x / y1 / y2 ...`.
+* **`(div x y)`** - integer division of `x` by  `y`.
+* **`(mod x y)`** - remainder of `x / y`.
+ 
 ### Comparison
 
-## Calling conventions & Variadic Functions
+#### Equality
 
-## Closures & Lexical Scope
+`=` and `!=` compare values differently depending on their type:
 
-## Error handling
+* `Nil` - all `Nil` are equal.
+* `Bool`, `Integer`, `Float`, `String`, `Exception` - comparison by value.
+* `Cons`, `Lambda`, `Builtin` - reference - two objects are equal only if they are the same object.
+
+#### Ordering
+
+Ordering operations work on `Integer` and `Float` values only. Passing any other type is a runtime exception.
+
+* **`(> x y)`** - returns `True` if `x` is greater than `y`, otherwise `False`.
+* **`(< x y)`** - returns `True` if `x` is less than `y`, otherwise `False`.
+* **`(>= x y)`** - returns `True` if `x` is greater than or equal to `y`, otherwise `False`.
+* **`(<= x y)`** - returns `True` if `x` is less than or equal to `y`, otherwise `False`.
+* **`(not x)`** - casts `x` to `Bool` and returns the opposite value.
+
+## Exception Handling
+ 
+Runtime exceptions are raised by the interpreter when an operation cannot proceed.
+Each exception carries an `Exception` object describing what went wrong.
+ 
+Exceptions can be caught with `try`:
+ 
+```lisp
+(let result (try (car Nil)))
+(if (nil? result)
+    (show "ok")
+    (show "exception caught"))
+```
+
+### Exception categories
+ 
+| Kind                | Raised when                                      |
+|---------------------|--------------------------------------------------|
+| `WRONG_TYPE`        | A function receives an argument of the wrong type |
+| `WRONG_ARITY`       | A function receives the wrong number of arguments |
+| `SYMBOL_UNDEFINED`  | A symbol has no binding in scope                 |
+| `SYMBOL_REBINDING`  | A name is bound twice in the same scope          |
+| `UNCALLABLE`        | A non-callable object is used as a function      |
+| `WRONG_VALUE`       | Division or remainder by zero                    |
+| `IMPROPER_FORM` | |
 
