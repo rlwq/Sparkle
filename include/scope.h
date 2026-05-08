@@ -21,5 +21,6 @@ struct Scope {
 
 bool scope_define(Scope *scope, StringName name, LispNode *value);
 LispNode *scope_get(Scope *scope, StringName name);
+bool scope_set(Scope *scope, StringName name, LispNode *value);
 
 #endif

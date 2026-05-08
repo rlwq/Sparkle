@@ -13,22 +13,9 @@
 
 #define ASSERT_HAS(e_, n_) (assert((e_)->value_stack.size >= (n_)))
 #define ASSERT_KIND(e_, k_) (assert(da_at_end((e_)->value_stack, 0)->kind == (k_)))
-#define ASSERT_LIST(e_) (assert(da_at_end((e_)->value_stack, 0)->kind == LISP_NIL || \
-                                da_at_end((e_)->value_stack, 0)->kind == LISP_CONS))
-
-
-typedef enum {
-    INVALID_LET_FORM,
-    INVALID_IF_FORM,
-    INVALID_LAMBDA_FORM,
-    INVALID_TRY_FORM,
-    INVALID_QUOTE_FORM,
-    
-    SYMBOL_REBINDING,
-    SYMBOL_UNDEFINED,
-    UNCALLABLE_CALL,
-    WRONG_ARITY,
-} ExcepetionKind;
+#define ASSERT_LIST(e_)                                                                            \
+    (assert(da_at_end((e_)->value_stack, 0)->kind == LISP_NIL ||                                   \
+            da_at_end((e_)->value_stack, 0)->kind == LISP_CONS))
 
 typedef struct {
     jmp_buf *jmp;
@@ -47,7 +34,7 @@ struct VM {
     GC *gc;
     StringInterner *si;
 
-    ExcepetionKind exception;
+    ExceptionKind exception;
     bool is_err;
 };
 
@@ -59,18 +46,21 @@ void vm_register_builtin(VM *vm, StringName name, LispBuiltin func_ptr);
 void vm_eval_expr(VM *vm);
 void vm_eval_all(VM *vm);
 
-void vm_recover(VM *vm, ExcepetionKind exception);
 void vm_push_recovery(VM *vm, jmp_buf *jmp);
 void vm_pop_recovery(VM *vm);
+void vm_recover(VM *vm, ExceptionKind exception);
+void vm_expect_kind(VM *vm, LispNodeKind kind, ExceptionKind exception);
 
 void vm_push_scope(VM *vm, Scope *scope);
 void vm_build_scope(VM *vm);
 void vm_pop_scope(VM *vm);
 void vm_scope_define(VM *vm, StringName name);
 void vm_scope_get(VM *vm, StringName name);
+void vm_scope_set(VM *vm, StringName name);
 
 void vm_build_value(VM *vm, LispNodeKind kind);
-void vm_build_integer(VM *vm, int value);
+void vm_build_integer(VM *vm, Integer value);
+void vm_build_exception(VM *vm, ExceptionKind exception);
 void vm_build_builtin(VM *vm, LispBuiltin value);
 void vm_build_nil(VM *vm);
 void vm_build_lambda(VM *vm, LambdaArgs args, bool is_variadic, LispNode *expr, Scope *scope);
@@ -83,6 +73,7 @@ void vm_pop(VM *vm);
 void vm_rot(VM *vm);
 void vm_pop_prev(VM *vm);
 LispNode *vm_peek(VM *vm);
+LispNode *vm_prev(VM *vm);
 
 size_t eval_list(VM *vm);
 void unpack_cons(VM *vm);

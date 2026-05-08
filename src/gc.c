@@ -71,6 +71,7 @@ void gc_free_node(GC *gc, LispNode *expr) {
     case LISP_SYMBOL:
     case LISP_BUILTIN:
     case LISP_STRING:
+    case LISP_EXCEPTION:
         free(expr);
         break;
 
@@ -150,22 +151,23 @@ void gc_mark_node(LispNode *expr) {
         curr->marked = true;
 
         switch (curr->kind) {
-            case LISP_NIL:
-            case LISP_SYMBOL:
-            case LISP_INTEGER:
-            case LISP_STRING:
-            case LISP_BUILTIN:
-                break;
+        case LISP_NIL:
+        case LISP_SYMBOL:
+        case LISP_INTEGER:
+        case LISP_STRING:
+        case LISP_BUILTIN:
+        case LISP_EXCEPTION:
+            break;
 
-            case LISP_LAMBDA:
-                da_push(to_mark, LAMBDA_SUBEXPR(curr));
-                gc_mark_scope(LAMBDA_SCOPE(curr));
-                break;
+        case LISP_LAMBDA:
+            da_push(to_mark, LAMBDA_SUBEXPR(curr));
+            gc_mark_scope(LAMBDA_SCOPE(curr));
+            break;
 
-            case LISP_CONS:
-                da_push(to_mark, CAR(curr));
-                da_push(to_mark, CDR(curr));
-                break;
+        case LISP_CONS:
+            da_push(to_mark, CAR(curr));
+            da_push(to_mark, CDR(curr));
+            break;
         }
     }
 
@@ -182,4 +184,3 @@ void gc_mark_scope(Scope *scope) {
         scope = scope->parent;
     }
 }
-

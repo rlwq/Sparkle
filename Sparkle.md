@@ -4,40 +4,48 @@ This document defines the semantics of Sparkle as a development & documental ref
 
 ## Program model
 
-- A **program** is a sequence of **s-expressions**.
-- Expressions are evaluated in order, top to bottom.
-- Sparkle uses strict evaluation (call-by-value): in ordinary function calls, arguments are evaluated before the call.
-- Argument evaluation order is left-to-right.
+* A **program** is a sequence of **s-expressions**.
+* Expressions are evaluated in order, top to bottom.
+* Sparkle uses strict evaluation (call-by-value): in ordinary function calls, arguments are evaluated before the call.
+* Argument evaluation order is left-to-right.
 
 ## Core Types
 
 Sparkle has the following types:
 
-- `Nil`
-- `Bool`
-- `Integer`
-- `String`
-- `Symbol`
-- `Cons`
-- `Lambda`
-- `Builtin`
-
-`()` is exactly `Nil`.
+* `Nil`
+* `Bool`
+* `Integer`
+* `Float`
+* `String`
+* `Symbol`
+* `Cons` & `Lists`
+* `Lambda`
+* `Builtin`
+* `Exception`
 
 ### Nil
 
-Represents the absence of a value.
-**Proper list** terminator (the empty list is `Nil` itself). Defined as `Nil` or `()`.
+Represents the absence of a value or an empty list.
+Defined as `Nil` or `()`.
+**Proper list** terminator (the empty list is `Nil` itself). 
 
 ### Bool
 
 Represents a boolean value. `True` or `False`.
 Use `(? value)` to explicitly cast any value to `Bool`.
 
-- `Nil` → `False`
-- `Integer` → `False` if `0`, otherwise `True`
-- `String` → `False` if empty, otherwise `True`
-- `Cons` → always `True`- `Lambda`, `Builtin` → always `True`
+* `Nil` → `False`
+* `Integer`, `Float` → `False` if `0`, otherwise `True`
+* `String` → `False` if empty, otherwise `True`
+* `Cons`, `Lambda`, `Builtin` → `True`
+
+```lisp
+(? 0)    ; False
+(? 1)    ; True
+(? Nil)  ; False
+(? "")   ; False
+```
 
 ### Symbol
 
@@ -54,21 +62,29 @@ x                       ; 12345
 
 ### Integer
 
-A signed integer value. `42`, `-7`, `+3`.
+A signed integer value.
+Ex.: `42`, `-7`, `+3`.
+
+### Float
+
+A floating-point number.
+Ex.: `3.14`, `-0.5`.
 
 ### String
 
-An immutable sequence of characters. `"hello"`, `"world"`.
+An immutable sequence of characters.
+Ex.: `"hello"`, `"world"`.
 
-### Cons Cells & Lists
+### Cons & Lists
 
-A **Cons Cell** is an ordered pair of two values. Its "left" and "right" slots are named `car` and `cdr` respectively.
+#### Cons pairs
+
+A **Cons Cell** is an ordered pair of two values.
+Its "left" and "right" slots are named `car` and `cdr` respectively.
 
 * Use the `cons` function to build a new cell. 
 * Use the `car` and `cdr` functions to retrieve values from the slots.
 * Use `setcar` and `setcdr` to update the values within an existing cell.
-
-#### Cons Cells Syntax
 
 * `(x . y)` A cell where `car` is `x` and `cdr` is `y`.
 * `(x .  )` Evaluates as `(x . Nil)`.
@@ -82,10 +98,10 @@ A **Cons Cell** is an ordered pair of two values. Its "left" and "right" slots a
 
 #### Lists
 
+##### Proper lists
+
 Lists are not a separate type - they are a convention built on nested `Cons` cells.
 A **proper list** is a chain of Cons cells terminated by `Nil`.
-
-#### Lists syntax
 
 A sequence of values enclosed in parentheses defines a proper list. In this form, the interpreter automatically terminates the chain with Nil.
 * **Example**: `(a b c d e)` defines a Nil-terminated list.
@@ -97,6 +113,8 @@ A sequence of values enclosed in parentheses defines a proper list. In this form
 (car '(1 2 3 4 5))              ; 1
 (cdr '(1 2 3 4 5))              ; (2 3 4 5)
 ```
+
+##### Improper lists
 
 An **improper list** is a **Cons** chain where the last `cdr` is not `Nil`.
 
@@ -117,7 +135,7 @@ Behave identically to user-defined functions - first-class objects, can be passe
 
 ### Lambda functions
 
-An anonymous function. A callable object that can be stored and passed around.
+An anonymous function object that can be stored in variables, passed as arguments and returned by functions.
 
 ```lisp
 (let add (lambda (x y) (+ x y)))
@@ -129,64 +147,60 @@ An anonymous function. A callable object that can be stored and passed around.
 (add5 3)  ; 8
 ```
 
-### Truthness and Bool Conversion
-
-Any value can be converted to `Bool` via `(? x)`.
-
-- `Nil` -> `False`
-- `Integer` -> `False` iff value is `0`
-- `String` -> `False` iff empty string `""`
-- `Cons`/`Lambda`/`Builtin`/`Symbol` -> Always `True`
-
-```lisp
-(? 0)    ; False
-(? 1)    ; True
-(? Nil)  ; False
-(? "")   ; False
-(< 2 3)  ; True
-(= 1 2)  ; False
-```
-
 ## Special Forms & Flow Control
 
 Special forms look like function calls but are evaluated differently - arguments are not evaluated before being passed and are not bound to any scope - there is no function-like machinery involved.
-Special forms are usually used for flow control or state mutation.
+Special forms handle flow control and state mutation.
 
 ### let
 
-`let` introduces a lexical bining in the current scope.
-Bining an already binded symbol is a runtime error.
+`let` introduces a new binding in the current lexical scope.
+Allows shadowing of variables defined in parent-scopes.
+Rebinding an already binded symbol is a runtime error.
 
 ```lisp
 (let x 42)
-(let add (lambda (x y) (+ x y)))
+
+(print x)        ; 42
+
+(begin
+    (let x 10)
+    (print x)    ; 10
+)
+
+(print x)        ; 42
 ```
 
 ### set
 
 `set` updates an existing binding.
+Updates the binding in the local-most scope.
 Using set on an unbound name is a runtime error.
 
 ```lisp
 (let x 1)
 (set x 2)
-x ; 2
+(print x)  ; 2
 ```
 
 ### if
 
-Conditional expression. Evaluates the condition, then either the true or false branch.
+Conditional expression.
+Evaluates the condition, then either the true or false branch.
+The else branch is optional - if omitted and the condition is false, returns `Nil`.
 Automatically casts the condition to `Bool`.
 
 ```lisp
 (if (= x 0)
     "zero"
     "non-zero")
+
+(if (< 1 2) (print "Hi!"))  ; Hi!
 ```
 
 ### lambda
 
-Creates a Lambda object.
+Creates a Lambda object capturing the current scope.
 
 ```lisp
 (lambda (x y) (+ x y))
@@ -196,55 +210,75 @@ Creates a Lambda object.
 (square 5)  ; 25
 ```
 
+Can define variadic Lambdas.
+
+``` lisp
+(let drop (lambda (head . tail) tail))
+(print (drop 1 2 3 4))  ; 2 3 4
+```
+
 ### quote
 
 Returns its argument unevaluated.
+Shorthand: `'expr`.
 
 ```lisp
 (quote x)        ; x       - a symbol, not its value
 (quote (1 2 3))  ; (1 2 3) - a list, not a call
 ```
 
-## Function definition and calls
 
-Sparkle supports first-class anonymous functions defined with the `lambda` keyword.
-It is possible to define variadic lambda functions.
-Combined with `let` form, can define named functions.
+### begin
 
-```lisp
-(let square (lambda (x) (* x x)))
-(print (square 5))             ; 25
-((lambda (x y) (+ x y)) 11 12) ; 23
+Evaluates a sequence of expressions in order, returns the value of the last one.
+Creates a lexical scope.
+
+``` lisp
+(begin
+  (let x 1)
+  (let y 2)
+  (+ x y))  ; 3
 ```
 
-### Closures
+### while
 
-Lambda functions capture their defining scope, allowing them to reference variables from the enclosing environment.
-
-```lisp
-(let adder_factory (lambda (x) (lambda (y) (+ x y))))
-
-(let add3 (adder_factory 3))
-(let add5 (adder_factory 5))
-
-(print (add3 (add5 7)))  ; 15
-```
-
-### Higher-order Functions
-
-Functions can be passed as arguments and returned as values.
+Evaluates the body repeatedly as long as the condition evaluates to `True`.
+Returns `Nil`.
 
 ```lisp
-(let map (lambda (f l)
-    (if l
-        (cons (f (car l)) (map f (cdr l)))))
-        NIL)
-
-(let double (lambda (x) (+ x x)))
-(print (map double (range 1 5)))  ; (2 4 6 8 10)
+(let i 0)
+(while (< i 5)
+  (print i)
+  (set i (+ i 1))
+)
 ```
+
+### try
+
+Evaluates its argument.
+If a runtime error occurs, catches it and returns the `Exception` object;
+otherwise returns `Nil`.
+
+```lisp
+(try (car NIL))  ;  <WRONG_TYPE> - an exception was caught
+(try (+ 1 2))    ;  Nil - no exception occured
+```
+
+## Built-in Functions
+
+### Lisp Operations
+
+### I/O
+
+### Evaluation
+
+### Arithmetic
+
+### Comparison
+
+## Calling conventions & Variadic Functions
+
+## Closures & Lexical Scope
 
 ## Error handling
-
-This part of the language is currently being developed and is not yet fully specified.
 

@@ -18,8 +18,7 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Optimizations
 
-* [ ] Introduce `StringName` data type for constant time string comparison.
-    * [ ] Hash tables for fast search in scopes.
+* [ ] Hash tables for fast search in scopes.
 * [ ] `Nil` type as singleton.
 * [ ] Arena allocations instead of an linked list in GC.
 * [ ] An attempt/research on TCO.
@@ -29,7 +28,6 @@ This document outlines the features and fixes planned for Sparkle.
 * [ ] `Bool` data type & logical functions.
 * [ ] `Float` data type.
 * [ ] `String` data type & basic string manipulation.
-* [ ] `Exception` data type for expressive error reporting & powerful catch mechanism.
 * [ ] Type checking & exception throwing on incorrect data types in built-in functions.
 * [ ] Macro support.
 * [ ] Lambda definitions with duplicated argument names.
@@ -69,9 +67,6 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Tooling
 
-* [ ] Full `tester.py` refactor.
-    * [ ] Negative tests. Error message validation.
-* [ ] Evaluation time of tests.
 
 ## UX
 
@@ -80,6 +75,10 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Done
 
+* [x] Negative tests. Error message validation.
+* [x] Evaluation time of tests.
+* [x] `Exception` data type for expressive error reporting & powerful catch mechanism.
+* [x] Introduce `StringName` data type for constant time string comparison.
 * [x] Assertions on values on stack in `eval_` functions.
 * [x] Exception reporting on all failed form calls (`lambda`, `if`, `let`, `quote`...)
 * [x] `if` Statement with optional else branch.

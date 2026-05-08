@@ -2,6 +2,7 @@
 #include "dynamic_array.h"
 #include "string_interner.h"
 #include <assert.h>
+#include <stdbool.h>
 
 bool scope_define(Scope *scope, StringName name, LispNode *value) {
     bool is_defined = false;
@@ -27,4 +28,17 @@ LispNode *scope_get(Scope *scope, StringName name) {
         }
     }
     return NULL;
+}
+
+bool scope_set(Scope *scope, StringName name, LispNode *value) {
+    for (Scope *curr = scope; curr != NULL; curr = curr->parent) {
+        for (size_t i = 0; i < curr->items.size; i++) {
+            ScopeItem item = da_at(curr->items, i);
+            if (item.key == name) {
+                da_at(curr->items, i).value = value;
+                return true;
+            }
+        }
+    }
+    return false;
 }
