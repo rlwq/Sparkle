@@ -15,7 +15,17 @@ typedef enum {
     LISP_STRING,
     LISP_BUILTIN,
     LISP_LAMBDA,
+    LISP_EXCEPTION,
 } LispNodeKind;
+
+typedef enum {
+    INVALID_SPECIAL_FORM,
+    SYMBOL_REBINDING,
+    SYMBOL_UNDEFINED,
+    UNCALLABLE_CALL,
+    WRONG_ARITY,
+    WRONG_TYPE,
+} ExceptionKind;
 
 typedef struct {
     LispNode *car;
@@ -23,6 +33,8 @@ typedef struct {
 } LispConsNode;
 
 typedef DA(StringName) LambdaArgs;
+
+typedef long long int Integer;
 
 typedef struct {
     LambdaArgs args;
@@ -48,7 +60,8 @@ struct LispNode {
         LispBuiltin builtin;
         LispLambdaNode lambda;
         LispConsNode cons;
-        long long int integer;
+        Integer integer;
+        ExceptionKind exception;
     } as;
 };
 

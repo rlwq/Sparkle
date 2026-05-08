@@ -38,7 +38,7 @@
     } while (0)
 
 #define da_at(da_, i_) ((da_).data[i_])
-#define da_at_end(da_, i_) ((da_).data[(da_).size - i_ - 1])
+#define da_at_end(da_, i_) ((da_).data[(da_).size - (i_) - 1])
 
 #define da_nullify(da_)                                                                            \
     do {                                                                                           \

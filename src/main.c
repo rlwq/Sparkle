@@ -7,7 +7,7 @@
 #include "gc.h"
 #include "lexer.h"
 #include "parser.h"
-#include "speical_forms.h"
+#include "special_forms.h"
 #include "string_interner.h"
 #include "string_view.h"
 #include "vm.h"
@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
     // TODO: Refator this. Needs some kind of special form registry
     for (size_t i = 0; i < SPECIAL_FORMS_COUNT; i++)
         SPECIAL_FORMS[i].keyword = si_get(si, SPECIAL_FORMS[i].keyword);
-    
+
     char *src = read_file(argv[1]);
     StringView prog = sv_mk(src);
 
@@ -54,8 +54,9 @@ int main(int argc, char **argv) {
     lex_all(lexer);
 
     if (lexer->is_err) {
-        printf(RED "%s:%zu:%zu: [PARSE ERROR] Unexpected character: " SV_FMT "\n" RESET, argv[1], lexer->line + 1,
-               lexer->column + 1, SV_ARGS(sv_take(lexer->src, sv_find(lexer->src, '\n'))));
+        printf(RED "%s:%zu:%zu: [PARSE ERROR] Unexpected character: " SV_FMT "\n" RESET, argv[1],
+               lexer->line + 1, lexer->column + 1,
+               SV_ARGS(sv_take(lexer->src, sv_find(lexer->src, '\n'))));
 
         free(src);
         lexer_free(lexer);
@@ -64,7 +65,6 @@ int main(int argc, char **argv) {
     }
 
     TokenDA tokens = extract_tokens(lexer);
-
 
     GC *gc = gc_alloc();
     Parser *parser = parser_alloc(tokens, gc, si);
@@ -91,13 +91,14 @@ int main(int argc, char **argv) {
 
     for (size_t i = 0; i < BUILTINS_COUNT; i++)
         vm_register_builtin(vm, si_get(si, BUILTINS[i].name), BUILTINS[i].func);
-        
+
     if (!VM_DONE(vm))
         vm_eval_all(vm);
 
     bool in_err = vm->is_err;
-    ExcepetionKind exception;
-    if (in_err) exception = vm->exception;
+    ExceptionKind exception;
+    if (in_err)
+        exception = vm->exception;
 
     vm_free(vm);
     da_free(exprs);
@@ -111,41 +112,31 @@ int main(int argc, char **argv) {
     free(src);
 
     si_free(si);
-    
+
     if (!in_err)
         return 0;
 
     printf(RED "[RUNTIME ERROR] ");
     switch (exception) {
-        case INVALID_QUOTE_FORM:
-            printf("Invalid quote form.");
-            break;
-        case INVALID_LET_FORM:
-            printf("Invalid let form.");
-            break;
-        case INVALID_LAMBDA_FORM:
-            printf("Invalid lambda form.");
-            break;
-        case INVALID_TRY_FORM:
-            printf("Invalid try form.");
-            break;
-        case INVALID_IF_FORM:
-            printf("Invalid if form.");
-            break;
-        case SYMBOL_REBINDING:
-            printf("Symbol is already binded.");
-            break;
-        case SYMBOL_UNDEFINED:
-            printf("Symbol has no definition.");
-            break;
-        case UNCALLABLE_CALL:
-            printf("Can't use this kind of object as a function.");
-            break;
-        case WRONG_ARITY:
-            printf("Wrong arity for a function call.");
-            break;
-        }
+    case INVALID_SPECIAL_FORM:
+        printf("Invalid special form.");
+        break;
+    case SYMBOL_REBINDING:
+        printf("Symbol is already binded.");
+        break;
+    case SYMBOL_UNDEFINED:
+        printf("Symbol has no definition.");
+        break;
+    case UNCALLABLE_CALL:
+        printf("Can't use this kind of object as a function.");
+        break;
+    case WRONG_ARITY:
+        printf("Wrong arity for a function call.");
+        break;
+    case WRONG_TYPE:
+        printf("Function expected another object type.");
+        break;
+    }
     printf("\n" RESET);
     return 1;
 }
-

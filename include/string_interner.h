@@ -4,12 +4,11 @@
 #include "dynamic_array.h"
 #include <stddef.h>
 
-typedef const char* StringName;
+typedef const char *StringName;
 
 typedef struct {
-    DA(char*) strings;
+    DA(char *) strings;
 } StringInterner;
-
 
 StringInterner *si_alloc(void);
 void si_free(StringInterner *si);

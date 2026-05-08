@@ -41,6 +41,32 @@ void print_lambda(LispNode *expr) {
     printf(")");
 }
 
+void print_exception(LispNode *expr) {
+    assert(expr->kind == LISP_EXCEPTION);
+    printf("<EXCEPTION: ");
+    switch (expr->as.exception) {
+    case INVALID_SPECIAL_FORM:
+        printf("INVALID_SPECIAL_FORM");
+        break;
+    case SYMBOL_REBINDING:
+        printf("SYMBOL_REBINDING");
+        break;
+    case SYMBOL_UNDEFINED:
+        printf("SYMBOL_UNDEFINED");
+        break;
+    case UNCALLABLE_CALL:
+        printf("UNCALLABLE_CALL");
+        break;
+    case WRONG_ARITY:
+        printf("WRONG_ARITY");
+        break;
+    case WRONG_TYPE:
+        printf("WRONG_TYPE");
+        break;
+    }
+    printf(">");
+}
+
 void print_expr(LispNode *expr) {
     switch (expr->kind) {
     case LISP_NIL:
@@ -62,6 +88,9 @@ void print_expr(LispNode *expr) {
         break;
     case LISP_LAMBDA:
         print_lambda(expr);
+        break;
+    case LISP_EXCEPTION:
+        print_exception(expr);
         break;
     }
 }

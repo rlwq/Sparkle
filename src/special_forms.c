@@ -1,17 +1,8 @@
+#include "special_forms.h"
 #include "lisp_node.h"
-#include "speical_forms.h"
 #include "string_interner.h"
 #include "vm.h"
-#include "scope.h"
-
-SpecialFormDef SPECIAL_FORMS[] = {
-    { "let", eval_let_form },
-    { "lambda", eval_lambda_form },
-    { "quote", eval_quote_form },
-    { "try", eval_try_form },
-    { "if", eval_if_form }};
-
-size_t SPECIAL_FORMS_COUNT = sizeof(SPECIAL_FORMS) / sizeof(SPECIAL_FORMS[0]);
+#include <stdio.h>
 
 // Node (Args), Node (Head) -> Node (Maybe :3)
 bool try_dispatch_special_form(VM *vm) {
@@ -42,24 +33,40 @@ bool try_dispatch_special_form(VM *vm) {
 // Symbol (name), Node (value) -> Node
 void eval_let_form(VM *vm, size_t argc) {
     if (argc != 2)
-        vm_recover(vm, INVALID_LET_FORM);
+        vm_recover(vm, INVALID_SPECIAL_FORM);
 
     vm_swap(vm);
 
     if (vm_peek(vm)->kind != LISP_SYMBOL)
-        vm_recover(vm, INVALID_LET_FORM);
+        vm_recover(vm, INVALID_SPECIAL_FORM);
 
     StringName name = SYMBOL(vm_peek(vm));
     vm_pop(vm);
     vm_eval_expr(vm);
+    // vm_push(vm, vm_peek(vm));
+    vm_scope_define(vm, name);
+}
 
-    scope_define(VM_CURR_SCOPE(vm), name, vm_peek(vm));
+// Symbol (name), Node (value) -> Node
+void eval_set_form(VM *vm, size_t argc) {
+    if (argc != 2)
+        vm_recover(vm, INVALID_SPECIAL_FORM);
+
+    vm_swap(vm);
+
+    if (vm_peek(vm)->kind != LISP_SYMBOL)
+        vm_recover(vm, INVALID_SPECIAL_FORM);
+
+    StringName name = SYMBOL(vm_peek(vm));
+    vm_pop(vm);
+    vm_eval_expr(vm);
+    vm_scope_set(vm, name);
 }
 
 // Node (condition), Node (is_true), Node (is_false) -> result
 void eval_if_form(VM *vm, size_t argc) {
     if (argc != 3 && argc != 2)
-        vm_recover(vm, INVALID_IF_FORM);
+        vm_recover(vm, INVALID_SPECIAL_FORM);
 
     if (argc == 2)
         vm_build_nil(vm);
@@ -81,17 +88,18 @@ void eval_if_form(VM *vm, size_t argc) {
 // Cons (Args list), Node (subexpr) -> Lambda
 void eval_lambda_form(VM *vm, size_t argc) {
     if (argc != 2)
-        vm_recover(vm, INVALID_LAMBDA_FORM);
+        vm_recover(vm, INVALID_SPECIAL_FORM);
 
     vm_swap(vm);
 
     LambdaArgs args;
     bool is_variadic = false;
     da_init(args);
-    
-    if (vm_peek(vm)->kind != LISP_CONS && vm_peek(vm)->kind != LISP_SYMBOL) {
+
+    if (vm_peek(vm)->kind != LISP_CONS && vm_peek(vm)->kind != LISP_NIL &&
+        vm_peek(vm)->kind != LISP_SYMBOL) {
         da_free(args);
-        vm_recover(vm, INVALID_LAMBDA_FORM);
+        vm_recover(vm, INVALID_SPECIAL_FORM);
     }
 
     // Variadic function with no positional arguments
@@ -106,14 +114,14 @@ void eval_lambda_form(VM *vm, size_t argc) {
         for (; curr->kind == LISP_CONS; curr = CDR(curr)) {
             if (CAR(curr)->kind != LISP_SYMBOL) {
                 da_free(args);
-                vm_recover(vm, INVALID_LAMBDA_FORM);
+                vm_recover(vm, INVALID_SPECIAL_FORM);
             }
             da_push(args, SYMBOL(CAR(curr)));
         }
 
         if (curr->kind != LISP_SYMBOL && curr->kind != LISP_NIL) {
             da_free(args);
-            vm_recover(vm, INVALID_LAMBDA_FORM);
+            vm_recover(vm, INVALID_SPECIAL_FORM);
         }
 
         if (curr->kind == LISP_SYMBOL) {
@@ -131,14 +139,14 @@ void eval_lambda_form(VM *vm, size_t argc) {
 // Node -> Node
 void eval_try_form(VM *vm, size_t argc) {
     if (argc != 1)
-        vm_recover(vm, INVALID_TRY_FORM);
+        vm_recover(vm, INVALID_SPECIAL_FORM);
 
     jmp_buf env;
     vm_push_recovery(vm, &env);
 
     if (setjmp(env)) {
         vm_pop(vm);
-        vm_build_integer(vm, 1);
+        vm_build_exception(vm, vm->exception);
     } else {
         vm_push(vm, da_at_end(vm->value_stack, 0));
         vm_eval_expr(vm);
@@ -153,6 +161,31 @@ void eval_try_form(VM *vm, size_t argc) {
 // Node -> Node
 void eval_quote_form(VM *vm, size_t argc) {
     if (argc != 1)
-        vm_recover(vm, INVALID_QUOTE_FORM);
+        vm_recover(vm, INVALID_SPECIAL_FORM);
 }
 
+void eval_begin_form(VM *vm, size_t argc) {
+    vm_build_scope(vm);
+
+    for (size_t i = 0; i + 1 < argc; i++) {
+        vm_push(vm, da_at_end(vm->value_stack, argc - 1 - i));
+        vm_eval_expr(vm);
+        vm_pop(vm);
+    }
+
+    if (argc > 0)
+        vm_eval_expr(vm);
+    else
+        vm_build_nil(vm);
+
+    for (size_t i = 1; i < argc; i++)
+        vm_pop_prev(vm);
+    vm_pop_scope(vm);
+}
+
+SpecialFormDef SPECIAL_FORMS[] = {{"let", eval_let_form},       {"set", eval_set_form},
+                                  {"lambda", eval_lambda_form}, {"quote", eval_quote_form},
+                                  {"try", eval_try_form},       {"if", eval_if_form},
+                                  {"begin", eval_begin_form}};
+
+size_t SPECIAL_FORMS_COUNT = sizeof(SPECIAL_FORMS) / sizeof(SPECIAL_FORMS[0]);
