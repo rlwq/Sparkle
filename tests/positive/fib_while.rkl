@@ -1,0 +1,20 @@
+(let i 0)
+
+(let fib (lambda (n) (begin
+    (let i 0)
+    (let a 1)
+    (let b 1)
+    (let c 1)
+
+    (while (> n i) (begin
+        (set c (+ a b))
+        (set a b)
+        (set b c)
+        (set i (+ i 1))
+        ))
+      b)))
+
+(while (> 30 i) (begin
+    (print (fib i))
+    (set i (+ i 1))))
+
