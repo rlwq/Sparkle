@@ -1,8 +1,9 @@
-#include "debug.h"
+#include "io.h"
 #include "lisp_node.h"
 #include "special_forms.h"
 #include "utils.h"
 #include "vm.h"
+#include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -147,8 +148,51 @@ void vm_unpack_list_n(VM *vm, size_t n) {
     }
 }
 
-// ConsNode -> Node
-void eval_cons(VM *vm) {
+// (Bool | Integer | Float), (Bool | Integer | Float) -> Node, Node
+LispNodeKind vm_common_numeric(VM *vm) {
+    ASSERT_HAS(vm, 2);
+    assert(IS_NUMBERIC(vm_peek(vm)));
+    assert(IS_NUMBERIC(vm_prev(vm)));
+
+    if (vm_peek(vm)->kind == LISP_FLOAT || vm_prev(vm)->kind == LISP_FLOAT)
+        return LISP_FLOAT;
+
+    if (vm_peek(vm)->kind == LISP_INTEGER || vm_prev(vm)->kind == LISP_INTEGER)
+        return LISP_INTEGER;
+
+    return LISP_BOOL;
+}
+
+// (Bool | Integer | Float) -> Node
+void vm_cast_numeric(VM *vm, LispNodeKind kind) {
+    ASSERT_HAS(vm, 1);
+    assert(IS_NUMBERIC(vm_peek(vm)));
+
+    if (vm_peek(vm)->kind == LISP_BOOL && kind != LISP_BOOL) {
+        vm_build_integer(vm, BOOL(vm_peek(vm)));
+        vm_pop_prev(vm);
+    }
+
+    if (vm_peek(vm)->kind == LISP_INTEGER && kind == LISP_FLOAT) {
+        vm_build_float(vm, INTEGER(vm_peek(vm)));
+        vm_pop_prev(vm);
+    }
+}
+
+// (Bool | Integer | Float), (Bool | Integer | Float) -> Node, Node
+LispNodeKind vm_to_common_numeric(VM *vm) {
+    LispNodeKind common = vm_common_numeric(vm);
+
+    vm_cast_numeric(vm, common);
+    vm_swap(vm);
+    vm_cast_numeric(vm, common);
+    vm_swap(vm);
+
+    return common;
+}
+
+// Cons -> Node
+void vm_eval_cons(VM *vm) {
     ASSERT_KIND(vm, LISP_CONS);
 
     vm_unpack_cons(vm);
@@ -246,7 +290,7 @@ void vm_eval_node(VM *vm) {
         break;
 
     case LISP_CONS:
-        eval_cons(vm);
+        vm_eval_cons(vm);
         break;
     }
 }

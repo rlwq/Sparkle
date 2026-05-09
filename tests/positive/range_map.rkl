@@ -1,12 +1,12 @@
 (let range (lambda (a b)
     (if (> a b)
-     NIL
+     Nil
      (cons a (range (+ a 1) b)))))
 
 (let map (lambda (f l) 
-    (if (nil? l)
-     NIL
-     (cons (f (car l)) (map f (cdr l))))))
+    (if l
+     (cons (f (car l)) (map f (cdr l)))
+     Nil)))
 
 (let double (lambda (x) (+ x x)))
 (let const (lambda (x) (lambda (n) x)))

@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
 
     StringInterner *si = si_alloc();
 
-    // TODO: Refator this. Needs some kind of special form registry
+    // TODO: Refactor this. Needs some kind of special form registry
     for (size_t i = 0; i < SPECIAL_FORMS_COUNT; i++)
         SPECIAL_FORMS[i].keyword = si_get(si, SPECIAL_FORMS[i].keyword);
 
@@ -89,8 +89,7 @@ int main(int argc, char **argv) {
 
     vm_push_scope(vm, gc_alloc_scope(gc, NULL));
 
-    for (size_t i = 0; i < BUILTINS_COUNT; i++)
-        vm_register_builtin(vm, si_get(si, BUILTINS[i].name), BUILTINS[i].func);
+    register_builtins(vm);
 
     if (!VM_DONE(vm))
         vm_eval_all(vm);
@@ -122,7 +121,7 @@ int main(int argc, char **argv) {
         printf("Invalid special form.");
         break;
     case SYMBOL_REBINDING:
-        printf("Symbol is already binded.");
+        printf("Symbol is already bound.");
         break;
     case SYMBOL_UNDEFINED:
         printf("Symbol has no definition.");
