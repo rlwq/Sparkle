@@ -6,6 +6,46 @@
 #include "utils.h"
 #include "vm.h"
 
+#define NUMERIC_VARIADIC_BUILTIN(func_name_, operator_)                                            \
+    void func_name_(VM *vm) {                                                                      \
+        ASSERT_HAS(vm, 2);                                                                         \
+        LispNode *list = vm_peek(vm);                                                              \
+        vm_swap(vm);                                                                               \
+                                                                                                   \
+        while (list->kind == LISP_CONS) {                                                          \
+            vm_push(vm, CAR(list));                                                                \
+            vm_to_common_numeric(vm);                                                              \
+                                                                                                   \
+            if (vm_peek(vm)->kind == LISP_BOOL)                                                    \
+                vm_build_integer(vm,                                                               \
+                                 (Integer)BOOL(vm_prev(vm)) operator_(Integer) BOOL(vm_peek(vm))); \
+            else if (vm_peek(vm)->kind == LISP_INTEGER)                                            \
+                vm_build_integer(vm, INTEGER(vm_prev(vm)) operator_ INTEGER(vm_peek(vm)));         \
+            else if (vm_peek(vm)->kind == LISP_FLOAT)                                              \
+                vm_build_float(vm, FLOAT(vm_prev(vm)) operator_ FLOAT(vm_peek(vm)));               \
+                                                                                                   \
+            vm_pop_prev(vm);                                                                       \
+            vm_pop_prev(vm);                                                                       \
+                                                                                                   \
+            list = CDR(list);                                                                      \
+        }                                                                                          \
+        vm_pop_prev(vm);                                                                           \
+    }
+
+#define NUMERIC_ORDER_BUILTIN(func_name_, operator_)                                               \
+    void func_name_(VM *vm) {                                                                      \
+        ASSERT_HAS(vm, 2);                                                                         \
+        vm_to_common_numeric(vm);                                                                  \
+        if (vm_peek(vm)->kind == LISP_BOOL)                                                        \
+            vm_build_bool(vm, BOOL(vm_prev(vm)) operator_ BOOL(vm_peek(vm)));                      \
+        else if (vm_peek(vm)->kind == LISP_INTEGER)                                                \
+            vm_build_bool(vm, INTEGER(vm_prev(vm)) operator_ INTEGER(vm_peek(vm)));                \
+        else if (vm_peek(vm)->kind == LISP_FLOAT)                                                  \
+            vm_build_bool(vm, FLOAT(vm_prev(vm)) operator_ FLOAT(vm_peek(vm)));                    \
+        vm_pop_prev(vm);                                                                           \
+        vm_pop_prev(vm);                                                                           \
+    }
+
 // Node, Node -> Node
 void rkl_eq(VM *vm) {
     ASSERT_HAS(vm, 2);
@@ -55,39 +95,66 @@ end:
     vm_build_bool(vm, is_equal);
 }
 
-// Integer, Integer -> Integer
-void rkl_sub(VM *vm) {
+void rkl_ne(VM *vm) {
+    ASSERT_HAS(vm, 2);
+    rkl_eq(vm);
+    vm_build_bool(vm, !BOOL(vm_peek(vm)));
+    vm_pop_prev(vm);
+}
+
+NUMERIC_VARIADIC_BUILTIN(rkl_add, +)
+NUMERIC_VARIADIC_BUILTIN(rkl_mul, *)
+NUMERIC_VARIADIC_BUILTIN(rkl_sub, -)
+
+NUMERIC_ORDER_BUILTIN(rkl_gt, >)
+NUMERIC_ORDER_BUILTIN(rkl_ge, >=)
+NUMERIC_ORDER_BUILTIN(rkl_lt, <)
+NUMERIC_ORDER_BUILTIN(rkl_le, <=)
+
+void rkl_truediv(VM *vm) {
     ASSERT_HAS(vm, 2);
 
-    vm_expect_kind(vm, LISP_INTEGER, WRONG_TYPE);
-    Integer value2 = INTEGER(vm_peek(vm));
-    vm_pop(vm);
+    if (!IS_NUMBERIC(vm_peek(vm)) || !IS_NUMBERIC(vm_prev(vm)))
+        vm_recover(vm, WRONG_TYPE);
 
-    vm_expect_kind(vm, LISP_INTEGER, WRONG_TYPE);
-    Integer value1 = INTEGER(vm_peek(vm));
-    vm_pop(vm);
+    vm_to_common_numeric(vm);
 
-    vm_build_integer(vm, value1 - value2);
+    if (vm_peek(vm)->kind == LISP_BOOL)
+        vm_build_float(vm, (double)BOOL(vm_prev(vm)) / (double)BOOL(vm_peek(vm)));
+    else if (vm_peek(vm)->kind == LISP_INTEGER)
+        vm_build_float(vm, (double)INTEGER(vm_prev(vm)) / (double)INTEGER(vm_peek(vm)));
+    else if (vm_peek(vm)->kind == LISP_FLOAT)
+        vm_build_float(vm, FLOAT(vm_prev(vm)) / FLOAT(vm_peek(vm)));
+    vm_pop_prev(vm);
+    vm_pop_prev(vm);
 }
 
-void rkl_add(VM *vm) {
-    int result_value = 0;
+void rkl_div(VM *vm) {
+    ASSERT_HAS(vm, 2);
 
-    LispNode *list = vm_peek(vm);
-    while (list->kind == LISP_CONS) {
-        result_value += CAR(list)->as.integer;
-        list = CDR(list);
-    }
-    vm_pop(vm);
-    vm_build_integer(vm, result_value);
+    if (vm_peek(vm)->kind != LISP_INTEGER || vm_prev(vm)->kind != LISP_INTEGER)
+        vm_recover(vm, WRONG_TYPE);
+
+    if (INTEGER(vm_peek(vm)) == 0)
+        vm_recover(vm, WRONG_VALUE);
+
+    vm_build_integer(vm, INTEGER(vm_prev(vm)) / INTEGER(vm_peek(vm)));
+    vm_pop_prev(vm);
+    vm_pop_prev(vm);
 }
 
-void rkl_gt(VM *vm) {
-    int value2 = INTEGER(vm_peek(vm));
-    vm_pop(vm);
-    int value1 = INTEGER(vm_peek(vm));
-    vm_pop(vm);
-    vm_build_bool(vm, value1 > value2);
+void rkl_mod(VM *vm) {
+    ASSERT_HAS(vm, 2);
+
+    if (vm_peek(vm)->kind != LISP_INTEGER || vm_prev(vm)->kind != LISP_INTEGER)
+        vm_recover(vm, WRONG_TYPE);
+
+    if (INTEGER(vm_peek(vm)) == 0)
+        vm_recover(vm, WRONG_VALUE);
+
+    vm_build_integer(vm, INTEGER(vm_prev(vm)) % INTEGER(vm_peek(vm)));
+    vm_pop_prev(vm);
+    vm_pop_prev(vm);
 }
 
 void rkl_eval(VM *vm) {
@@ -100,7 +167,11 @@ void rkl_is_nil(VM *vm) {
     vm_build_bool(vm, is_nil);
 }
 
-DEFINE_MODULE(MATH_LOGIC) = {{"+", {rkl_add, 0, true}},      {"-", {rkl_sub, 2, false}},
-                             {"=", {rkl_eq, 2, false}},      {">", {rkl_gt, 2, false}},
-                             {"eval", {rkl_eval, 1, false}}, {"nil?", {rkl_is_nil, 1, false}}};
+DEFINE_MODULE(MATH_LOGIC) = {
+    {"+", {rkl_add, 1, true}},      {"*", {rkl_mul, 1, true}},       {"-", {rkl_sub, 1, true}},
+    {"/", {rkl_truediv, 2, false}}, {"=", {rkl_eq, 2, false}},       {"!=", {rkl_ne, 2, false}},
+    {">", {rkl_gt, 2, false}},      {">=", {rkl_ge, 2, false}},      {"<", {rkl_lt, 2, false}},
+    {"<=", {rkl_le, 2, false}},     {"div", {rkl_div, 2, false}},    {"mod", {rkl_mod, 2, false}},
+    {"eval", {rkl_eval, 1, false}}, {"nil?", {rkl_is_nil, 1, false}}};
+
 DEFINE_MODULE_SIZE(MATH_LOGIC);

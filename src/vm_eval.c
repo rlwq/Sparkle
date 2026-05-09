@@ -1,4 +1,3 @@
-#include "io.h"
 #include "lisp_node.h"
 #include "special_forms.h"
 #include "utils.h"

@@ -1,0 +1,7 @@
+(print (= 1 True))
+(print (= 0 True))
+(print (= 1 False))
+(print (= 0 False))
+
+(print (+ 1 False True 2 3 True 1 -1 -2))
+(print (- 1 2 3))
