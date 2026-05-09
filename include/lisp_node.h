@@ -27,6 +27,7 @@ typedef enum {
     UNCALLABLE_CALL,
     WRONG_ARITY,
     WRONG_TYPE,
+    WRONG_VALUE,
 } ExceptionKind;
 
 typedef struct {
