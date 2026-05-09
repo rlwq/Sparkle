@@ -4,41 +4,45 @@ This document defines the semantics of Sparkle as a development & documental ref
 
 ## Program model
 
-* A **program** is a sequence of **s-expressions**.
-* Expressions are evaluated in order, top to bottom.
-* Sparkle uses strict evaluation (call-by-value): in ordinary function calls, arguments are evaluated before the call.
-* Argument evaluation order is left-to-right.
+* A **program** is a sequence of **s-expressions** evaluated top to bottom. Each expression is evaluated before the next begins.
+* Sparkle uses strict evaluation (call-by-value): in a function call, all arguments are
+evaluated left-to-right before the function is invoked.
+* **Special forms** differ from function calls: they receive their arguments unevaluated and control evaluation themselves. Each special form documents which arguments it evaluates and when.
 
 ## Core Types
 
-Sparkle has the following types:
-
-* `Nil`
-* `Bool`
-* `Integer`
-* `Float`
-* `String`
-* `Symbol`
-* `Cons` & `Lists`
-* `Lambda`
-* `Builtin`
-* `Exception`
+Sparkle has the following types: `Nil`, `Bool`, `Integer`, `Float`, `String`, `Symbol`, `Cons`, `Lambda`, `Builtin` and `Exception`.
 
 ### Nil
 
-Represents the absence of a value or an empty list.
-Defined as `Nil` or `()`.
-**Proper list** terminator (the empty list is `Nil` itself). 
+Represents the absence of a value.
+
+Literal syntax: `()`.
+A symbol with value `Nil` evaluates to the `Nil` object.
+
+A **Proper list** terminator.
+Represents an empty **proper list**.
+
+```lisp 
+(eval 'Nil)  ; Nil (object of type Nil)
+(print ())   ; Nil
+```
 
 ### Bool
 
 Represents a boolean value. `True` or `False`.
-Use `(? value)` to explicitly cast any value to `Bool`.
 
-* `Nil` → `False`
+A symbol with value `True` evaluates to a `Bool` object with value `True`.
+A symbol with value `False` evaluates to a `Bool` object with value `False`.
+
+Use `(? value)` function to explicitly cast any value to `Bool`.
+
+Truthiness rules for casting:
+* `Nil` → always `False`
+* `Bool` → itself
 * `Integer`, `Float` → `False` if `0`, otherwise `True`
 * `String` → `False` if empty, otherwise `True`
-* `Cons`, `Lambda`, `Builtin`, `Symbol`, `Exception` → `True`
+* `Cons`, `Lambda`, `Builtin`, `Symbol`, `Exception` → always `True`
 
 ```lisp
 (? 0)    ; False
@@ -50,14 +54,21 @@ Use `(? value)` to explicitly cast any value to `Bool`.
 ### Symbol
 
 An object representing an identifier.
-When evaluated, returns the value bound in the scope.
-When unevaluated (e.g. via `quote`), represents itself - just a name, not a reference to anything.
+
+Literal syntax: any sequence of non-whitespace, non-parenthesis, non-quote characters that is not a valid `Integer` or `Float` literal. Examples: `x`, `foo`, `nil?`, `+`.
+
+When evaluated, a symbol resolves to the value bound to the name in the current scope.
+`Nil`, `True`, and `False` are self-evaluating: they always produce their respective values.
+
+When unevaluated (e.g. via `quote`), represents itself - a name, not a reference.
+Symbols whose name begins with `:` evaluate to themselves: `(eval ':foo)` results in symbol `:foo`.
 
 ```lisp
-(let x 12345)
+(let x 42)
 
-x                       ; 12345
-(quote SymbolIsItself)  ; SymbolIsItself
+x                         ; 42
+(quote symbol-is-itself)  ; symbol-is-itself
+(= :foo :bar)             ; False
 ```
 
 ### Integer
@@ -75,20 +86,21 @@ Ex.: `3.14`, `-0.5`.
 An immutable sequence of characters.
 Ex.: `"hello"`, `"world"`.
 
-### Cons & Lists
+### Cons 
 
 #### Cons pairs
 
 A **Cons Cell** is an ordered pair of two values.
 Its "left" and "right" slots are named `car` and `cdr` respectively.
 
+Literal syntax:
+* `(x . y)` - a cell where `car` is `x` and `cdr` is `y`. Shorthand for `(cons x y)`.
+* `(x .  )` is parsed as `(x . Nil)`.
+* `(  . x)` is parsed as `(Nil . x)`.
+
 * Use the `cons` function to build a new cell. 
 * Use the `car` and `cdr` functions to retrieve values from the slots.
 * Use `setcar` and `setcdr` to update the values within an existing cell.
-
-* `(x . y)` A cell where `car` is `x` and `cdr` is `y`.
-* `(x .  )` Evaluates as `(x . Nil)`.
-* `(  . x)` Evaluates as `(Nil . x)`.
 
 ```lisp
 (cons 1 2)        ; a pair
@@ -103,8 +115,7 @@ Its "left" and "right" slots are named `car` and `cdr` respectively.
 Lists are not a separate type - they are a convention built on nested `Cons` cells.
 A **proper list** is a chain of Cons cells terminated by `Nil`.
 
-A sequence of values enclosed in parentheses defines a proper list. In this form, the interpreter automatically terminates the chain with Nil.
-* **Example**: `(a b c d e)` defines a Nil-terminated list.
+Literal syntax: `(a b c d)` - elements of a list enclosed in parentheses. The `Nil` terminator is added implicitly.
 
 ```lisp
 ; Lists are nested cons cells terminated by Nil
@@ -118,24 +129,30 @@ A sequence of values enclosed in parentheses defines a proper list. In this form
 
 An **improper list** is a **Cons** chain where the last `cdr` is not `Nil`.
 
-A sequence of values enclosed in parentheses where the finl element is preceded by a dot defines an improper list.
+A sequence of values enclosed in parentheses where the final element is preceded by a dot defines an **improper list**.
+
+Literal syntax: `(1 2 3 4 . 5)` defines an improper list with `5` as its terminal value.
+
 In this form, the list is terminated by the object following the dot.
-Example: `(1 2 3 4 . 5)` defines an improper list with `5` as its terminal value.
 
 ```lisp
-(cons 1 2)           ; (1 . 2)   - improper
-(cons 1 (cons 2 3))  ; (1 2 . 3) - improper
-(1 2 3 . 4)          ; (1 2 3 . 4) - improper
+(cons 1 2)           ; (1 . 2)      - improper
+(cons 1 (cons 2 3))  ; (1 2 . 3)    - improper
+(1 2 3 . 4)          ; (1 2 3 . 4)  - improper
+(:a :b :c . Nil)     ; (:a :b :c)   - a proper list, terminated by Nil object
 ```
 
 ### Built-in functions
 
-Functions provided by the language itself, implemented in C.
-Behave identically to user-defined functions - first-class objects, can be passed around and stored.
+A function implemented natively. Behaves identically to a `Lambda` from the caller's perspective - first-class, can be passed and stored.
 
 ### Lambda functions
 
 An anonymous function object that can be stored in variables, passed as arguments and returned by functions.
+
+Constructed with the `lambda` special form.
+
+Captures the lexical scope in which it was defined (closure).
 
 ```lisp
 (let add (lambda (x y) (+ x y)))
@@ -147,16 +164,34 @@ An anonymous function object that can be stored in variables, passed as argument
 (add5 3)  ; 8
 ```
 
-## Special Forms & Flow Control
+### Exception
+
+Represents a caught runtime error.
+The result of an exception catch with `try` special form.
+
+```lisp
+(try (car Nil))  ; <WRONG_TYPE>
+(try (+ 1 2))    ; Nil - No cought exception
+```
+
+## Special Forms, Flow Control and State Mutation
 
 Special forms look like function calls but are evaluated differently - arguments are not evaluated before being passed and are not bound to any scope - there is no function-like machinery involved.
 Special forms handle flow control and state mutation.
+An incorrect call of a special form raises an `INVALID_SPECIAL_FORM` exception.
 
 ### let
 
 `let` introduces a new binding in the current lexical scope.
-Allows shadowing of variables defined in parent-scopes.
-Rebinding an already bound symbol is a runtime exception.
+
+Usage: `(let name expr)`
+
+Evaluates `expr` and binds the result to name in the current scope.
+Returns the bound value.
+
+`name` must be a `symbol`.
+Binding a name that is already bound in the current scope raises an `SYMBOL_REBINDING` exception.
+shadowing a name from a parent scope is allowed.
 
 ```lisp
 (let x 42)
@@ -165,8 +200,7 @@ Rebinding an already bound symbol is a runtime exception.
 
 (begin
     (let x 10)
-    (print x)    ; 10
-)
+    (print x))   ; 10
 
 (print x)        ; 42
 ```
@@ -174,8 +208,13 @@ Rebinding an already bound symbol is a runtime exception.
 ### set
 
 `set` updates an existing binding.
-Updates the binding in the local-most scope.
-Using set on an unbound name is a runtime exception.
+
+Usage: `(set name expr)`
+
+Evaluates expr and updates the existing binding of name to the result. Searches outward
+through enclosing scopes. Returns the new value.
+
+Using `set` on an unbound name raises an `SYMBOL_UNDEFINED` exception.
 
 ```lisp
 (let x 1)
@@ -186,21 +225,29 @@ Using set on an unbound name is a runtime exception.
 ### if
 
 Conditional expression.
-Evaluates the condition, then either the true or false branch.
-The else branch is optional - if omitted and the condition is false, returns `Nil`.
-Automatically casts the condition to `Bool`.
+
+Usage:
+* `(if condition then)`
+* `(if condition then else)`
+
+Evaluates the `condition` and casts the result to `Bool`. If truthy, evaluates and returns`then` expression. If falsy, evaluates and returns `else` if provided, otherwise returns `Nil`.
 
 ```lisp
-(if (= x 0)
-    "zero"
-    "non-zero")
-
-(if (< 1 2) (print "Hi!"))  ; Hi!
+(if (< 1 2) (print "yes"))   ; yes
+(if False (print "no"))      ; Nil
 ```
 
 ### lambda
 
-Creates a Lambda object capturing the current scope.
+Creates and returns a `Lambda` object that captures the current scope.
+
+Usage: `(lambda args expr)`
+`args` is either:
+* a proper list of symbols: `(x y z)` - evaluates to a fixed-arity lambda.
+* a symbol: `args` - variadic lambda with no positional arguments.
+* an improper list of symbols: `(x y . args)` - fixed amount of positional arguments with a list of variadic arguments.
+
+`expr` is the lambda body, evaluated when the lambda is called.
 
 ```lisp
 (lambda (x y) (+ x y))
@@ -210,8 +257,6 @@ Creates a Lambda object capturing the current scope.
 (square 5)  ; 25
 ```
 
-Can define variadic Lambdas.
-
 ``` lisp
 (let drop (lambda (head . tail) tail))
 (print (drop 1 2 3 4))  ; 2 3 4
@@ -220,18 +265,22 @@ Can define variadic Lambdas.
 ### quote
 
 Returns its argument unevaluated.
+
+Usage: `(quote expr)`
+
 Shorthand: `'expr`.
 
 ```lisp
 (quote x)        ; x       - a symbol, not its value
 (quote (1 2 3))  ; (1 2 3) - a list, not a call
+'(+ 1 2)         ; (+ 1 2)
 ```
-
 
 ### begin
 
-Evaluates a sequence of expressions in order, returns the value of the last one.
-Creates a lexical scope.
+Evaluates a sequence of expressions in order in a new lexical scope, returns the value of the last one.
+
+Usage: `(begin expr1 expr2 ...)`
 
 ``` lisp
 (begin
@@ -242,22 +291,26 @@ Creates a lexical scope.
 
 ### while
 
-Evaluates the body repeatedly as long as the condition evaluates to `True`.
-Returns `Nil`.
+Conditional loop. Evaluates `condition` and casts the result to `Bool`. While truthy, evaluates `expr` then re-evaluates `condition`. Returns `Nil`.
+
+Usage: `(while condition expr)`
 
 ```lisp
 (let i 0)
-(while (< i 5)
+(while (< i 5) (begin
   (print i)
   (set i (+ i 1))
-)
+))
 ```
 
 ### try
 
+Catches exceptions, raised when evaluating an expression.
+
+Usage: `(try exception)`
+
 Evaluates its argument.
-If a runtime exception occurs, catches it and returns the `Exception` object;
-otherwise returns `Nil`.
+If a runtime exception occurs, catches it and returns the `Exception` object, otherwise returns `Nil`.
 
 ```lisp
 (try (car Nil))  ;  <WRONG_TYPE> - an exception was caught
@@ -266,7 +319,11 @@ otherwise returns `Nil`.
 
 ### and
 
-Evaluates arguments left-to-right and casts the result to `Bool`.
+Short-circuiting logical AND.
+
+Usage: `(and expr1 expr2...)`
+
+Evaluates its arguments left-to-right and casts the result to `Bool`.
 As soon as any argument evaluates to `False` it stops the arguments evaluation and returns `False`.
 If all arguments evaluated to `True`, returns `True`.
 With no arguments, returns True.
@@ -278,6 +335,10 @@ With no arguments, returns True.
 ```
 
 ### or
+
+Short-circuiting logical OR.
+
+Usage: `(or expr1 expr2...)`
 
 Evaluates arguments left-to-right and casts them to `Bool`.
 As soon as any argument evaluates to `True` it stops the arguments evaluation and returns `True`.
@@ -330,13 +391,17 @@ Arithmetic operations work on `Integer` and `Float` values only. Passing any oth
 If at least one argument is `Float`, the result is `Float`. Otherwise the result is `Integer`.
 Any kind of division by zero is a runtime exception.
 
-* **`(+ x y ...)`** - sum of all arguments. With no arguments, returns `0`.
-* **`(- x y1 y2 ...)`** - difference `x - y1 - y2 ...`.
-* **`(* x y ...)`** - product of all arguments. With no arguments, returns `1`.
-* **`(/ x y1 y2 ...)`** - floating-point division `x / y1 / y2 ...`.
-* **`(div x y)`** - integer division of `x` by  `y`.
-* **`(mod x y)`** - remainder of `x / y`.
- 
+* `(+ x y ...)` - sum of all arguments. With no arguments, returns `0`.
+* `(- x y1 y2 ...)` - difference `x - y1 - y2 ...`.
+* `(* x y ...)` - product of all arguments. With no arguments, returns `1`.
+* `(/ x y1 y2 ...)` - floating-point division `x / y1 / y2 ...`.
+* `(div x y)` - integer division of `x` by  `y`.
+* `(mod x y)` - remainder of `x / y`.
+
+### Logic
+
+* **`(not x)`** - casts `x` to `Bool` and returns the opposite value.
+
 ### Comparison
 
 #### Equality
@@ -355,31 +420,32 @@ Ordering operations work on `Integer` and `Float` values only. Passing any other
 * **`(< x y)`** - returns `True` if `x` is less than `y`, otherwise `False`.
 * **`(>= x y)`** - returns `True` if `x` is greater than or equal to `y`, otherwise `False`.
 * **`(<= x y)`** - returns `True` if `x` is less than or equal to `y`, otherwise `False`.
-* **`(not x)`** - casts `x` to `Bool` and returns the opposite value.
 
 ## Exception Handling
  
 Runtime exceptions are raised by the interpreter when an operation cannot proceed.
-Each exception carries an `Exception` object describing what went wrong.
+A runtime exception unwinds the call stack until a try form catches it or the program
+terminates with a diagnostic message.
  
 Exceptions can be caught with `try`:
- 
+
+Each exception carries a kind identifying the cause:
+
+| Kind                   | Raised when                                       |
+|------------------------|---------------------------------------------------|
+| `WRONG_TYPE`           | A function receives an argument of the wrong type |
+| `WRONG_ARITY`          | A function receives the wrong number of arguments |
+| `SYMBOL_UNDEFINED`     | A symbol has no binding in scope                  |
+| `SYMBOL_REBINDING`     | A name is bound twice in the same scope           |
+| `UNCALLABLE`           | A non-callable object is used as a function       |
+| `WRONG_VALUE`          | Division or remainder by zero                     |
+| `INVALID_SPECIAL_FORM` | A special form receives invalid arguments         |
+
+Catching exceptions with `try`:
+
 ```lisp
 (let result (try (car Nil)))
-(if (nil? result)
-    (show "ok")
-    (show "exception caught"))
+(if (Nil? result) "ok" result)  ; <WRONG_TYPE>
 ```
-
-### Exception categories
- 
-| Kind                | Raised when                                      |
-|---------------------|--------------------------------------------------|
-| `WRONG_TYPE`        | A function receives an argument of the wrong type |
-| `WRONG_ARITY`       | A function receives the wrong number of arguments |
-| `SYMBOL_UNDEFINED`  | A symbol has no binding in scope                 |
-| `SYMBOL_REBINDING`  | A name is bound twice in the same scope          |
-| `UNCALLABLE`        | A non-callable object is used as a function      |
-| `WRONG_VALUE`       | Division or remainder by zero                    |
-| `IMPROPER_FORM` | |
+When an exception is not caught, the interpreter exits with a non-zero status and prints a human-readable description of the error.
 
