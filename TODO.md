@@ -7,26 +7,24 @@ This document outlines the features and fixes planned for Sparkle.
 * [ ] Multiline comments.
 * [ ] String escaping sequences.
 * [ ] More descriptive parsing errors (on expected tokens).
-* [ ] `'` at the end of file is handled inproperly.
+* [ ] `'` at the end of file is handled improperly.
 
 ## Special Forms & Control Flow 
 
 * [ ] `set` For variable mutation.
 * [ ] `while` Loops and loops in general.
 * [ ] `begin` Scoped lexical blocks & statement blocks.
-* [ ] Flow controling logical forms (`and`, `or`).
+* [ ] Flow control logical forms (`and`, `or`).
 
 ## Optimizations
 
 * [ ] Hash tables for fast search in scopes.
 * [ ] `Nil` type as singleton.
 * [ ] Arena allocations instead of an linked list in GC.
-* [ ] An attempt/research on TCO.
+* [ ] An attempt/research on Tail Call Optimization.
 
-## Language Semanatics
+## Language Semantics
 
-* [ ] `Bool` data type & logical functions.
-* [ ] `Float` data type.
 * [ ] `String` data type & basic string manipulation.
 * [ ] Type checking & exception throwing on incorrect data types in built-in functions.
 * [ ] Macro support.
@@ -35,7 +33,7 @@ This document outlines the features and fixes planned for Sparkle.
 ## Base Library
 
 * [ ] Arithmetic for `Integer` and `Floor`. (`+`, `-`, `*`, `/`).
-* [ ] Maths library.
+* [ ] Math library.
 * [ ] Logical predicates (`=`, `>`, `<`, ..., `not`).
     * [ ] Some kind of structure equality and ref equality for compound objects.
 * [ ] I/O
@@ -56,14 +54,14 @@ This document outlines the features and fixes planned for Sparkle.
 ## Documentation & Presentation
 
 * [ ] Which kind of lisp is that.
-* [ ] Write about `(x .)` & `(. x)` syntax.
+* [ ] Write about capitalized self-evaluating symbols.
 
 ## Code base, bugs, & fixes
 
 * [ ] `'x` syntax when printing quoted values.
 * [ ] Two error handler invocations behave differently: one duplicates the expression before entering the frame, the other does not.
 * [ ] Exception call when trying to evaluate an improper list.
-* [ ] Invalid parser output when feeded an empty file.
+* [ ] Invalid parser output when fed an empty file.
 
 ## Tooling
 
@@ -75,6 +73,9 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Done
 
+* [x] `Bool` data type & logical functions.
+* [x] `Float` data type.
+* [x] Write about `(x .)` & `(. x)` syntax.
 * [x] Negative tests. Error message validation.
 * [x] Evaluation time of tests.
 * [x] `Exception` data type for expressive error reporting & powerful catch mechanism.

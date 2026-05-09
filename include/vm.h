@@ -11,8 +11,11 @@
 
 #define VM_CURR_SCOPE(e_) (da_at((e_)->scope_stack, (e_)->scope_stack.size - 1))
 
+#define VM_STACK_AT(e_, n_) (da_at_end((e_)->value_stack, (n_)))
+
 #define ASSERT_HAS(e_, n_) (assert((e_)->value_stack.size >= (n_)))
-#define ASSERT_KIND(e_, k_) (assert(da_at_end((e_)->value_stack, 0)->kind == (k_)))
+#define ASSERT_KIND(e_, k_)                                                                        \
+    (assert(((e_)->value_stack.size > 0) && (da_at_end((e_)->value_stack, 0)->kind == (k_))))
 #define ASSERT_LIST(e_)                                                                            \
     (assert(da_at_end((e_)->value_stack, 0)->kind == LISP_NIL ||                                   \
             da_at_end((e_)->value_stack, 0)->kind == LISP_CONS))
@@ -42,8 +45,6 @@ VM *vm_alloc(LispNodePtrDA exprs, GC *gc, StringInterner *si);
 void vm_free(VM *vm);
 
 void vm_register_builtin(VM *vm, StringName name, LispBuiltin func_ptr);
-
-void vm_eval_expr(VM *vm);
 void vm_eval_all(VM *vm);
 
 void vm_push_recovery(VM *vm, jmp_buf *jmp);
@@ -60,7 +61,9 @@ void vm_scope_set(VM *vm, StringName name);
 
 void vm_build_value(VM *vm, LispNodeKind kind);
 void vm_build_integer(VM *vm, Integer value);
-void vm_build_exception(VM *vm, ExceptionKind exception);
+void vm_build_bool(VM *vm, bool value);
+void vm_build_float(VM *vm, double value);
+void vm_build_exception(VM *vm, ExceptionKind value);
 void vm_build_builtin(VM *vm, LispBuiltin value);
 void vm_build_nil(VM *vm);
 void vm_build_lambda(VM *vm, LambdaArgs args, bool is_variadic, LispNode *expr, Scope *scope);
@@ -75,11 +78,16 @@ void vm_pop_prev(VM *vm);
 LispNode *vm_peek(VM *vm);
 LispNode *vm_prev(VM *vm);
 
-size_t eval_list(VM *vm);
-void unpack_cons(VM *vm);
-size_t unpack_list(VM *vm);
-size_t eval_list_inplace(VM *vm);
-void unpack_list_n(VM *vm, size_t n);
+LispNodeKind vm_to_common_numeric(VM *vm);
+void vm_eval_node(VM *vm);
+void vm_eval_cons(VM *vm);
+void vm_eval_symbol(VM *vm);
+size_t vm_eval_list(VM *vm);
+size_t vm_unpack_list(VM *vm);
+size_t vm_eval_list_inplace(VM *vm);
+bool vm_cast_to_bool(VM *vm);
+void vm_unpack_cons(VM *vm);
+void vm_unpack_list_n(VM *vm, size_t n);
 
 void vm_mark(VM *vm);
 

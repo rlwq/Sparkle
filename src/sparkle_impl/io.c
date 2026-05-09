@@ -1,5 +1,5 @@
-#include "debug.h"
 #include "forwards.h"
+#include "io.h"
 #include "lisp_node.h"
 #include <assert.h>
 #include <stdio.h>
@@ -70,10 +70,19 @@ void print_exception(LispNode *expr) {
 void print_expr(LispNode *expr) {
     switch (expr->kind) {
     case LISP_NIL:
-        printf("NIL");
+        printf("Nil");
+        break;
+    case LISP_BOOL:
+        if (BOOL(expr))
+            printf("True");
+        else
+            printf("False");
         break;
     case LISP_INTEGER:
-        printf("%lld", expr->as.integer);
+        printf("%lld", INTEGER(expr));
+        break;
+    case LISP_FLOAT:
+        printf("%f", FLOAT(expr));
         break;
     case LISP_STRING:
         printf("NOT IMPLEMENTED");

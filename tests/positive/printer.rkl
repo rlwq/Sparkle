@@ -1,6 +1,6 @@
 (print 1234321)              ; 1234321
-(print NIL)                  ; NIL
-(print ())                   ; NIL
+(print Nil)                  ; Nil
+(print ())                   ; Nil
 (print (quote Hello!))       ; Hello!
 (print (quote (1 2 3 4 5)))  ; 1 2 3 4 5
 (print (cons 1 2))           ; (cons 1 2)
@@ -9,7 +9,7 @@
 ;     / \
 ;    o   2
 ;   / \
-;  1  NIL
+;  1  Nil
 (print (cons (quote (1)) 2))  ; (cons (1) 2)
 (print (quote (cons (1) 2)))  ; (cons (1) 2)
 
@@ -31,3 +31,4 @@
 
 (print ())
 (print (cons () ()))
+

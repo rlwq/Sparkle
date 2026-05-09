@@ -22,7 +22,7 @@ bool try_dispatch_special_form(VM *vm) {
 
     if (handler) {
         vm_pop(vm);
-        size_t argc = unpack_list(vm);
+        size_t argc = vm_unpack_list(vm);
         handler(vm, argc);
         return true;
     }
@@ -42,7 +42,7 @@ void eval_let_form(VM *vm, size_t argc) {
 
     StringName name = SYMBOL(vm_peek(vm));
     vm_pop(vm);
-    vm_eval_expr(vm);
+    vm_eval_node(vm);
     // vm_push(vm, vm_peek(vm));
     vm_scope_define(vm, name);
 }
@@ -59,7 +59,7 @@ void eval_set_form(VM *vm, size_t argc) {
 
     StringName name = SYMBOL(vm_peek(vm));
     vm_pop(vm);
-    vm_eval_expr(vm);
+    vm_eval_node(vm);
     vm_scope_set(vm, name);
 }
 
@@ -72,9 +72,10 @@ void eval_if_form(VM *vm, size_t argc) {
         vm_build_nil(vm);
 
     vm_rot(vm);
-    vm_eval_expr(vm);
+    vm_eval_node(vm);
+    vm_cast_to_bool(vm);
 
-    bool is_positive = vm_peek(vm)->kind != LISP_NIL;
+    bool is_positive = BOOL(vm_peek(vm));
     vm_pop(vm);
 
     if (is_positive)
@@ -82,7 +83,38 @@ void eval_if_form(VM *vm, size_t argc) {
     else
         vm_pop_prev(vm);
 
-    vm_eval_expr(vm);
+    vm_eval_node(vm);
+}
+
+// Node (condition), Node (body) -> Nil
+void eval_while_form(VM *vm, size_t argc) {
+    if (argc != 2)
+        vm_recover(vm, INVALID_SPECIAL_FORM);
+
+    vm_push(vm, vm_prev(vm));
+    // condition body condition
+    vm_eval_node(vm);
+    bool result = vm_cast_to_bool(vm);
+
+    // condition body result
+    while (result) {
+        vm_pop(vm);
+        vm_push(vm, vm_peek(vm));
+        // condition body body
+        vm_eval_node(vm);
+        vm_pop(vm);
+
+        // condition body
+        vm_push(vm, vm_prev(vm));
+        vm_eval_node(vm);
+        result = vm_cast_to_bool(vm);
+    }
+
+    vm_pop(vm);
+    vm_pop(vm);
+    vm_pop(vm);
+
+    vm_build_nil(vm);
 }
 
 // Cons (Args list), Node (subexpr) -> Lambda
@@ -149,7 +181,7 @@ void eval_try_form(VM *vm, size_t argc) {
         vm_build_exception(vm, vm->exception);
     } else {
         vm_push(vm, da_at_end(vm->value_stack, 0));
-        vm_eval_expr(vm);
+        vm_eval_node(vm);
         vm_pop(vm);
         vm_pop(vm);
         vm_build_nil(vm);
@@ -169,12 +201,12 @@ void eval_begin_form(VM *vm, size_t argc) {
 
     for (size_t i = 0; i + 1 < argc; i++) {
         vm_push(vm, da_at_end(vm->value_stack, argc - 1 - i));
-        vm_eval_expr(vm);
+        vm_eval_node(vm);
         vm_pop(vm);
     }
 
     if (argc > 0)
-        vm_eval_expr(vm);
+        vm_eval_node(vm);
     else
         vm_build_nil(vm);
 
@@ -186,6 +218,6 @@ void eval_begin_form(VM *vm, size_t argc) {
 SpecialFormDef SPECIAL_FORMS[] = {{"let", eval_let_form},       {"set", eval_set_form},
                                   {"lambda", eval_lambda_form}, {"quote", eval_quote_form},
                                   {"try", eval_try_form},       {"if", eval_if_form},
-                                  {"begin", eval_begin_form}};
+                                  {"begin", eval_begin_form},   {"while", eval_while_form}};
 
 size_t SPECIAL_FORMS_COUNT = sizeof(SPECIAL_FORMS) / sizeof(SPECIAL_FORMS[0]);

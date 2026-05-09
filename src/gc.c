@@ -71,7 +71,9 @@ void gc_free_node(GC *gc, LispNode *expr) {
     case LISP_SYMBOL:
     case LISP_BUILTIN:
     case LISP_STRING:
+    case LISP_BOOL:
     case LISP_EXCEPTION:
+    case LISP_FLOAT:
         free(expr);
         break;
 
@@ -156,7 +158,9 @@ void gc_mark_node(LispNode *expr) {
         case LISP_INTEGER:
         case LISP_STRING:
         case LISP_BUILTIN:
+        case LISP_FLOAT:
         case LISP_EXCEPTION:
+        case LISP_BOOL:
             break;
 
         case LISP_LAMBDA:

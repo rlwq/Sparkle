@@ -1,5 +1,5 @@
-#ifndef DEBUG_H
-#define DEBUG_H
+#ifndef IO_H
+#define IO_H
 
 #include "lisp_node.h"
 
