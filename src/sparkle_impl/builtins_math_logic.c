@@ -8,27 +8,21 @@
 
 #define NUMERIC_VARIADIC_BUILTIN(func_name_, operator_)                                            \
     void func_name_(VM *vm) {                                                                      \
-        ASSERT_HAS(vm, 2);                                                                         \
-        LispNode *list = vm_peek(vm);                                                              \
         vm_swap(vm);                                                                               \
                                                                                                    \
-        while (list->kind == LISP_CONS) {                                                          \
-            vm_push(vm, CAR(list));                                                                \
-            vm_to_common_numeric(vm);                                                              \
+        LIST_ITER(vm, curr, vm_prev(vm)) vm_push(vm, CAR(curr));                                   \
+        vm_to_common_numeric(vm);                                                                  \
                                                                                                    \
-            if (vm_peek(vm)->kind == LISP_BOOL)                                                    \
-                vm_build_integer(vm,                                                               \
-                                 (Integer)BOOL(vm_prev(vm)) operator_(Integer) BOOL(vm_peek(vm))); \
-            else if (vm_peek(vm)->kind == LISP_INTEGER)                                            \
-                vm_build_integer(vm, INTEGER(vm_prev(vm)) operator_ INTEGER(vm_peek(vm)));         \
-            else if (vm_peek(vm)->kind == LISP_FLOAT)                                              \
-                vm_build_float(vm, FLOAT(vm_prev(vm)) operator_ FLOAT(vm_peek(vm)));               \
+        if (vm_peek(vm)->kind == LISP_BOOL)                                                        \
+            vm_build_integer(vm, (Integer)BOOL(vm_prev(vm)) operator_(Integer) BOOL(vm_peek(vm))); \
+        else if (vm_peek(vm)->kind == LISP_INTEGER)                                                \
+            vm_build_integer(vm, INTEGER(vm_prev(vm)) operator_ INTEGER(vm_peek(vm)));             \
+        else if (vm_peek(vm)->kind == LISP_FLOAT)                                                  \
+            vm_build_float(vm, FLOAT(vm_prev(vm)) operator_ FLOAT(vm_peek(vm)));                   \
                                                                                                    \
-            vm_pop_prev_n(vm, 2);                                                                  \
+        vm_pop_prev_n(vm, 2);                                                                      \
                                                                                                    \
-            list = CDR(list);                                                                      \
-        }                                                                                          \
-        vm_pop_prev(vm);                                                                           \
+        END_LIST_ITER(vm, curr) vm_pop_prev(vm);                                                   \
     }
 
 #define NUMERIC_ORDER_BUILTIN(func_name_, operator_)                                               \
@@ -46,11 +40,9 @@
 
 // Node, Node -> Node
 void rkl_eq(VM *vm) {
-    ASSERT_HAS(vm, 2);
-
     bool is_equal = false;
 
-    if (IS_NUMBERIC(vm_peek(vm)) && IS_NUMBERIC(vm_prev(vm)))
+    if (OFTYPE(vm_peek(vm), TY_NUMERIC) && OFTYPE(vm_prev(vm), TY_NUMERIC))
         vm_to_common_numeric(vm);
 
     if (vm_peek(vm)->kind != vm_prev(vm)->kind) {
@@ -93,7 +85,6 @@ end:
 }
 
 void rkl_ne(VM *vm) {
-    ASSERT_HAS(vm, 2);
     rkl_eq(vm);
     vm_build_bool(vm, !BOOL(vm_peek(vm)));
     vm_pop_prev(vm);
@@ -109,10 +100,7 @@ NUMERIC_ORDER_BUILTIN(rkl_lt, <)
 NUMERIC_ORDER_BUILTIN(rkl_le, <=)
 
 void rkl_truediv(VM *vm) {
-    ASSERT_HAS(vm, 2);
-
-    if (!IS_NUMBERIC(vm_peek(vm)) || !IS_NUMBERIC(vm_prev(vm)))
-        vm_recover(vm, WRONG_TYPE);
+    vm_expect2(vm, TY_NUMERIC, TY_NUMERIC);
 
     vm_to_common_numeric(vm);
 
@@ -126,22 +114,15 @@ void rkl_truediv(VM *vm) {
 }
 
 void rkl_div(VM *vm) {
-    ASSERT_HAS(vm, 2);
-
-    if (vm_peek(vm)->kind != LISP_INTEGER || vm_prev(vm)->kind != LISP_INTEGER)
-        vm_recover(vm, WRONG_TYPE);
-
-    VM_RECOVER_IF(vm, INTEGER(vm_peek(vm)) == 0, WRONG_TYPE);
+    vm_expect2(vm, TY_INTEGER, TY_INTEGER);
+    VM_RECOVER_IF(vm, INTEGER(vm_peek(vm)) == 0, WRONG_VALUE);
 
     vm_build_integer(vm, INTEGER(vm_prev(vm)) / INTEGER(vm_peek(vm)));
     vm_pop_prev_n(vm, 2);
 }
 
 void rkl_mod(VM *vm) {
-    ASSERT_HAS(vm, 2);
-
-    VM_RECOVER_IF(vm, !NODE_IS(vm_peek(vm), LISP_INTEGER), WRONG_TYPE);
-    VM_RECOVER_IF(vm, !NODE_IS(vm_prev(vm), LISP_INTEGER), WRONG_TYPE);
+    vm_expect2(vm, TY_INTEGER, TY_INTEGER);
     VM_RECOVER_IF(vm, INTEGER(vm_peek(vm)) == 0, WRONG_VALUE);
 
     vm_build_integer(vm, INTEGER(vm_prev(vm)) % INTEGER(vm_peek(vm)));
@@ -149,58 +130,48 @@ void rkl_mod(VM *vm) {
 }
 
 void rkl_eval(VM *vm) {
-    ASSERT_HAS(vm, 1);
     vm_eval_node(vm);
 }
 
 void rkl_is_nil(VM *vm) {
-    ASSERT_HAS(vm, 1);
     bool is_nil = vm_peek(vm)->kind == LISP_NIL;
     vm_pop(vm);
     vm_build_bool(vm, is_nil);
 }
 
 void rkl_cast_to_bool(VM *vm) {
-    ASSERT_HAS(vm, 1);
     vm_cast_to_bool(vm);
 }
 
 void rkl_logical_and(VM *vm) {
-    ASSERT_HAS(vm, 1);
     bool result = true;
 
-    for (LispNode *curr = vm_peek(vm); !NODE_IS(curr, LISP_NIL); curr = CDR(curr)) {
+    LIST_ITER(vm, curr, vm_peek(vm))
         vm_push(vm, CAR(curr));
         vm_cast_to_bool(vm);
         result = result && BOOL(vm_peek(vm));
-        if (!result)
-            break;
         vm_pop(vm);
-    }
+    END_LIST_ITER(vm, curr)
 
     vm_pop(vm);
     vm_build_bool(vm, result);
 }
 
 void rkl_logical_or(VM *vm) {
-    ASSERT_HAS(vm, 1);
     bool result = false;
 
-    for (LispNode *curr = vm_peek(vm); !NODE_IS(curr, LISP_NIL); curr = CDR(curr)) {
+    LIST_ITER(vm, curr, vm_peek(vm))
         vm_push(vm, CAR(curr));
         vm_cast_to_bool(vm);
         result = result || BOOL(vm_peek(vm));
-        if (result)
-            break;
         vm_pop(vm);
-    }
+    END_LIST_ITER(vm, curr)
 
     vm_pop(vm);
     vm_build_bool(vm, result);
 }
 
 void rkl_logical_not(VM *vm) {
-    ASSERT_HAS(vm, 1);
     vm_cast_to_bool(vm);
     vm_build_bool(vm, !BOOL(vm_peek(vm)));
     vm_pop_prev(vm);

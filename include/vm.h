@@ -64,8 +64,9 @@ void vm_eval_all(VM *vm);
 
 void vm_push_recovery(VM *vm, jmp_buf *jmp);
 void vm_pop_recovery(VM *vm);
-void vm_recover(VM *vm, ExceptionKind exception);
-void vm_expect_kind(VM *vm, LispNodeKind kind, ExceptionKind exception);
+void vm_recover(VM *vm, ExceptionKind exception) __attribute__((cold));
+void vm_expect(VM *vm, LispNodeType type) __attribute__((cold));
+void vm_expect2(VM *vm, LispNodeType prev, LispNodeType peek) __attribute__((cold));
 
 void vm_push_scope(VM *vm, Scope *scope);
 void vm_build_scope(VM *vm);
