@@ -1,1 +1,33 @@
-(print 1)
+; Arithmetic
+(print (+ 1 2 3))        ; 6
+(print (* 2 3 4))        ; 24
+(print (- 10 3 2))       ; 5
+(print (/ 7 2))          ; 3.5
+(print (div 7 2))        ; 3
+(print (mod 7 2))        ; 1
+
+; Mixed numeric types
+(print (+ 1 (/ 3 2)))    ; 2.5
+(print (* 2 True))       ; 2
+(print (= 1 True))       ; True
+(print (= 0 False))      ; True
+(print (= 1 (/ 1 1)))    ; True
+
+; Equality
+(print (= 1 1))          ; True
+(print (= 1 2))          ; False
+(print (!= 1 2))         ; True
+(print (!= 1 1))         ; False
+(print (= Nil Nil))      ; True
+
+; Ordering
+(print (> 3 2))          ; True
+(print (< 2 3))          ; True
+(print (>= 3 3))         ; True
+(print (<= 2 3))         ; True
+(print (> 1 2))          ; False
+
+; eval, nil?
+(print (eval '(+ 1 2)))  ; 3
+(print (nil? Nil))       ; True
+(print (nil? 1))         ; False

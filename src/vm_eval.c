@@ -1,32 +1,10 @@
+#include "dynamic_array.h"
 #include "lisp_node.h"
 #include "special_forms.h"
 #include "utils.h"
 #include "vm.h"
 #include <assert.h>
 #include <stdbool.h>
-#include <stdio.h>
-
-// Cons -> Expr * n
-size_t vm_eval_list(VM *vm) {
-    ASSERT_LIST(vm);
-
-    size_t size = 0;
-    while (vm_peek(vm)->kind != LISP_NIL) {
-        ASSERT_HAS(vm, LISP_CONS);
-
-        // Evaluate head
-        vm_push(vm, CAR(vm_peek(vm)));
-        vm_eval_node(vm);
-        vm_swap(vm);
-
-        // Push tail
-        vm_push(vm, CDR(vm_peek(vm)));
-        vm_pop_prev(vm);
-        size++;
-    }
-    vm_pop(vm);
-    return size;
-}
 
 // Cons (args), Node (lambda) -> Node (result)
 void eval_lambda_call(VM *vm) {
@@ -79,11 +57,11 @@ size_t vm_unpack_list(VM *vm) {
 }
 
 // Node (cons) -> Node (cons)
-size_t vm_eval_list_inplace(VM *vm) {
+size_t vm_eval_list(VM *vm) {
     ASSERT_HAS(vm, 1);
 
     size_t length = 0;
-    while (vm_peek(vm)->kind == LISP_CONS) {
+    while (NODE_IS(vm_peek(vm), LISP_CONS)) {
         vm_unpack_cons(vm);
         vm_eval_node(vm);
         vm_swap(vm);
@@ -93,11 +71,8 @@ size_t vm_eval_list_inplace(VM *vm) {
     ASSERT_KIND(vm, LISP_NIL);
 
     for (size_t i = 0; i < length; i++) {
-        vm_build_value(vm, LISP_CONS);
-        CDR(vm_peek(vm)) = VM_STACK_AT(vm, 1);
-        CAR(vm_peek(vm)) = VM_STACK_AT(vm, 2);
-        vm_pop_prev(vm);
-        vm_pop_prev(vm);
+        vm_swap(vm);
+        vm_pack_cons(vm);
     }
 
     return length;
@@ -153,10 +128,10 @@ LispNodeKind vm_common_numeric(VM *vm) {
     assert(IS_NUMBERIC(vm_peek(vm)));
     assert(IS_NUMBERIC(vm_prev(vm)));
 
-    if (vm_peek(vm)->kind == LISP_FLOAT || vm_prev(vm)->kind == LISP_FLOAT)
+    if (NODE_IS(vm_peek(vm), LISP_FLOAT) || NODE_IS(vm_prev(vm), LISP_FLOAT))
         return LISP_FLOAT;
 
-    if (vm_peek(vm)->kind == LISP_INTEGER || vm_prev(vm)->kind == LISP_INTEGER)
+    if (NODE_IS(vm_peek(vm), LISP_INTEGER) || NODE_IS(vm_prev(vm), LISP_INTEGER))
         return LISP_INTEGER;
 
     return LISP_BOOL;
@@ -167,12 +142,12 @@ void vm_cast_numeric(VM *vm, LispNodeKind kind) {
     ASSERT_HAS(vm, 1);
     assert(IS_NUMBERIC(vm_peek(vm)));
 
-    if (vm_peek(vm)->kind == LISP_BOOL && kind != LISP_BOOL) {
+    if (NODE_IS(vm_peek(vm), LISP_BOOL) && kind != LISP_BOOL) {
         vm_build_integer(vm, BOOL(vm_peek(vm)));
         vm_pop_prev(vm);
     }
 
-    if (vm_peek(vm)->kind == LISP_INTEGER && kind == LISP_FLOAT) {
+    if (NODE_IS(vm_peek(vm), LISP_INTEGER) && kind == LISP_FLOAT) {
         vm_build_float(vm, INTEGER(vm_peek(vm)));
         vm_pop_prev(vm);
     }
@@ -203,34 +178,29 @@ void vm_eval_cons(VM *vm) {
     vm_eval_node(vm);
 
     switch (vm_peek(vm)->kind) {
-    case LISP_LAMBDA: {
-        LispNode *lambda = vm_peek(vm);
+    case LISP_LAMBDA:
         vm_swap(vm);
-        vm_eval_list_inplace(vm);
+        vm_eval_list(vm);
 
-        vm_push(vm, lambda);
+        vm_dup_prev(vm);
         eval_lambda_call(vm);
         break;
-    }
 
     case LISP_BUILTIN: {
         LispNode *builtin = vm_peek(vm);
         vm_swap(vm);
-        size_t args_count = vm_eval_list_inplace(vm);
+        size_t args_count = vm_eval_list(vm);
 
-        // [CAUTION] Exception source: wrong builtin arity
-        if (!BUILTIN(builtin).is_variadic) {
-            if (args_count != BUILTIN_ARGS_N(builtin))
-                vm_recover(vm, WRONG_ARITY);
+        if (!BUILTIN_IS_VARIADIC(builtin)) {
+            VM_RECOVER_IF(vm, args_count != BUILTIN_ARGS_N(builtin), WRONG_ARITY);
             vm_unpack_list(vm);
         }
 
-        if (BUILTIN(builtin).is_variadic) {
-            if (args_count < BUILTIN_ARGS_N(builtin))
-                vm_recover(vm, WRONG_ARITY);
+        if (BUILTIN_IS_VARIADIC(builtin)) {
+            VM_RECOVER_IF(vm, args_count < BUILTIN_ARGS_N(builtin), WRONG_ARITY);
             vm_unpack_list_n(vm, BUILTIN_ARGS_N(builtin));
         }
-        BUILTIN(builtin).func(vm);
+        BUILTIN_FUNC(builtin)(vm);
         break;
     }
 
@@ -242,7 +212,6 @@ void vm_eval_cons(VM *vm) {
     case LISP_STRING:
     case LISP_EXCEPTION:
     case LISP_NIL:
-        // [CAUTION] Exception source: uncallable object call
         vm_recover(vm, UNCALLABLE_CALL);
         break;
     }
@@ -257,13 +226,14 @@ void vm_eval_symbol(VM *vm) {
     StringName name = SYMBOL(vm_peek(vm));
     vm_pop(vm);
 
-    // TODO: Introduce a table!
-    if (name == si_get(vm->si, "Nil"))
+    if (name == vm->si->prebuilt._Nil)
         vm_build_nil(vm);
-    else if (name == si_get(vm->si, "True"))
+    else if (name == vm->si->prebuilt._True)
         vm_build_bool(vm, true);
-    else if (name == si_get(vm->si, "False"))
+    else if (name == vm->si->prebuilt._False)
         vm_build_bool(vm, false);
+    else if ('A' <= name[0] && name[0] <= 'Z')
+        vm_build_symbol(vm, name);
     else
         vm_scope_get(vm, name);
 }

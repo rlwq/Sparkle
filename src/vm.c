@@ -26,6 +26,12 @@ VM *vm_alloc(LispNodePtrDA exprs, GC *gc, StringInterner *si) {
 
     vm->is_err = false;
 
+#define X(name_, kind_, init_)                                                                     \
+    vm->singletons._##name_ = gc_alloc_node(vm->gc, kind_);                                        \
+    vm->singletons._##name_->as = (LispNodeUnion)init_;
+    SINGLETONS
+#undef X
+
     return vm;
 }
 
@@ -77,6 +83,12 @@ void vm_mark(VM *vm) {
     // Marking value stack
     for (size_t i = 0; i < vm->value_stack.size; i++)
         gc_mark_node(da_at(vm->value_stack, i));
+
+    // Marking singletons
+
+#define X(name_, kind_, init_) gc_mark_node(vm->singletons._##name_);
+    SINGLETONS
+#undef X
 }
 
 LispNode *vm_advance(VM *vm) {
@@ -138,19 +150,23 @@ void vm_eval_all(VM *vm) {
 // Node (Cons) -> Node (Tail), Node (Head)
 void vm_unpack_cons(VM *vm) {
     ASSERT_HAS(vm, 1);
-    assert(vm_peek(vm)->kind == LISP_CONS);
+    ASSERT_KIND(vm, LISP_CONS);
 
-    vm_push(vm, CDR(vm_peek(vm)));
-    vm_swap(vm);
-    vm_push(vm, CAR(vm_peek(vm)));
-    vm_swap(vm);
+    vm_push_prev(vm, CDR(vm_peek(vm)));
+    vm_push_prev(vm, CAR(vm_peek(vm)));
     vm_pop(vm);
+}
+
+// Node (Tail), Node (Head) -> Node (Cons)
+void vm_pack_cons(VM *vm) {
+    ASSERT_HAS(vm, 2);
+    vm_build_cons(vm, vm_peek(vm), vm_prev(vm));
+    vm_pop_prev_n(vm, 2);
 }
 
 void vm_scope_get(VM *vm, StringName name) {
     LispNode *lookup_result = scope_get(VM_CURR_SCOPE(vm), name);
     if (!lookup_result) {
-        // [CAUTION] Exception source: symbol with no definition
         vm_recover(vm, SYMBOL_UNDEFINED);
         return;
     }
@@ -160,9 +176,6 @@ void vm_scope_get(VM *vm, StringName name) {
 // Node -> Node
 void vm_scope_set(VM *vm, StringName name) {
     bool result = scope_set(VM_CURR_SCOPE(vm), name, vm_peek(vm));
-    if (!result) {
-        // [CAUTION] Exception source: symbol with no definition
+    if (!result)
         vm_recover(vm, SYMBOL_UNDEFINED);
-        return;
-    }
 }

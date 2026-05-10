@@ -24,8 +24,7 @@
             else if (vm_peek(vm)->kind == LISP_FLOAT)                                              \
                 vm_build_float(vm, FLOAT(vm_prev(vm)) operator_ FLOAT(vm_peek(vm)));               \
                                                                                                    \
-            vm_pop_prev(vm);                                                                       \
-            vm_pop_prev(vm);                                                                       \
+            vm_pop_prev_n(vm, 2);                                                                  \
                                                                                                    \
             list = CDR(list);                                                                      \
         }                                                                                          \
@@ -42,8 +41,7 @@
             vm_build_bool(vm, INTEGER(vm_prev(vm)) operator_ INTEGER(vm_peek(vm)));                \
         else if (vm_peek(vm)->kind == LISP_FLOAT)                                                  \
             vm_build_bool(vm, FLOAT(vm_prev(vm)) operator_ FLOAT(vm_peek(vm)));                    \
-        vm_pop_prev(vm);                                                                           \
-        vm_pop_prev(vm);                                                                           \
+        vm_pop_prev_n(vm, 2);                                                                      \
     }
 
 // Node, Node -> Node
@@ -90,8 +88,7 @@ void rkl_eq(VM *vm) {
     }
 
 end:
-    vm_pop(vm);
-    vm_pop(vm);
+    vm_pop_n(vm, 2);
     vm_build_bool(vm, is_equal);
 }
 
@@ -125,8 +122,7 @@ void rkl_truediv(VM *vm) {
         vm_build_float(vm, (double)INTEGER(vm_prev(vm)) / (double)INTEGER(vm_peek(vm)));
     else if (vm_peek(vm)->kind == LISP_FLOAT)
         vm_build_float(vm, FLOAT(vm_prev(vm)) / FLOAT(vm_peek(vm)));
-    vm_pop_prev(vm);
-    vm_pop_prev(vm);
+    vm_pop_prev_n(vm, 2);
 }
 
 void rkl_div(VM *vm) {
@@ -139,22 +135,20 @@ void rkl_div(VM *vm) {
         vm_recover(vm, WRONG_VALUE);
 
     vm_build_integer(vm, INTEGER(vm_prev(vm)) / INTEGER(vm_peek(vm)));
-    vm_pop_prev(vm);
-    vm_pop_prev(vm);
+    vm_pop_prev_n(vm, 2);
 }
 
 void rkl_mod(VM *vm) {
     ASSERT_HAS(vm, 2);
 
-    if (vm_peek(vm)->kind != LISP_INTEGER || vm_prev(vm)->kind != LISP_INTEGER)
+    if (!IS_LISTFUL(vm_peek(vm)))
         vm_recover(vm, WRONG_TYPE);
 
     if (INTEGER(vm_peek(vm)) == 0)
         vm_recover(vm, WRONG_VALUE);
 
     vm_build_integer(vm, INTEGER(vm_prev(vm)) % INTEGER(vm_peek(vm)));
-    vm_pop_prev(vm);
-    vm_pop_prev(vm);
+    vm_pop_prev_n(vm, 2);
 }
 
 void rkl_eval(VM *vm) {

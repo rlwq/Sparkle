@@ -4,9 +4,9 @@
 (print (cons '(1 2 3 4) 5))  ; ((1 2 3 4) . 5)
 (print '(1 . (2 3 4 5)))     ; (1 2 3 4 5)
 (print '((1 2 3 4) . 5))     ; ((1 2 3 4) . 5)
-(print ())                   ; NIL
-(print '())                  ; NIL
+(print ())                   ; Nil
+(print '())                  ; Nil
 (print '(x .))               ; (x)
-(print '(. y))               ; (NIL . y)
+(print '(. y))               ; (Nil . y)
 (print '(x . y))             ; (x . y)
 

@@ -11,20 +11,17 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Special Forms & Control Flow 
 
-* [ ] `set` For variable mutation.
-* [ ] `while` Loops and loops in general.
-* [ ] `begin` Scoped lexical blocks & statement blocks.
 * [ ] Flow control logical forms (`and`, `or`).
 
 ## Optimizations
 
 * [ ] Hash tables for fast search in scopes.
-* [ ] `Nil` type as singleton.
 * [ ] Arena allocations instead of an linked list in GC.
 * [ ] An attempt/research on Tail Call Optimization.
 
 ## Language Semantics
 
+* [ ] `&` and `|` logical functions.
 * [ ] `String` data type & basic string manipulation.
 * [ ] Type checking & exception throwing on incorrect data types in built-in functions.
 * [ ] Macro support.
@@ -32,10 +29,8 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Base Library
 
-* [ ] Arithmetic for `Integer` and `Floor`. (`+`, `-`, `*`, `/`).
 * [ ] Math library.
-* [ ] Logical predicates (`=`, `>`, `<`, ..., `not`).
-    * [ ] Some kind of structure equality and ref equality for compound objects.
+* [ ] Some kind of structure equality and ref equality for compound objects.
 * [ ] I/O
     * [ ] Formatted printing function 
     * [ ] Raw printing function for any objects
@@ -73,6 +68,12 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Done
 
+* [x] `Nil` type as singleton.
+* [x] `set` For variable mutation.
+* [x] `while` Loops and loops in general.
+* [x] `begin` Scoped lexical blocks & statement blocks.
+* [x] Logical predicates (`=`, `>`, `<`, ..., `not`).
+* [x] Arithmetic for `Integer` and `Floor`. (`+`, `-`, `*`, `/`).
 * [x] `Bool` data type & logical functions.
 * [x] `Float` data type.
 * [x] Write about `(x .)` & `(. x)` syntax.

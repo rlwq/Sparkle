@@ -32,30 +32,25 @@ bool try_dispatch_special_form(VM *vm) {
 
 // Symbol (name), Node (value) -> Node
 void eval_let_form(VM *vm, size_t argc) {
-    if (argc != 2)
-        vm_recover(vm, INVALID_SPECIAL_FORM);
+    VM_RECOVER_IF(vm, argc != 2, INVALID_SPECIAL_FORM);
 
     vm_swap(vm);
 
-    if (vm_peek(vm)->kind != LISP_SYMBOL)
-        vm_recover(vm, INVALID_SPECIAL_FORM);
+    VM_RECOVER_IF(vm, !NODE_IS(vm_peek(vm), LISP_SYMBOL), INVALID_SPECIAL_FORM);
 
     StringName name = SYMBOL(vm_peek(vm));
     vm_pop(vm);
     vm_eval_node(vm);
-    // vm_push(vm, vm_peek(vm));
     vm_scope_define(vm, name);
 }
 
 // Symbol (name), Node (value) -> Node
 void eval_set_form(VM *vm, size_t argc) {
-    if (argc != 2)
-        vm_recover(vm, INVALID_SPECIAL_FORM);
+    VM_RECOVER_IF(vm, argc != 2, INVALID_SPECIAL_FORM);
 
     vm_swap(vm);
 
-    if (vm_peek(vm)->kind != LISP_SYMBOL)
-        vm_recover(vm, INVALID_SPECIAL_FORM);
+    VM_RECOVER_IF(vm, !NODE_IS(vm_peek(vm), LISP_SYMBOL), INVALID_SPECIAL_FORM);
 
     StringName name = SYMBOL(vm_peek(vm));
     vm_pop(vm);
@@ -65,8 +60,7 @@ void eval_set_form(VM *vm, size_t argc) {
 
 // Node (condition), Node (is_true), Node (is_false) -> result
 void eval_if_form(VM *vm, size_t argc) {
-    if (argc != 3 && argc != 2)
-        vm_recover(vm, INVALID_SPECIAL_FORM);
+    VM_RECOVER_IF(vm, argc != 2 && argc != 3, INVALID_SPECIAL_FORM);
 
     if (argc == 2)
         vm_build_nil(vm);
@@ -88,39 +82,31 @@ void eval_if_form(VM *vm, size_t argc) {
 
 // Node (condition), Node (body) -> Nil
 void eval_while_form(VM *vm, size_t argc) {
-    if (argc != 2)
-        vm_recover(vm, INVALID_SPECIAL_FORM);
+    VM_RECOVER_IF(vm, argc != 2, INVALID_SPECIAL_FORM);
 
-    vm_push(vm, vm_prev(vm));
-    // condition body condition
+    vm_dup_prev(vm);
     vm_eval_node(vm);
     bool result = vm_cast_to_bool(vm);
 
-    // condition body result
     while (result) {
         vm_pop(vm);
-        vm_push(vm, vm_peek(vm));
-        // condition body body
+        vm_dup(vm);
         vm_eval_node(vm);
         vm_pop(vm);
 
-        // condition body
-        vm_push(vm, vm_prev(vm));
+        vm_dup_prev(vm);
         vm_eval_node(vm);
         result = vm_cast_to_bool(vm);
     }
 
-    vm_pop(vm);
-    vm_pop(vm);
-    vm_pop(vm);
+    vm_pop_n(vm, 3);
 
     vm_build_nil(vm);
 }
 
 // Cons (Args list), Node (subexpr) -> Lambda
 void eval_lambda_form(VM *vm, size_t argc) {
-    if (argc != 2)
-        vm_recover(vm, INVALID_SPECIAL_FORM);
+    VM_RECOVER_IF(vm, argc != 2, INVALID_SPECIAL_FORM);
 
     vm_swap(vm);
 
@@ -128,14 +114,13 @@ void eval_lambda_form(VM *vm, size_t argc) {
     bool is_variadic = false;
     da_init(args);
 
-    if (vm_peek(vm)->kind != LISP_CONS && vm_peek(vm)->kind != LISP_NIL &&
-        vm_peek(vm)->kind != LISP_SYMBOL) {
+    if (!IS_LISTFUL(vm_peek(vm)) && !NODE_IS(vm_peek(vm), LISP_SYMBOL)) {
         da_free(args);
         vm_recover(vm, INVALID_SPECIAL_FORM);
     }
 
     // Variadic function with no positional arguments
-    if (vm_peek(vm)->kind == LISP_SYMBOL) {
+    if (NODE_IS(vm_peek(vm), LISP_SYMBOL)) {
         is_variadic = true;
         da_push(args, SYMBOL(vm_peek(vm)));
     }
@@ -144,19 +129,19 @@ void eval_lambda_form(VM *vm, size_t argc) {
     else {
         LispNode *curr = vm_peek(vm);
         for (; curr->kind == LISP_CONS; curr = CDR(curr)) {
-            if (CAR(curr)->kind != LISP_SYMBOL) {
+            if (!NODE_IS(CAR(curr), LISP_SYMBOL)) {
                 da_free(args);
                 vm_recover(vm, INVALID_SPECIAL_FORM);
             }
             da_push(args, SYMBOL(CAR(curr)));
         }
 
-        if (curr->kind != LISP_SYMBOL && curr->kind != LISP_NIL) {
+        if (!NODE_IS(curr, LISP_NIL) && !NODE_IS(curr, LISP_SYMBOL)) {
             da_free(args);
             vm_recover(vm, INVALID_SPECIAL_FORM);
         }
 
-        if (curr->kind == LISP_SYMBOL) {
+        if (NODE_IS(curr, LISP_SYMBOL)) {
             is_variadic = true;
             da_push(args, SYMBOL(curr));
         }
@@ -170,8 +155,7 @@ void eval_lambda_form(VM *vm, size_t argc) {
 
 // Node -> Node
 void eval_try_form(VM *vm, size_t argc) {
-    if (argc != 1)
-        vm_recover(vm, INVALID_SPECIAL_FORM);
+    VM_RECOVER_IF(vm, argc != 1, INVALID_SPECIAL_FORM);
 
     jmp_buf env;
     vm_push_recovery(vm, &env);
@@ -182,8 +166,7 @@ void eval_try_form(VM *vm, size_t argc) {
     } else {
         vm_push(vm, da_at_end(vm->value_stack, 0));
         vm_eval_node(vm);
-        vm_pop(vm);
-        vm_pop(vm);
+        vm_pop_n(vm, 2);
         vm_build_nil(vm);
     }
 
@@ -192,8 +175,7 @@ void eval_try_form(VM *vm, size_t argc) {
 
 // Node -> Node
 void eval_quote_form(VM *vm, size_t argc) {
-    if (argc != 1)
-        vm_recover(vm, INVALID_SPECIAL_FORM);
+    VM_RECOVER_IF(vm, argc != 1, INVALID_SPECIAL_FORM);
 }
 
 void eval_begin_form(VM *vm, size_t argc) {
@@ -210,8 +192,9 @@ void eval_begin_form(VM *vm, size_t argc) {
     else
         vm_build_nil(vm);
 
-    for (size_t i = 1; i < argc; i++)
-        vm_pop_prev(vm);
+    if (argc > 0)
+        vm_pop_prev_n(vm, argc - 1);
+
     vm_pop_scope(vm);
 }
 

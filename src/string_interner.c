@@ -11,6 +11,10 @@ StringInterner *si_alloc(void) {
 
     da_init(si->strings);
 
+#define X(t_) si->prebuilt._##t_ = si_get(si, #t_);
+    PREBUILTS
+#undef X
+
     return si;
 }
 
@@ -36,7 +40,7 @@ StringName si_getn(StringInterner *si, const char *str, size_t n) {
             return da_at(si->strings, i);
 
     char *sn = malloc(n + 1);
-    strncpy(sn, str, n);
+    memcpy(sn, str, n);
     sn[n] = '\0';
     da_push(si->strings, sn);
     return sn;
