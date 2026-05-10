@@ -1,5 +1,5 @@
-#include "forwards.h"
 #include "io.h"
+#include "forwards.h"
 #include "lisp_node.h"
 #include <assert.h>
 #include <stdio.h>
@@ -62,6 +62,9 @@ void print_exception(LispNode *expr) {
         break;
     case WRONG_TYPE:
         printf("WRONG_TYPE");
+        break;
+    case WRONG_VALUE:
+        printf("WRONG_VALUE");
         break;
     }
     printf(">");

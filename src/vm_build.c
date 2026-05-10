@@ -14,9 +14,22 @@ void vm_build_integer(VM *vm, Integer value) {
     INTEGER(vm_peek(vm)) = value;
 }
 
+void vm_build_symbol(VM *vm, StringName value) {
+    vm_build_value(vm, LISP_SYMBOL);
+    SYMBOL(vm_peek(vm)) = value;
+}
+
+void vm_build_cons(VM *vm, LispNode *car, LispNode *cdr) {
+    vm_build_value(vm, LISP_CONS);
+    CAR(vm_peek(vm)) = car;
+    CDR(vm_peek(vm)) = cdr;
+}
+
 void vm_build_bool(VM *vm, bool value) {
-    vm_build_value(vm, LISP_BOOL);
-    BOOL(vm_peek(vm)) = value;
+    if (value)
+        vm_push(vm, vm->singletons._True);
+    else
+        vm_push(vm, vm->singletons._False);
 }
 
 void vm_build_float(VM *vm, double value) {
@@ -35,7 +48,7 @@ void vm_build_builtin(VM *vm, LispBuiltin value) {
 }
 
 void vm_build_nil(VM *vm) {
-    vm_build_value(vm, LISP_NIL);
+    vm_push(vm, vm->singletons._Nil);
 }
 
 void vm_build_lambda(VM *vm, LambdaArgs args, bool is_variadic, LispNode *expr, Scope *scope) {

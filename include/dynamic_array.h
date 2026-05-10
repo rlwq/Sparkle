@@ -28,7 +28,8 @@
             (da_).data = realloc((da_).data, (da_).capacity * sizeof(*(da_).data));                \
             assert((da_).data != NULL);                                                            \
         }                                                                                          \
-        (da_).data[(da_).size++] = (item_);                                                        \
+        (da_).data[(da_).size] = (item_);                                                          \
+        (da_).size++;                                                                              \
     } while (0)
 
 #define da_pop(da_)                                                                                \

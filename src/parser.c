@@ -86,7 +86,7 @@ LispNode *parse_expr(Parser *parser) {
         LispNode *subexpr = parse_expr(parser);
         LispNode *result = gc_alloc_node(parser->gc, LISP_CONS);
         CAR(result) = gc_alloc_node(parser->gc, LISP_SYMBOL);
-        CAR(result)->as.symbol = si_get(parser->si, "quote"); // TODO: hardcoded value
+        CAR(result)->as.symbol = parser->si->prebuilt._quote;
         CDR(result) = gc_alloc_node(parser->gc, LISP_CONS);
         CAR(CDR(result)) = subexpr;
         CDR(CDR(result)) = gc_alloc_node(parser->gc, LISP_NIL);

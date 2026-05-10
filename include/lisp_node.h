@@ -52,26 +52,31 @@ typedef struct {
     bool is_variadic;
 } LispBuiltin;
 
+typedef union {
+    StringName symbol;
+    LispBuiltin builtin;
+    LispLambdaNode lambda;
+    LispConsNode cons;
+    Integer integer;
+    double float_;
+    bool bool_;
+    ExceptionKind exception;
+} LispNodeUnion;
+
 struct LispNode {
     LispNodeKind kind;
     bool marked;
 
     LispNode *heap_next;
-
-    union {
-        StringName symbol;
-        LispBuiltin builtin;
-        LispLambdaNode lambda;
-        LispConsNode cons;
-        Integer integer;
-        double float_;
-        bool bool_;
-        ExceptionKind exception;
-    } as;
+    LispNodeUnion as;
 };
 
 #define IS_NUMBERIC(n_)                                                                            \
     ((n_)->kind == LISP_FLOAT || (n_)->kind == LISP_INTEGER || (n_)->kind == LISP_BOOL)
+
+#define NODE_IS(n_, k_) ((n_)->kind == (k_))
+
+#define IS_LISTFUL(n_) ((n_)->kind == LISP_CONS || (n_)->kind == LISP_NIL)
 
 #define CONS(n_) ((n_)->as.cons)
 #define CAR(n_) ((n_)->as.cons.car)
@@ -91,6 +96,8 @@ struct LispNode {
 #define LAMBDA_SCOPE(n_) ((n_)->as.lambda.scope)
 
 #define BUILTIN(n_) ((n_)->as.builtin)
+#define BUILTIN_FUNC(n_) ((n_)->as.builtin.func)
+#define BUILTIN_IS_VARIADIC(n_) ((n_)->as.builtin.is_variadic)
 #define BUILTIN_ARGS_N(n_) ((n_)->as.builtin.arity)
 
 #endif

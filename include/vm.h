@@ -20,6 +20,15 @@
     (assert(da_at_end((e_)->value_stack, 0)->kind == LISP_NIL ||                                   \
             da_at_end((e_)->value_stack, 0)->kind == LISP_CONS))
 
+#define VM_RECOVER_IF(vm_, expr_, ex_)                                                             \
+    if ((expr_))                                                                                   \
+        vm_recover(vm_, ex_);
+
+#define SINGLETONS                                                                                 \
+    X(Nil, LISP_NIL, {0})                                                                          \
+    X(True, LISP_BOOL, {.bool_ = true})                                                            \
+    X(False, LISP_BOOL, {.bool_ = false})
+
 typedef struct {
     jmp_buf *jmp;
     size_t values_count;
@@ -36,6 +45,12 @@ struct VM {
 
     GC *gc;
     StringInterner *si;
+
+    struct {
+#define X(name_, kind_, init_) LispNode *_##name_;
+        SINGLETONS
+#undef X
+    } singletons;
 
     ExceptionKind exception;
     bool is_err;
@@ -69,25 +84,33 @@ void vm_build_nil(VM *vm);
 void vm_build_lambda(VM *vm, LambdaArgs args, bool is_variadic, LispNode *expr, Scope *scope);
 void vm_build_symbol(VM *vm, StringName value);
 void vm_build_string(VM *vm, StringName value);
+void vm_build_cons(VM *vm, LispNode *car, LispNode *cdr);
 
+void vm_dup(VM *vm);
+void vm_dup_prev(VM *vm);
 void vm_push(VM *vm, LispNode *value);
+void vm_push_prev(VM *vm, LispNode *value);
 void vm_swap(VM *vm);
 void vm_pop(VM *vm);
+void vm_pop_n(VM *vm, size_t n);
 void vm_rot(VM *vm);
 void vm_pop_prev(VM *vm);
+void vm_pop_prev_n(VM *vm, size_t n);
 LispNode *vm_peek(VM *vm);
 LispNode *vm_prev(VM *vm);
 
-LispNodeKind vm_to_common_numeric(VM *vm);
 void vm_eval_node(VM *vm);
 void vm_eval_cons(VM *vm);
 void vm_eval_symbol(VM *vm);
 size_t vm_eval_list(VM *vm);
-size_t vm_unpack_list(VM *vm);
-size_t vm_eval_list_inplace(VM *vm);
-bool vm_cast_to_bool(VM *vm);
+
+void vm_pack_cons(VM *vm);
 void vm_unpack_cons(VM *vm);
+size_t vm_unpack_list(VM *vm);
 void vm_unpack_list_n(VM *vm, size_t n);
+
+bool vm_cast_to_bool(VM *vm);
+LispNodeKind vm_to_common_numeric(VM *vm);
 
 void vm_mark(VM *vm);
 

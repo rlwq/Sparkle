@@ -133,7 +133,10 @@ int main(int argc, char **argv) {
         printf("Wrong arity for a function call.");
         break;
     case WRONG_TYPE:
-        printf("Function expected another object type.");
+        printf("Function expected some other object type.");
+        break;
+    case WRONG_VALUE:
+        printf("Function expected some other value.");
         break;
     }
     printf("\n" RESET);
