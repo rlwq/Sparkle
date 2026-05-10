@@ -1,0 +1,11 @@
+(let filter
+  (lambda (f l)
+    (if l
+      (if (f (car l))
+        (cons (car l) (filter f (cdr l)))
+        (filter f (cdr l))))))
+
+(let xs '(1 2 3 4 5 6 7 8 9 10))
+(let even (lambda (x) (= (mod x 2) 0)))
+
+(print (filter even xs))
