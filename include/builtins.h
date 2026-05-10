@@ -5,7 +5,9 @@
 
 typedef struct {
     const char *name;
-    LispBuiltin func;
+    void (*func)(VM *vm);
+    size_t arity;
+    bool is_variadic;
 } BuiltinDef;
 
 #define DEFINE_MODULE_HEADER(name_)                                                                \

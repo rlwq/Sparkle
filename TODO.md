@@ -21,7 +21,6 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Language Semantics
 
-* [ ] `&` and `|` logical functions.
 * [ ] `String` data type & basic string manipulation.
 * [ ] Type checking & exception throwing on incorrect data types in built-in functions.
 * [ ] Macro support.
@@ -68,6 +67,7 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Done
 
+* [x] `&` and `|` logical functions.
 * [x] `Nil` type as singleton.
 * [x] `set` For variable mutation.
 * [x] `while` Loops and loops in general.

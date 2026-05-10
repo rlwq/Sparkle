@@ -40,10 +40,10 @@ void rkl_list(VM *vm) {
 }
 
 DEFINE_MODULE(CONS_LIST) = {
-    {"cons", {rkl_cons, 2, false}},
-    {"car", {rkl_car, 1, false}},
-    {"cdr", {rkl_cdr, 1, false}},
-    {"list", {rkl_list, 0, true}},
+    {"cons", rkl_cons, 2, false},
+    {"car", rkl_car, 1, false},
+    {"cdr", rkl_cdr, 1, false},
+    {"list", rkl_list, 0, true},
 };
 
 DEFINE_MODULE_SIZE(CONS_LIST);

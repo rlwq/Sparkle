@@ -14,5 +14,5 @@ void rkl_print(VM *vm) {
     vm_build_nil(vm);
 }
 
-DEFINE_MODULE(IO) = {{"print", {rkl_print, 0, true}}};
+DEFINE_MODULE(IO) = {{"print", rkl_print, 0, true}};
 DEFINE_MODULE_SIZE(IO);
