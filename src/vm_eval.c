@@ -128,13 +128,10 @@ LispNodeKind vm_common_numeric(VM *vm) {
     assert(IS_NUMBERIC(vm_peek(vm)));
     assert(IS_NUMBERIC(vm_prev(vm)));
 
-    if (NODE_IS(vm_peek(vm), LISP_FLOAT) || NODE_IS(vm_prev(vm), LISP_FLOAT))
+    if ((TYPEOF(vm_peek(vm)) | TYPEOF(vm_prev(vm))) & TY_FLOAT)
         return LISP_FLOAT;
 
-    if (NODE_IS(vm_peek(vm), LISP_INTEGER) || NODE_IS(vm_prev(vm), LISP_INTEGER))
-        return LISP_INTEGER;
-
-    return LISP_BOOL;
+    return LISP_INTEGER;
 }
 
 // (Bool | Integer | Float) -> Node

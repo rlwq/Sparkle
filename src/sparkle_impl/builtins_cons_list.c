@@ -7,29 +7,22 @@
 
 // Node, Node -> Cons
 void rkl_cons(VM *vm) {
-    ASSERT_HAS(vm, 2);
-
-    vm_build_value(vm, LISP_CONS);
-    CONS(vm_peek(vm)).cdr = vm_prev(vm);
-    vm_pop_prev(vm);
-    CONS(vm_peek(vm)).car = vm_prev(vm);
-    vm_pop_prev(vm);
+    vm_swap(vm);
+    vm_pack_cons(vm);
 }
 
 // Cons -> Node
 void rkl_car(VM *vm) {
-    ASSERT_HAS(vm, 1);
+    vm_expect(vm, TY_CONS);
 
-    vm_expect_kind(vm, LISP_CONS, WRONG_TYPE);
     vm_push(vm, CAR(vm_peek(vm)));
     vm_pop_prev(vm);
 }
 
 // Cons -> Node
 void rkl_cdr(VM *vm) {
-    ASSERT_HAS(vm, 1);
+    vm_expect(vm, TY_CONS);
 
-    vm_expect_kind(vm, LISP_CONS, WRONG_TYPE);
     vm_push(vm, CDR(vm_peek(vm)));
     vm_pop_prev(vm);
 }
@@ -39,11 +32,20 @@ void rkl_list(VM *vm) {
     (void)vm;
 }
 
+void rkl_len(VM *vm) {
+    Integer size = 0;
+
+    LIST_ITER(vm, curr, vm_peek(vm))
+        size++;
+    END_LIST_ITER(vm, curr)
+
+    vm_pop(vm);
+    vm_build_integer(vm, size);
+}
+
 DEFINE_MODULE(CONS_LIST) = {
-    {"cons", rkl_cons, 2, false},
-    {"car", rkl_car, 1, false},
-    {"cdr", rkl_cdr, 1, false},
-    {"list", rkl_list, 0, true},
+    {"cons", rkl_cons, 2, false}, {"car", rkl_car, 1, false}, {"cdr", rkl_cdr, 1, false},
+    {"list", rkl_list, 0, true},  {"len", rkl_len, 1, false},
 };
 
 DEFINE_MODULE_SIZE(CONS_LIST);

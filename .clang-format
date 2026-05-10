@@ -12,3 +12,9 @@ SpacesInParentheses: false
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortFunctionsOnASingleLine: None
 AllowShortBlocksOnASingleLine: Never
+
+Macros:
+  - LIST_ITER(vm, curr, peek)=_LIST_ITER_STUB {
+  - END_LIST_ITER(vm, curr)=}
+
+AttributeMacros: [LIST_ITER, END_LIST_ITER]

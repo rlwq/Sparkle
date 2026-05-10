@@ -3,22 +3,40 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #include "forwards.h"
 #include "string_interner.h"
 
+#define X_KINDS                                                                                    \
+    X(NIL)                                                                                         \
+    X(CONS)                                                                                        \
+    X(SYMBOL)                                                                                      \
+    X(BOOL)                                                                                        \
+    X(FLOAT)                                                                                       \
+    X(INTEGER)                                                                                     \
+    X(STRING)                                                                                      \
+    X(BUILTIN)                                                                                     \
+    X(LAMBDA)                                                                                      \
+    X(EXCEPTION)
+
 typedef enum {
-    LISP_NIL,
-    LISP_CONS,
-    LISP_SYMBOL,
-    LISP_BOOL,
-    LISP_FLOAT,
-    LISP_INTEGER,
-    LISP_STRING,
-    LISP_BUILTIN,
-    LISP_LAMBDA,
-    LISP_EXCEPTION,
+#define X(k_) LISP_##k_,
+    X_KINDS
+#undef X
 } LispNodeKind;
+
+typedef enum {
+#define X(k_) TY_##k_ = 1 << LISP_##k_,
+    X_KINDS
+#undef X
+        TY_NUMERIC = TY_BOOL | TY_INTEGER | TY_FLOAT,
+    TY_LISTFUL = TY_CONS | TY_NIL,
+    TY_CALLABLE = TY_BUILTIN | TY_LAMBDA,
+} LispNodeType;
+
+#define TYPEOF(n_) (1 << (n_)->kind)
+#define OFTYPE(n_, t_) (TYPEOF(n_) & (t_))
 
 typedef enum {
     INVALID_SPECIAL_FORM,
@@ -99,5 +117,13 @@ struct LispNode {
 #define BUILTIN_FUNC(n_) ((n_)->as.builtin.func)
 #define BUILTIN_IS_VARIADIC(n_) ((n_)->as.builtin.is_variadic)
 #define BUILTIN_ARGS_N(n_) ((n_)->as.builtin.arity)
+
+#define LIST_ITER(vm_, name_, value_)                                                              \
+    LispNode *name_;                                                                               \
+    for (name_ = value_; OFTYPE(name_, TY_CONS); name_ = CDR(name_)) {
+
+#define END_LIST_ITER(vm_, name_)                                                                  \
+    }                                                                                              \
+    VM_RECOVER_IF(vm_, !OFTYPE(name_, TY_NIL), WRONG_TYPE);
 
 #endif

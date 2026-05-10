@@ -2,7 +2,7 @@ CC := gcc
 CFLAGS := -std=c11 -I./include -Wall -Wextra -Wswitch-enum -Wpedantic
 
 DEBUG_FLAGS := -fsanitize=undefined,address -O1 -g
-BUILD_FLAGS := -O3 -DNDEBUG
+BUILD_FLAGS := -O3 -flto -funroll-loops -DNDEBUG
 
 SRC := $(wildcard ./src/*.c) $(wildcard ./src/**/*.c)
 HEADERS := $(wildcard ./include/*.h)

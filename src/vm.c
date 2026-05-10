@@ -112,11 +112,15 @@ void vm_recover(VM *vm, ExceptionKind value) {
     longjmp(*(recovery.jmp), 1);
 }
 
-void vm_expect_kind(VM *vm, LispNodeKind kind, ExceptionKind exception) {
+void vm_expect(VM *vm, LispNodeType type) {
     ASSERT_HAS(vm, 1);
+    VM_RECOVER_IF(vm, !((1 << vm_peek(vm)->kind) & type), WRONG_TYPE);
+}
 
-    if (vm_peek(vm)->kind != kind)
-        vm_recover(vm, exception);
+void vm_expect2(VM *vm, LispNodeType prev, LispNodeType peek) {
+    ASSERT_HAS(vm, 1);
+    VM_RECOVER_IF(vm, !((1 << vm_peek(vm)->kind) & peek), WRONG_TYPE);
+    VM_RECOVER_IF(vm, !((1 << vm_prev(vm)->kind) & prev), WRONG_TYPE);
 }
 
 void vm_register_builtin(VM *vm, StringName name, LispBuiltin func_ptr) {
