@@ -1,12 +1,11 @@
 #include "special_forms.h"
-#include "lisp_node.h"
+#include "object.h"
 #include "string_interner.h"
 #include "vm.h"
 #include <stdio.h>
 
 // Node (Args), Node (Head) -> Node (Maybe :3)
 bool try_dispatch_special_form(VM *vm) {
-    ASSERT_HAS(vm, 2);
 
     if (vm_peek(vm)->kind != LISP_SYMBOL)
         return false;
@@ -36,7 +35,7 @@ void eval_let_form(VM *vm, size_t argc) {
 
     vm_swap(vm);
 
-    VM_RECOVER_IF(vm, !NODE_IS(vm_peek(vm), LISP_SYMBOL), INVALID_SPECIAL_FORM);
+    VM_RECOVER_IF(vm, !OFTYPE(vm_peek(vm), TY_SYMBOL), INVALID_SPECIAL_FORM);
 
     StringName name = SYMBOL(vm_peek(vm));
     vm_pop(vm);
@@ -50,7 +49,7 @@ void eval_set_form(VM *vm, size_t argc) {
 
     vm_swap(vm);
 
-    VM_RECOVER_IF(vm, !NODE_IS(vm_peek(vm), LISP_SYMBOL), INVALID_SPECIAL_FORM);
+    VM_RECOVER_IF(vm, !OFTYPE(vm_peek(vm), TY_SYMBOL), INVALID_SPECIAL_FORM);
 
     StringName name = SYMBOL(vm_peek(vm));
     vm_pop(vm);
@@ -114,40 +113,40 @@ void eval_lambda_form(VM *vm, size_t argc) {
     bool is_variadic = false;
     da_init(args);
 
-    if (!IS_LISTFUL(vm_peek(vm)) && !NODE_IS(vm_peek(vm), LISP_SYMBOL)) {
+    if (!OFTYPE(vm_peek(vm), TY_SYMBOL | TY_LISTFUL)) {
         da_free(args);
         vm_recover(vm, INVALID_SPECIAL_FORM);
     }
 
     // Variadic function with no positional arguments
-    if (NODE_IS(vm_peek(vm), LISP_SYMBOL)) {
+    if (OFTYPE(vm_peek(vm), TY_SYMBOL)) {
         is_variadic = true;
         da_push(args, SYMBOL(vm_peek(vm)));
     }
 
     // Function with at least one positional argument
     else {
-        LispNode *curr = vm_peek(vm);
+        Object *curr = vm_peek(vm);
         for (; curr->kind == LISP_CONS; curr = CDR(curr)) {
-            if (!NODE_IS(CAR(curr), LISP_SYMBOL)) {
+            if (!OFTYPE(CAR(curr), TY_SYMBOL)) {
                 da_free(args);
                 vm_recover(vm, INVALID_SPECIAL_FORM);
             }
             da_push(args, SYMBOL(CAR(curr)));
         }
 
-        if (!NODE_IS(curr, LISP_NIL) && !NODE_IS(curr, LISP_SYMBOL)) {
+        if (!OFTYPE(curr, TY_NIL) && !OFTYPE(curr, TY_SYMBOL)) {
             da_free(args);
             vm_recover(vm, INVALID_SPECIAL_FORM);
         }
 
-        if (NODE_IS(curr, LISP_SYMBOL)) {
+        if (OFTYPE(curr, TY_SYMBOL)) {
             is_variadic = true;
             da_push(args, SYMBOL(curr));
         }
     }
     vm_pop(vm);
-    LispNode *subexpr = vm_peek(vm);
+    Object *subexpr = vm_peek(vm);
 
     vm_build_lambda(vm, args, is_variadic, subexpr, VM_CURR_SCOPE(vm));
     vm_pop_prev(vm);

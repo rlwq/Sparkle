@@ -158,7 +158,7 @@ void lex_current(Lexer *lexer) {
     da_push(lexer->tokens, lex_token(lexer));
 }
 
-void lex_all(Lexer *lexer) {
+void lexer_run(Lexer *lexer) {
     while (VALID(lexer))
         lex_current(lexer);
 }

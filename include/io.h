@@ -1,8 +1,8 @@
 #ifndef IO_H
 #define IO_H
 
-#include "lisp_node.h"
+#include "object.h"
 
-void print_expr(LispNode *expr);
+void print_expr(Object *expr);
 
 #endif

@@ -1,12 +1,12 @@
 #ifndef GC_H
 #define GC_H
 
-#include "lisp_node.h"
+#include "object.h"
 
 #define INIT_GC_CAPACITY 64
 
 struct GC {
-    LispNode *nodes_heap;
+    Object *nodes_heap;
     size_t nodes_count;
 
     Scope *scopes_heap;
@@ -18,15 +18,15 @@ struct GC {
 GC *gc_alloc(void);
 void gc_free(GC *gc);
 
-LispNode *gc_alloc_node(GC *gc, LispNodeKind kind);
+Object *gc_alloc_node(GC *gc, ObjectKind kind);
 
 Scope *gc_alloc_scope(GC *gc, Scope *parent);
 void gc_free_scope(GC *gc, Scope *scope);
 
 bool gc_check_bounds(GC *gc);
 void gc_mark_scope(Scope *scope);
-void gc_mark_node(LispNode *expr);
-void gc_free_node(GC *gc, LispNode *expr);
+void gc_mark_node(Object *expr);
+void gc_free_node(GC *gc, Object *expr);
 void gc_sweep(GC *gc);
 
 #endif

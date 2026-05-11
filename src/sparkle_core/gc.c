@@ -5,7 +5,7 @@
 #include "dynamic_array.h"
 #include "forwards.h"
 #include "gc.h"
-#include "lisp_node.h"
+#include "object.h"
 #include "scope.h"
 
 GC *gc_alloc(void) {
@@ -25,7 +25,7 @@ GC *gc_alloc(void) {
 
 void gc_free(GC *gc) {
     while (gc->nodes_heap) {
-        LispNode *next = gc->nodes_heap->heap_next;
+        Object *next = gc->nodes_heap->heap_next;
         gc_free_node(gc, gc->nodes_heap);
         gc->nodes_heap = next;
     }
@@ -46,8 +46,8 @@ bool gc_check_bounds(GC *gc) {
     return true;
 }
 
-LispNode *gc_alloc_node(GC *gc, LispNodeKind kind) {
-    LispNode *node = malloc(sizeof(LispNode));
+Object *gc_alloc_node(GC *gc, ObjectKind kind) {
+    Object *node = malloc(sizeof(Object));
     assert(node); // TODO: add some error reporting
 
     gc->nodes_count++;
@@ -60,7 +60,7 @@ LispNode *gc_alloc_node(GC *gc, LispNodeKind kind) {
     return node;
 }
 
-void gc_free_node(GC *gc, LispNode *expr) {
+void gc_free_node(GC *gc, Object *expr) {
     assert(!expr->marked);
     gc->nodes_count--;
 
@@ -109,14 +109,14 @@ void gc_free_scope(GC *gc, Scope *scope) {
 }
 
 void gc_sweep(GC *gc) {
-    LispNode **curr_node = &(gc->nodes_heap);
+    Object **curr_node = &(gc->nodes_heap);
 
     while (*curr_node) {
         if ((*curr_node)->marked) {
             (*curr_node)->marked = false;
             curr_node = &((*curr_node)->heap_next);
         } else {
-            LispNode *dead = *curr_node;
+            Object *dead = *curr_node;
             *curr_node = dead->heap_next;
             gc_free_node(gc, dead);
         }
@@ -136,14 +136,14 @@ void gc_sweep(GC *gc) {
     }
 }
 
-void gc_mark_node(LispNode *expr) {
-    LispNodePtrDA to_mark;
+void gc_mark_node(Object *expr) {
+    ObjectPtrDA to_mark;
     da_init(to_mark);
 
     da_push(to_mark, expr);
 
     while (to_mark.size > 0) {
-        LispNode *curr = da_at_end(to_mark, 0);
+        Object *curr = da_at_end(to_mark, 0);
         assert(curr);
         da_pop(to_mark);
 
