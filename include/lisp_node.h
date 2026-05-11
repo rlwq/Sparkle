@@ -89,9 +89,6 @@ struct LispNode {
     LispNodeUnion as;
 };
 
-#define IS_NUMBERIC(n_)                                                                            \
-    ((n_)->kind == LISP_FLOAT || (n_)->kind == LISP_INTEGER || (n_)->kind == LISP_BOOL)
-
 #define NODE_IS(n_, k_) ((n_)->kind == (k_))
 
 #define IS_LISTFUL(n_) ((n_)->kind == LISP_CONS || (n_)->kind == LISP_NIL)
