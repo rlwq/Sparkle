@@ -41,7 +41,7 @@ void eval_let_form(VM *vm, size_t argc) {
     StringName name = SYMBOL(vm_peek(vm));
     vm_pop(vm);
     vm_eval_node(vm);
-    vm_scope_define(vm, name);
+    VM_RECOVER_IF(vm, !vm_scope_define(vm, name), SYMBOL_REBINDING);
 }
 
 // Symbol (name), Node (value) -> Node

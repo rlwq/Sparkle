@@ -67,8 +67,8 @@ void vm_pop_scope(VM *vm) {
     da_pop(vm->scope_stack);
 }
 
-void vm_scope_define(VM *vm, StringName name) {
-    scope_define(VM_CURR_SCOPE(vm), name, vm_peek(vm));
+bool vm_scope_define(VM *vm, StringName name) {
+    return scope_define(VM_CURR_SCOPE(vm), name, vm_peek(vm));
 }
 
 void vm_mark(VM *vm) {
@@ -84,8 +84,7 @@ void vm_mark(VM *vm) {
     for (size_t i = 0; i < vm->value_stack.size; i++)
         gc_mark_node(da_at(vm->value_stack, i));
 
-    // Marking singletons
-
+// Marking singletons
 #define X(name_, kind_, init_) gc_mark_node(vm->singletons._##name_);
     SINGLETONS
 #undef X

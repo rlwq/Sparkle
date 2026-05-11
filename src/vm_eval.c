@@ -125,8 +125,8 @@ void vm_unpack_list_n(VM *vm, size_t n) {
 // (Bool | Integer | Float), (Bool | Integer | Float) -> Node, Node
 LispNodeKind vm_common_numeric(VM *vm) {
     ASSERT_HAS(vm, 2);
-    assert(IS_NUMBERIC(vm_peek(vm)));
-    assert(IS_NUMBERIC(vm_prev(vm)));
+    assert(OFTYPE(vm_peek(vm), TY_NUMERIC));
+    assert(OFTYPE(vm_prev(vm), TY_NUMERIC));
 
     if ((TYPEOF(vm_peek(vm)) | TYPEOF(vm_prev(vm))) & TY_FLOAT)
         return LISP_FLOAT;
@@ -137,7 +137,7 @@ LispNodeKind vm_common_numeric(VM *vm) {
 // (Bool | Integer | Float) -> Node
 void vm_cast_numeric(VM *vm, LispNodeKind kind) {
     ASSERT_HAS(vm, 1);
-    assert(IS_NUMBERIC(vm_peek(vm)));
+    assert(OFTYPE(vm_peek(vm), TY_NUMERIC));
 
     if (NODE_IS(vm_peek(vm), LISP_BOOL) && kind != LISP_BOOL) {
         vm_build_integer(vm, BOOL(vm_peek(vm)));
