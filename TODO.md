@@ -7,14 +7,15 @@ This document outlines the features and fixes planned for Sparkle.
 * [ ] Multiline comments.
 * [ ] String escaping sequences.
 * [ ] More descriptive parsing errors (on expected tokens).
-* [ ] `'` at the end of file is handled improperly.
+* [ ] `Float` literals.
 
 ## Special Forms & Control Flow 
 
 * [ ] Flow control logical forms (`and`, `or`).
 
 ## Optimizations
-
+ 
+* [ ] Integer Interning.
 * [ ] Hash tables for fast search in scopes.
 * [ ] Arena allocations instead of an linked list in GC.
 * [ ] An attempt/research on Tail Call Optimization.
@@ -54,8 +55,8 @@ This document outlines the features and fixes planned for Sparkle.
 
 * [ ] `'x` syntax when printing quoted values.
 * [ ] Two error handler invocations behave differently: one duplicates the expression before entering the frame, the other does not.
+* [ ] Rewrite special forms handling.
 * [ ] Exception call when trying to evaluate an improper list.
-* [ ] Invalid parser output when fed an empty file.
 
 ## Tooling
 
@@ -67,6 +68,8 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Done
 
+* [x] Invalid parser output when fed an empty file.
+* [x] `'` at the end of file is handled improperly.
 * [x] `&` and `|` logical functions.
 * [x] `Nil` type as singleton.
 * [x] `set` For variable mutation.

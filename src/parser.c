@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "dynamic_array.h"
 #include "forwards.h"
@@ -84,6 +85,11 @@ LispNode *parse_expr(Parser *parser) {
 
     if (parser_eat(parser, TK_QUOTE)) {
         LispNode *subexpr = parse_expr(parser);
+        if (subexpr == NULL) {
+            parser->is_err = true;
+            return NULL;
+        }
+
         LispNode *result = gc_alloc_node(parser->gc, LISP_CONS);
         CAR(result) = gc_alloc_node(parser->gc, LISP_SYMBOL);
         CAR(result)->as.symbol = parser->si->prebuilt._quote;
@@ -173,8 +179,6 @@ void parse_current(Parser *parser) {
 }
 
 void parse_all(Parser *parser) {
-    assert(PARSER_VALID(parser));
-
     while (PARSER_VALID(parser))
         parse_current(parser);
 }
