@@ -10,17 +10,17 @@ void vm_build_value(VM *vm, ObjectKind kind) {
 }
 
 void vm_build_integer(VM *vm, Integer value) {
-    vm_build_value(vm, LISP_INTEGER);
+    vm_build_value(vm, KIND_INTEGER);
     INTEGER(vm_peek(vm)) = value;
 }
 
 void vm_build_symbol(VM *vm, StringName value) {
-    vm_build_value(vm, LISP_SYMBOL);
+    vm_build_value(vm, KIND_SYMBOL);
     SYMBOL(vm_peek(vm)) = value;
 }
 
 void vm_build_cons(VM *vm, Object *car, Object *cdr) {
-    vm_build_value(vm, LISP_CONS);
+    vm_build_value(vm, KIND_CONS);
     CAR(vm_peek(vm)) = car;
     CDR(vm_peek(vm)) = cdr;
 }
@@ -33,17 +33,17 @@ void vm_build_bool(VM *vm, bool value) {
 }
 
 void vm_build_float(VM *vm, double value) {
-    vm_build_value(vm, LISP_FLOAT);
+    vm_build_value(vm, KIND_FLOAT);
     FLOAT(vm_peek(vm)) = value;
 }
 
 void vm_build_exception(VM *vm, ExceptionKind exception) {
-    vm_build_value(vm, LISP_EXCEPTION);
+    vm_build_value(vm, KIND_EXCEPTION);
     EXCEPTION(vm_peek(vm)) = exception;
 }
 
-void vm_build_builtin(VM *vm, LispBuiltin value) {
-    vm_build_value(vm, LISP_BUILTIN);
+void vm_build_builtin(VM *vm, BuiltinObject value) {
+    vm_build_value(vm, KIND_BUILTIN);
     BUILTIN(vm_peek(vm)) = value;
 }
 
@@ -52,7 +52,7 @@ void vm_build_nil(VM *vm) {
 }
 
 void vm_build_lambda(VM *vm, LambdaArgs args, bool is_variadic, Object *expr, Scope *scope) {
-    vm_build_value(vm, LISP_LAMBDA);
+    vm_build_value(vm, KIND_LAMBDA);
     LAMBDA(vm_peek(vm)).args = args;
     LAMBDA(vm_peek(vm)).is_variadic = is_variadic;
     LAMBDA(vm_peek(vm)).subexpr = expr;

@@ -21,13 +21,13 @@
     X(EXCEPTION)
 
 typedef enum {
-#define X(k_) LISP_##k_,
+#define X(k_) KIND_##k_,
     X_KINDS
 #undef X
 } ObjectKind;
 
 typedef enum {
-#define X(k_) TY_##k_ = 1 << LISP_##k_,
+#define X(k_) TY_##k_ = 1 << KIND_##k_,
     X_KINDS
 #undef X
         TY_NUMERIC = TY_BOOL | TY_INTEGER | TY_FLOAT,
@@ -68,11 +68,11 @@ typedef struct {
     void (*func)(VM *vm);
     size_t arity;
     bool is_variadic;
-} LispBuiltin;
+} BuiltinObject;
 
 typedef union {
     StringName symbol;
-    LispBuiltin builtin;
+    BuiltinObject builtin;
     LambdaObject lambda;
     ConsObject cons;
     Integer integer;

@@ -65,19 +65,19 @@ void gc_free_node(GC *gc, Object *expr) {
     gc->nodes_count--;
 
     switch (expr->kind) {
-    case LISP_NIL:
-    case LISP_INTEGER:
-    case LISP_CONS:
-    case LISP_SYMBOL:
-    case LISP_BUILTIN:
-    case LISP_STRING:
-    case LISP_BOOL:
-    case LISP_EXCEPTION:
-    case LISP_FLOAT:
+    case KIND_NIL:
+    case KIND_INTEGER:
+    case KIND_CONS:
+    case KIND_SYMBOL:
+    case KIND_BUILTIN:
+    case KIND_STRING:
+    case KIND_BOOL:
+    case KIND_EXCEPTION:
+    case KIND_FLOAT:
         free(expr);
         break;
 
-    case LISP_LAMBDA:
+    case KIND_LAMBDA:
         da_free(expr->as.lambda.args);
         free(expr);
         break;
@@ -153,22 +153,22 @@ void gc_mark_node(Object *expr) {
         curr->marked = true;
 
         switch (curr->kind) {
-        case LISP_NIL:
-        case LISP_SYMBOL:
-        case LISP_INTEGER:
-        case LISP_STRING:
-        case LISP_BUILTIN:
-        case LISP_FLOAT:
-        case LISP_EXCEPTION:
-        case LISP_BOOL:
+        case KIND_NIL:
+        case KIND_SYMBOL:
+        case KIND_INTEGER:
+        case KIND_STRING:
+        case KIND_BUILTIN:
+        case KIND_FLOAT:
+        case KIND_EXCEPTION:
+        case KIND_BOOL:
             break;
 
-        case LISP_LAMBDA:
+        case KIND_LAMBDA:
             da_push(to_mark, LAMBDA_SUBEXPR(curr));
             gc_mark_scope(LAMBDA_SCOPE(curr));
             break;
 
-        case LISP_CONS:
+        case KIND_CONS:
             da_push(to_mark, CAR(curr));
             da_push(to_mark, CDR(curr));
             break;

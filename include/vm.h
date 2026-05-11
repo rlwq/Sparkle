@@ -16,9 +16,9 @@
         vm_recover(vm_, ex_);
 
 #define SINGLETONS                                                                                 \
-    X(Nil, LISP_NIL, {0})                                                                          \
-    X(True, LISP_BOOL, {.bool_ = true})                                                            \
-    X(False, LISP_BOOL, {.bool_ = false})
+    X(Nil, KIND_NIL, {0})                                                                          \
+    X(True, KIND_BOOL, {.bool_ = true})                                                            \
+    X(False, KIND_BOOL, {.bool_ = false})
 
 typedef struct {
     jmp_buf *jmp;
@@ -51,7 +51,7 @@ struct VM {
 VM *vm_alloc(ObjectPtrDA instructions, GC *gc, StringInterner *si);
 void vm_free(VM *vm);
 void vm_mark(VM *vm);
-void vm_register_builtin(VM *vm, StringName name, LispBuiltin func_ptr);
+void vm_register_builtin(VM *vm, StringName name, BuiltinObject func_ptr);
 void vm_run(VM *vm);
 
 // vm_recovery.c
@@ -75,7 +75,7 @@ void vm_build_integer(VM *vm, Integer value);
 void vm_build_bool(VM *vm, bool value);
 void vm_build_float(VM *vm, double value);
 void vm_build_exception(VM *vm, ExceptionKind value);
-void vm_build_builtin(VM *vm, LispBuiltin value);
+void vm_build_builtin(VM *vm, BuiltinObject value);
 void vm_build_nil(VM *vm);
 void vm_build_lambda(VM *vm, LambdaArgs args, bool is_variadic, Object *expr, Scope *scope);
 void vm_build_symbol(VM *vm, StringName value);

@@ -15,14 +15,14 @@ void eval_lambda_call(VM *vm) {
     vm_build_scope(vm);
 
     for (size_t i = 0; i < LAMBDA_POS_ARGS_N(lambda); i++) {
-        if (vm_peek(vm)->kind != LISP_CONS)
+        if (vm_peek(vm)->kind != KIND_CONS)
             vm_recover(vm, WRONG_ARITY);
         vm_unpack_cons(vm);
         vm_scope_define(vm, da_at(LAMBDA_ARGS(lambda), i));
         vm_pop(vm);
     }
 
-    if (!LAMBDA_IS_VARIADIC(lambda) && vm_peek(vm)->kind != LISP_NIL)
+    if (!LAMBDA_IS_VARIADIC(lambda) && vm_peek(vm)->kind != KIND_NIL)
         vm_recover(vm, WRONG_ARITY);
 
     if (LAMBDA_IS_VARIADIC(lambda))
@@ -47,7 +47,7 @@ size_t vm_eval_list(VM *vm) {
         length++;
     }
 
-    ASSERT_KIND(vm, LISP_NIL);
+    ASSERT_KIND(vm, KIND_NIL);
 
     for (size_t i = 0; i < length; i++) {
         vm_swap(vm);
@@ -62,26 +62,26 @@ bool vm_cast_to_bool(VM *vm) {
     bool result = false;
 
     switch (vm_peek(vm)->kind) {
-    case LISP_BOOL:
+    case KIND_BOOL:
         result = BOOL(vm_peek(vm));
         break;
-    case LISP_FLOAT:
+    case KIND_FLOAT:
         result = FLOAT(vm_peek(vm)) != 0.0;
         break;
-    case LISP_INTEGER:
+    case KIND_INTEGER:
         result = INTEGER(vm_peek(vm)) != 0;
         break;
-    case LISP_STRING:
+    case KIND_STRING:
         assert(0);
         break;
-    case LISP_CONS:
-    case LISP_SYMBOL:
-    case LISP_BUILTIN:
-    case LISP_LAMBDA:
-    case LISP_EXCEPTION:
+    case KIND_CONS:
+    case KIND_SYMBOL:
+    case KIND_BUILTIN:
+    case KIND_LAMBDA:
+    case KIND_EXCEPTION:
         result = true;
         break;
-    case LISP_NIL:
+    case KIND_NIL:
         result = false;
         break;
     }
@@ -93,7 +93,7 @@ bool vm_cast_to_bool(VM *vm) {
 
 void vm_unpack_list_n(VM *vm, size_t n) {
     for (; n > 0; n--) {
-        ASSERT_KIND(vm, LISP_CONS);
+        ASSERT_KIND(vm, KIND_CONS);
         vm_unpack_cons(vm);
         vm_swap(vm);
     }
@@ -105,21 +105,21 @@ ObjectKind vm_common_numeric(VM *vm) {
     assert(OFTYPE(vm_prev(vm), TY_NUMERIC));
 
     if ((TYPEOF(vm_peek(vm)) | TYPEOF(vm_prev(vm))) & TY_FLOAT)
-        return LISP_FLOAT;
+        return KIND_FLOAT;
 
-    return LISP_INTEGER;
+    return KIND_INTEGER;
 }
 
 // (Bool | Integer | Float) -> Node
 void vm_cast_numeric(VM *vm, ObjectKind kind) {
     assert(OFTYPE(vm_peek(vm), TY_NUMERIC));
 
-    if (OFTYPE(vm_peek(vm), TY_BOOL) && kind != LISP_BOOL) {
+    if (OFTYPE(vm_peek(vm), TY_BOOL) && kind != KIND_BOOL) {
         vm_build_integer(vm, BOOL(vm_peek(vm)));
         vm_pop_prev(vm);
     }
 
-    if (OFTYPE(vm_peek(vm), TY_INTEGER) && kind == LISP_FLOAT) {
+    if (OFTYPE(vm_peek(vm), TY_INTEGER) && kind == KIND_FLOAT) {
         vm_build_float(vm, INTEGER(vm_peek(vm)));
         vm_pop_prev(vm);
     }
@@ -139,7 +139,7 @@ ObjectKind vm_to_common_numeric(VM *vm) {
 
 // Cons -> Node
 void vm_eval_cons(VM *vm) {
-    ASSERT_KIND(vm, LISP_CONS);
+    ASSERT_KIND(vm, KIND_CONS);
 
     vm_unpack_cons(vm);
 
@@ -150,7 +150,7 @@ void vm_eval_cons(VM *vm) {
     vm_eval_node(vm);
 
     switch (vm_peek(vm)->kind) {
-    case LISP_LAMBDA:
+    case KIND_LAMBDA:
         vm_swap(vm);
         vm_eval_list(vm);
 
@@ -158,7 +158,7 @@ void vm_eval_cons(VM *vm) {
         eval_lambda_call(vm);
         break;
 
-    case LISP_BUILTIN: {
+    case KIND_BUILTIN: {
         Object *builtin = vm_peek(vm);
         vm_swap(vm);
         size_t args_count = vm_eval_list(vm);
@@ -176,14 +176,14 @@ void vm_eval_cons(VM *vm) {
         break;
     }
 
-    case LISP_CONS:
-    case LISP_BOOL:
-    case LISP_FLOAT:
-    case LISP_SYMBOL:
-    case LISP_INTEGER:
-    case LISP_STRING:
-    case LISP_EXCEPTION:
-    case LISP_NIL:
+    case KIND_CONS:
+    case KIND_BOOL:
+    case KIND_FLOAT:
+    case KIND_SYMBOL:
+    case KIND_INTEGER:
+    case KIND_STRING:
+    case KIND_EXCEPTION:
+    case KIND_NIL:
         vm_recover(vm, UNCALLABLE_CALL);
         break;
     }
@@ -193,7 +193,7 @@ void vm_eval_cons(VM *vm) {
 
 // Symbol -> Node
 void vm_eval_symbol(VM *vm) {
-    ASSERT_KIND(vm, LISP_SYMBOL);
+    ASSERT_KIND(vm, KIND_SYMBOL);
 
     StringName name = SYMBOL(vm_peek(vm));
     vm_pop(vm);
@@ -213,22 +213,22 @@ void vm_eval_symbol(VM *vm) {
 // Node -> Node
 void vm_eval_node(VM *vm) {
     switch (vm_peek(vm)->kind) {
-    case LISP_NIL:
-    case LISP_INTEGER:
-    case LISP_FLOAT:
-    case LISP_BOOL:
-    case LISP_STRING:
-    case LISP_BUILTIN:
-    case LISP_LAMBDA:
-    case LISP_EXCEPTION:
+    case KIND_NIL:
+    case KIND_INTEGER:
+    case KIND_FLOAT:
+    case KIND_BOOL:
+    case KIND_STRING:
+    case KIND_BUILTIN:
+    case KIND_LAMBDA:
+    case KIND_EXCEPTION:
         // Do nothing
         break;
 
-    case LISP_SYMBOL:
+    case KIND_SYMBOL:
         vm_eval_symbol(vm);
         break;
 
-    case LISP_CONS:
+    case KIND_CONS:
         vm_eval_cons(vm);
         break;
     }
