@@ -7,7 +7,7 @@
 // Node (Args), Node (Head) -> Node (Maybe :3)
 bool try_dispatch_special_form(VM *vm) {
 
-    if (vm_peek(vm)->kind != LISP_SYMBOL)
+    if (vm_peek(vm)->kind != KIND_SYMBOL)
         return false;
 
     SpecialFormHandler handler = NULL;
@@ -127,7 +127,7 @@ void eval_lambda_form(VM *vm, size_t argc) {
     // Function with at least one positional argument
     else {
         Object *curr = vm_peek(vm);
-        for (; curr->kind == LISP_CONS; curr = CDR(curr)) {
+        for (; curr->kind == KIND_CONS; curr = CDR(curr)) {
             if (!OFTYPE(CAR(curr), TY_SYMBOL)) {
                 da_free(args);
                 vm_recover(vm, INVALID_SPECIAL_FORM);

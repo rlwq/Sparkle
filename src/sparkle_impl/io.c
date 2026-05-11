@@ -5,16 +5,16 @@
 #include <stdio.h>
 
 void print_cons(Object *expr) {
-    assert(expr->kind == LISP_CONS);
+    assert(expr->kind == KIND_CONS);
 
     printf("(");
-    for (; CDR(expr)->kind == LISP_CONS; expr = CDR(expr)) {
+    for (; CDR(expr)->kind == KIND_CONS; expr = CDR(expr)) {
         print_expr(CAR(expr));
         printf(" ");
     }
     print_expr(CAR(expr));
     expr = CDR(expr);
-    if (expr->kind != LISP_NIL) {
+    if (expr->kind != KIND_NIL) {
         printf(" . ");
         print_expr(expr);
     }
@@ -22,7 +22,7 @@ void print_cons(Object *expr) {
 }
 
 void print_lambda(Object *expr) {
-    assert(expr->kind == LISP_LAMBDA);
+    assert(expr->kind == KIND_LAMBDA);
 
     printf("(lambda (");
     if (expr->as.lambda.args.size > (expr->as.lambda.is_variadic ? 1 : 0)) {
@@ -42,7 +42,7 @@ void print_lambda(Object *expr) {
 }
 
 void print_exception(Object *expr) {
-    assert(expr->kind == LISP_EXCEPTION);
+    assert(expr->kind == KIND_EXCEPTION);
     printf("<EXCEPTION: ");
     switch (expr->as.exception) {
     case INVALID_SPECIAL_FORM:
@@ -72,36 +72,36 @@ void print_exception(Object *expr) {
 
 void print_expr(Object *expr) {
     switch (expr->kind) {
-    case LISP_NIL:
+    case KIND_NIL:
         printf("Nil");
         break;
-    case LISP_BOOL:
+    case KIND_BOOL:
         if (BOOL(expr))
             printf("True");
         else
             printf("False");
         break;
-    case LISP_INTEGER:
+    case KIND_INTEGER:
         printf("%lld", INTEGER(expr));
         break;
-    case LISP_FLOAT:
+    case KIND_FLOAT:
         printf("%f", FLOAT(expr));
         break;
-    case LISP_STRING:
+    case KIND_STRING:
         printf("NOT IMPLEMENTED");
         break;
-    case LISP_SYMBOL:
+    case KIND_SYMBOL:
         printf("%s", SYMBOL(expr));
         break;
-    case LISP_CONS:
+    case KIND_CONS:
         print_cons(expr);
         break;
-    case LISP_BUILTIN:
+    case KIND_BUILTIN:
         break;
-    case LISP_LAMBDA:
+    case KIND_LAMBDA:
         print_lambda(expr);
         break;
-    case LISP_EXCEPTION:
+    case KIND_EXCEPTION:
         print_exception(expr);
         break;
     }

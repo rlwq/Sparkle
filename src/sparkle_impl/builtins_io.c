@@ -5,7 +5,7 @@
 
 void rkl_print(VM *vm) {
     Object *list = vm_peek(vm);
-    while (list->kind == LISP_CONS) {
+    while (list->kind == KIND_CONS) {
         print_expr(CAR(list));
         printf("\n");
         list = CDR(list);

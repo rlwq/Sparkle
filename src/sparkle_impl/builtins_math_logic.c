@@ -12,11 +12,11 @@
         LIST_ITER(vm, curr, vm_prev(vm)) vm_push(vm, CAR(curr));                                   \
         vm_to_common_numeric(vm);                                                                  \
                                                                                                    \
-        if (vm_peek(vm)->kind == LISP_BOOL)                                                        \
+        if (vm_peek(vm)->kind == KIND_BOOL)                                                        \
             vm_build_integer(vm, (Integer)BOOL(vm_prev(vm)) operator_(Integer) BOOL(vm_peek(vm))); \
-        else if (vm_peek(vm)->kind == LISP_INTEGER)                                                \
+        else if (vm_peek(vm)->kind == KIND_INTEGER)                                                \
             vm_build_integer(vm, INTEGER(vm_prev(vm)) operator_ INTEGER(vm_peek(vm)));             \
-        else if (vm_peek(vm)->kind == LISP_FLOAT)                                                  \
+        else if (vm_peek(vm)->kind == KIND_FLOAT)                                                  \
             vm_build_float(vm, FLOAT(vm_prev(vm)) operator_ FLOAT(vm_peek(vm)));                   \
                                                                                                    \
         vm_pop_prev_n(vm, 2);                                                                      \
@@ -27,11 +27,11 @@
 #define NUMERIC_ORDER_BUILTIN(func_name_, operator_)                                               \
     void func_name_(VM *vm) {                                                                      \
         vm_to_common_numeric(vm);                                                                  \
-        if (vm_peek(vm)->kind == LISP_BOOL)                                                        \
+        if (vm_peek(vm)->kind == KIND_BOOL)                                                        \
             vm_build_bool(vm, BOOL(vm_prev(vm)) operator_ BOOL(vm_peek(vm)));                      \
-        else if (vm_peek(vm)->kind == LISP_INTEGER)                                                \
+        else if (vm_peek(vm)->kind == KIND_INTEGER)                                                \
             vm_build_bool(vm, INTEGER(vm_prev(vm)) operator_ INTEGER(vm_peek(vm)));                \
-        else if (vm_peek(vm)->kind == LISP_FLOAT)                                                  \
+        else if (vm_peek(vm)->kind == KIND_FLOAT)                                                  \
             vm_build_bool(vm, FLOAT(vm_prev(vm)) operator_ FLOAT(vm_peek(vm)));                    \
         vm_pop_prev_n(vm, 2);                                                                      \
     }
@@ -49,30 +49,30 @@ void rkl_eq(VM *vm) {
     }
 
     switch (vm_peek(vm)->kind) {
-    case LISP_NIL:
+    case KIND_NIL:
         is_equal = true;
         break;
-    case LISP_SYMBOL:
+    case KIND_SYMBOL:
         is_equal = SYMBOL(vm_peek(vm)) == SYMBOL(vm_prev(vm));
         break;
-    case LISP_INTEGER:
+    case KIND_INTEGER:
         is_equal = INTEGER(vm_peek(vm)) == INTEGER(vm_prev(vm));
         break;
-    case LISP_EXCEPTION:
+    case KIND_EXCEPTION:
         is_equal = EXCEPTION(vm_peek(vm)) == EXCEPTION(vm_prev(vm));
         break;
-    case LISP_FLOAT:
+    case KIND_FLOAT:
         is_equal = FLOAT(vm_peek(vm)) == FLOAT(vm_prev(vm));
         break;
-    case LISP_BOOL:
+    case KIND_BOOL:
         is_equal = BOOL(vm_peek(vm)) == BOOL(vm_prev(vm));
         break;
-    case LISP_CONS:
+    case KIND_CONS:
         is_equal = vm_peek(vm) == vm_prev(vm);
         break;
-    case LISP_BUILTIN:
-    case LISP_LAMBDA:
-    case LISP_STRING:
+    case KIND_BUILTIN:
+    case KIND_LAMBDA:
+    case KIND_STRING:
         assert(0 && "NOT IMPLEMENTED");
         break;
     }
@@ -102,11 +102,11 @@ void rkl_truediv(VM *vm) {
 
     vm_to_common_numeric(vm);
 
-    if (vm_peek(vm)->kind == LISP_BOOL)
+    if (vm_peek(vm)->kind == KIND_BOOL)
         vm_build_float(vm, (double)BOOL(vm_prev(vm)) / (double)BOOL(vm_peek(vm)));
-    else if (vm_peek(vm)->kind == LISP_INTEGER)
+    else if (vm_peek(vm)->kind == KIND_INTEGER)
         vm_build_float(vm, (double)INTEGER(vm_prev(vm)) / (double)INTEGER(vm_peek(vm)));
-    else if (vm_peek(vm)->kind == LISP_FLOAT)
+    else if (vm_peek(vm)->kind == KIND_FLOAT)
         vm_build_float(vm, FLOAT(vm_prev(vm)) / FLOAT(vm_peek(vm)));
     vm_pop_prev_n(vm, 2);
 }
@@ -132,7 +132,7 @@ void rkl_eval(VM *vm) {
 }
 
 void rkl_is_nil(VM *vm) {
-    bool is_nil = vm_peek(vm)->kind == LISP_NIL;
+    bool is_nil = vm_peek(vm)->kind == KIND_NIL;
     vm_pop(vm);
     vm_build_bool(vm, is_nil);
 }

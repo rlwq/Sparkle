@@ -10,7 +10,7 @@ void vm_pack_cons(VM *vm) {
 
 // (h . t) -> t, h
 void vm_unpack_cons(VM *vm) {
-    ASSERT_KIND(vm, LISP_CONS);
+    ASSERT_KIND(vm, KIND_CONS);
 
     vm_push_prev(vm, CDR(vm_peek(vm)));
     vm_push_prev(vm, CAR(vm_peek(vm)));

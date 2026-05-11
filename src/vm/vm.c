@@ -60,7 +60,7 @@ void vm_mark(VM *vm) {
 #undef X
 }
 
-void vm_register_builtin(VM *vm, StringName name, LispBuiltin func_ptr) {
+void vm_register_builtin(VM *vm, StringName name, BuiltinObject func_ptr) {
     vm_build_builtin(vm, func_ptr);
     // TODO: maybe move si lookup somewhere
     vm_scope_define(vm, si_get(vm->si, name));

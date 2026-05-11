@@ -92,20 +92,20 @@ Object *parse_expr(Parser *parser) {
             return NULL;
         }
 
-        Object *result = gc_alloc_node(parser->gc, LISP_CONS);
-        CAR(result) = gc_alloc_node(parser->gc, LISP_SYMBOL);
+        Object *result = gc_alloc_node(parser->gc, KIND_CONS);
+        CAR(result) = gc_alloc_node(parser->gc, KIND_SYMBOL);
         CAR(result)->as.symbol = parser->si->prebuilt._quote;
-        CDR(result) = gc_alloc_node(parser->gc, LISP_CONS);
+        CDR(result) = gc_alloc_node(parser->gc, KIND_CONS);
         CAR(CDR(result)) = subexpr;
-        CDR(CDR(result)) = gc_alloc_node(parser->gc, LISP_NIL);
+        CDR(CDR(result)) = gc_alloc_node(parser->gc, KIND_NIL);
         return result;
     }
 
     // S-expr
     if (parser_eat(parser, TK_L_PAREN)) {
         if (parser_eat(parser, TK_DOT)) {
-            Object *result = gc_alloc_node(parser->gc, LISP_CONS);
-            CAR(result) = gc_alloc_node(parser->gc, LISP_NIL);
+            Object *result = gc_alloc_node(parser->gc, KIND_CONS);
+            CAR(result) = gc_alloc_node(parser->gc, KIND_NIL);
             CDR(result) = parse_expr(parser);
             parser_expect(parser, TK_R_PAREN);
             return result;
@@ -120,13 +120,13 @@ Object *parse_expr(Parser *parser) {
 
         if (parser_eat(parser, TK_DOT)) {
             if (parser_eat(parser, TK_R_PAREN)) {
-                da_push(args, gc_alloc_node(parser->gc, LISP_NIL));
+                da_push(args, gc_alloc_node(parser->gc, KIND_NIL));
             } else {
                 da_push(args, parse_expr(parser));
                 parser_expect(parser, TK_R_PAREN);
             }
         } else if (parser_eat(parser, TK_R_PAREN)) {
-            da_push(args, gc_alloc_node(parser->gc, LISP_NIL));
+            da_push(args, gc_alloc_node(parser->gc, KIND_NIL));
         } else {
             da_free(args);
             parser->is_err = true;
@@ -135,7 +135,7 @@ Object *parse_expr(Parser *parser) {
 
         Object *node = da_at_end(args, 0);
         for (size_t i = 1; i < args.size; i++) {
-            Object *head = gc_alloc_node(parser->gc, LISP_CONS);
+            Object *head = gc_alloc_node(parser->gc, KIND_CONS);
             head->as.cons.cdr = node;
             head->as.cons.car = da_at_end(args, i);
             node = head;
@@ -147,14 +147,14 @@ Object *parse_expr(Parser *parser) {
 
     // Integer
     if (parser_match(parser, TK_INTEGER)) {
-        Object *ast = gc_alloc_node(parser->gc, LISP_INTEGER);
+        Object *ast = gc_alloc_node(parser->gc, KIND_INTEGER);
         ast->as.integer = svtoi(parser_advance(parser).src);
         return ast;
     }
 
     // Symbol
     if (parser_match(parser, TK_SYMBOL)) {
-        Object *ast = gc_alloc_node(parser->gc, LISP_SYMBOL);
+        Object *ast = gc_alloc_node(parser->gc, KIND_SYMBOL);
         StringView symbol = parser_advance(parser).src;
 
         ast->as.symbol = si_getn(parser->si, symbol.data, symbol.size);
@@ -163,7 +163,7 @@ Object *parse_expr(Parser *parser) {
     //
     // // String
     // if (parser_match(parser, TK_STRING)) {
-    //     Object *ast = gc_alloc_node(parser->gc, LISP_STRING);
+    //     Object *ast = gc_alloc_node(parser->gc, KIND_STRING);
     //     ast->as.string = sv_shrink(parser_advance(parser).src, 1);
     //     return ast;
     // }
