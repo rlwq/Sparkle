@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
     StringView prog = sv_mk(src);
 
     Lexer *lexer = lexer_alloc(prog);
-    lex_all(lexer);
+    lexer_run(lexer);
 
     if (lexer->is_err) {
         printf(RED "%s:%zu:%zu: [PARSE ERROR] Unexpected character: " SV_FMT "\n" RESET, argv[1],
@@ -68,8 +68,8 @@ int main(int argc, char **argv) {
     TokenDA tokens = extract_tokens(lexer);
     GC *gc = gc_alloc();
     Parser *parser = parser_alloc(tokens, gc, si);
-    parse_all(parser);
-    LispNodePtrDA exprs = extract_exprs(parser);
+    parser_run(parser);
+    ObjectPtrDA exprs = extract_exprs(parser);
 
     if (parser->is_err) {
         printf(RED "%s:%zu:%zu: [PARSE ERROR] Unexpected token \"" SV_FMT "\".\n" RESET, argv[1],
@@ -90,8 +90,7 @@ int main(int argc, char **argv) {
 
     register_builtins(vm);
 
-    if (!VM_DONE(vm))
-        vm_eval_all(vm);
+    vm_run(vm);
 
     bool in_err = vm->is_err;
     ExceptionKind exception;

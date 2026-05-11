@@ -1,10 +1,10 @@
 #include "io.h"
 #include "forwards.h"
-#include "lisp_node.h"
+#include "object.h"
 #include <assert.h>
 #include <stdio.h>
 
-void print_cons(LispNode *expr) {
+void print_cons(Object *expr) {
     assert(expr->kind == LISP_CONS);
 
     printf("(");
@@ -21,7 +21,7 @@ void print_cons(LispNode *expr) {
     printf(")");
 }
 
-void print_lambda(LispNode *expr) {
+void print_lambda(Object *expr) {
     assert(expr->kind == LISP_LAMBDA);
 
     printf("(lambda (");
@@ -41,7 +41,7 @@ void print_lambda(LispNode *expr) {
     printf(")");
 }
 
-void print_exception(LispNode *expr) {
+void print_exception(Object *expr) {
     assert(expr->kind == LISP_EXCEPTION);
     printf("<EXCEPTION: ");
     switch (expr->as.exception) {
@@ -70,7 +70,7 @@ void print_exception(LispNode *expr) {
     printf(">");
 }
 
-void print_expr(LispNode *expr) {
+void print_expr(Object *expr) {
     switch (expr->kind) {
     case LISP_NIL:
         printf("Nil");

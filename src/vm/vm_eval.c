@@ -1,16 +1,14 @@
 #include "dynamic_array.h"
-#include "lisp_node.h"
+#include "object.h"
 #include "special_forms.h"
-#include "utils.h"
 #include "vm.h"
 #include <assert.h>
 #include <stdbool.h>
 
 // Cons (args), Node (lambda) -> Node (result)
 void eval_lambda_call(VM *vm) {
-    ASSERT_HAS(vm, 2);
 
-    LispNode *lambda = vm_peek(vm);
+    Object *lambda = vm_peek(vm);
     vm_swap(vm);
 
     vm_push_scope(vm, LAMBDA_SCOPE(lambda));
@@ -39,29 +37,10 @@ void eval_lambda_call(VM *vm) {
     vm_pop_scope(vm);
 }
 
-// Node (cons) -> Node * n
-size_t vm_unpack_list(VM *vm) {
-    ASSERT_LIST(vm);
-
-    size_t size = 0;
-    while (vm_peek(vm)->kind != LISP_NIL) {
-        assert(vm_peek(vm)->kind == LISP_CONS);
-        vm_unpack_cons(vm);
-        vm_swap(vm);
-
-        size++;
-    }
-
-    vm_pop(vm);
-    return size;
-}
-
 // Node (cons) -> Node (cons)
 size_t vm_eval_list(VM *vm) {
-    ASSERT_HAS(vm, 1);
-
     size_t length = 0;
-    while (NODE_IS(vm_peek(vm), LISP_CONS)) {
+    while (OFTYPE(vm_peek(vm), TY_CONS)) {
         vm_unpack_cons(vm);
         vm_eval_node(vm);
         vm_swap(vm);
@@ -80,8 +59,6 @@ size_t vm_eval_list(VM *vm) {
 
 // Node -> Bool
 bool vm_cast_to_bool(VM *vm) {
-    ASSERT_HAS(vm, 1);
-
     bool result = false;
 
     switch (vm_peek(vm)->kind) {
@@ -95,7 +72,7 @@ bool vm_cast_to_bool(VM *vm) {
         result = INTEGER(vm_peek(vm)) != 0;
         break;
     case LISP_STRING:
-        NOT_IMPLEMENTED();
+        assert(0);
         break;
     case LISP_CONS:
     case LISP_SYMBOL:
@@ -123,8 +100,7 @@ void vm_unpack_list_n(VM *vm, size_t n) {
 }
 
 // (Bool | Integer | Float), (Bool | Integer | Float) -> Node, Node
-LispNodeKind vm_common_numeric(VM *vm) {
-    ASSERT_HAS(vm, 2);
+ObjectKind vm_common_numeric(VM *vm) {
     assert(OFTYPE(vm_peek(vm), TY_NUMERIC));
     assert(OFTYPE(vm_prev(vm), TY_NUMERIC));
 
@@ -135,24 +111,23 @@ LispNodeKind vm_common_numeric(VM *vm) {
 }
 
 // (Bool | Integer | Float) -> Node
-void vm_cast_numeric(VM *vm, LispNodeKind kind) {
-    ASSERT_HAS(vm, 1);
+void vm_cast_numeric(VM *vm, ObjectKind kind) {
     assert(OFTYPE(vm_peek(vm), TY_NUMERIC));
 
-    if (NODE_IS(vm_peek(vm), LISP_BOOL) && kind != LISP_BOOL) {
+    if (OFTYPE(vm_peek(vm), TY_BOOL) && kind != LISP_BOOL) {
         vm_build_integer(vm, BOOL(vm_peek(vm)));
         vm_pop_prev(vm);
     }
 
-    if (NODE_IS(vm_peek(vm), LISP_INTEGER) && kind == LISP_FLOAT) {
+    if (OFTYPE(vm_peek(vm), TY_INTEGER) && kind == LISP_FLOAT) {
         vm_build_float(vm, INTEGER(vm_peek(vm)));
         vm_pop_prev(vm);
     }
 }
 
 // (Bool | Integer | Float), (Bool | Integer | Float) -> Node, Node
-LispNodeKind vm_to_common_numeric(VM *vm) {
-    LispNodeKind common = vm_common_numeric(vm);
+ObjectKind vm_to_common_numeric(VM *vm) {
+    ObjectKind common = vm_common_numeric(vm);
 
     vm_cast_numeric(vm, common);
     vm_swap(vm);
@@ -184,7 +159,7 @@ void vm_eval_cons(VM *vm) {
         break;
 
     case LISP_BUILTIN: {
-        LispNode *builtin = vm_peek(vm);
+        Object *builtin = vm_peek(vm);
         vm_swap(vm);
         size_t args_count = vm_eval_list(vm);
 
@@ -237,8 +212,6 @@ void vm_eval_symbol(VM *vm) {
 
 // Node -> Node
 void vm_eval_node(VM *vm) {
-    ASSERT_HAS(vm, 1);
-
     switch (vm_peek(vm)->kind) {
     case LISP_NIL:
     case LISP_INTEGER:

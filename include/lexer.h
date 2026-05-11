@@ -46,8 +46,7 @@ typedef struct {
 Lexer *lexer_alloc(StringView src);
 void lexer_free(Lexer *lexer);
 
-void lex_current(Lexer *lexer);
-void lex_all(Lexer *lexer);
+void lexer_run(Lexer *lexer);
 
 TokenDA extract_tokens(Lexer *lexer);
 

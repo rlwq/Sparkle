@@ -1,7 +1,7 @@
 #include "gc.h"
 #include "vm.h"
 
-void vm_build_value(VM *vm, LispNodeKind kind) {
+void vm_build_value(VM *vm, ObjectKind kind) {
     if (gc_check_bounds(vm->gc)) {
         vm_mark(vm);
         gc_sweep(vm->gc);
@@ -19,7 +19,7 @@ void vm_build_symbol(VM *vm, StringName value) {
     SYMBOL(vm_peek(vm)) = value;
 }
 
-void vm_build_cons(VM *vm, LispNode *car, LispNode *cdr) {
+void vm_build_cons(VM *vm, Object *car, Object *cdr) {
     vm_build_value(vm, LISP_CONS);
     CAR(vm_peek(vm)) = car;
     CDR(vm_peek(vm)) = cdr;
@@ -51,7 +51,7 @@ void vm_build_nil(VM *vm) {
     vm_push(vm, vm->singletons._Nil);
 }
 
-void vm_build_lambda(VM *vm, LambdaArgs args, bool is_variadic, LispNode *expr, Scope *scope) {
+void vm_build_lambda(VM *vm, LambdaArgs args, bool is_variadic, Object *expr, Scope *scope) {
     vm_build_value(vm, LISP_LAMBDA);
     LAMBDA(vm_peek(vm)).args = args;
     LAMBDA(vm_peek(vm)).is_variadic = is_variadic;

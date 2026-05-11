@@ -2,8 +2,7 @@
 
 #include "builtins.h"
 #include "forwards.h"
-#include "lisp_node.h"
-#include "utils.h"
+#include "object.h"
 #include "vm.h"
 
 #define NUMERIC_VARIADIC_BUILTIN(func_name_, operator_)                                            \
@@ -27,7 +26,6 @@
 
 #define NUMERIC_ORDER_BUILTIN(func_name_, operator_)                                               \
     void func_name_(VM *vm) {                                                                      \
-        ASSERT_HAS(vm, 2);                                                                         \
         vm_to_common_numeric(vm);                                                                  \
         if (vm_peek(vm)->kind == LISP_BOOL)                                                        \
             vm_build_bool(vm, BOOL(vm_prev(vm)) operator_ BOOL(vm_peek(vm)));                      \
@@ -75,7 +73,7 @@ void rkl_eq(VM *vm) {
     case LISP_BUILTIN:
     case LISP_LAMBDA:
     case LISP_STRING:
-        NOT_IMPLEMENTED();
+        assert(0 && "NOT IMPLEMENTED");
         break;
     }
 

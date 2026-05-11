@@ -2,7 +2,7 @@
 
 #include "builtins.h"
 #include "forwards.h"
-#include "lisp_node.h"
+#include "object.h"
 #include "vm.h"
 
 // Node, Node -> Cons
@@ -28,7 +28,6 @@ void rkl_cdr(VM *vm) {
 }
 
 void rkl_list(VM *vm) {
-    ASSERT_HAS(vm, 1);
     (void)vm;
 }
 

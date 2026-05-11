@@ -5,8 +5,8 @@
 
 typedef struct VM VM;
 typedef struct GC GC;
-typedef struct LispNode LispNode;
-typedef DA(struct LispNode *) LispNodePtrDA;
+typedef struct Object Object;
+typedef DA(struct Object *) ObjectPtrDA;
 typedef struct Scope Scope;
 
 #endif

@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 void rkl_print(VM *vm) {
-    LispNode *list = vm_peek(vm);
+    Object *list = vm_peek(vm);
     while (list->kind == LISP_CONS) {
         print_expr(CAR(list));
         printf("\n");

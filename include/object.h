@@ -1,5 +1,5 @@
-#ifndef LISP_NODE_H
-#define LISP_NODE_H
+#ifndef OBJECT_H
+#define OBJECT_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -24,7 +24,7 @@ typedef enum {
 #define X(k_) LISP_##k_,
     X_KINDS
 #undef X
-} LispNodeKind;
+} ObjectKind;
 
 typedef enum {
 #define X(k_) TY_##k_ = 1 << LISP_##k_,
@@ -33,7 +33,7 @@ typedef enum {
         TY_NUMERIC = TY_BOOL | TY_INTEGER | TY_FLOAT,
     TY_LISTFUL = TY_CONS | TY_NIL,
     TY_CALLABLE = TY_BUILTIN | TY_LAMBDA,
-} LispNodeType;
+} ObjectType;
 
 #define TYPEOF(n_) (1 << (n_)->kind)
 #define OFTYPE(n_, t_) (TYPEOF(n_) & (t_))
@@ -49,9 +49,9 @@ typedef enum {
 } ExceptionKind;
 
 typedef struct {
-    LispNode *car;
-    LispNode *cdr;
-} LispConsNode;
+    Object *car;
+    Object *cdr;
+} ConsObject;
 
 typedef DA(StringName) LambdaArgs;
 
@@ -59,10 +59,10 @@ typedef long long int Integer;
 
 typedef struct {
     LambdaArgs args;
-    LispNode *subexpr;
+    Object *subexpr;
     Scope *scope;
     bool is_variadic;
-} LispLambdaNode;
+} LambdaObject;
 
 typedef struct {
     void (*func)(VM *vm);
@@ -73,25 +73,21 @@ typedef struct {
 typedef union {
     StringName symbol;
     LispBuiltin builtin;
-    LispLambdaNode lambda;
-    LispConsNode cons;
+    LambdaObject lambda;
+    ConsObject cons;
     Integer integer;
     double float_;
     bool bool_;
     ExceptionKind exception;
-} LispNodeUnion;
+} ObjectUnion;
 
-struct LispNode {
-    LispNodeKind kind;
+struct Object {
+    ObjectKind kind;
     bool marked;
 
-    LispNode *heap_next;
-    LispNodeUnion as;
+    Object *heap_next;
+    ObjectUnion as;
 };
-
-#define NODE_IS(n_, k_) ((n_)->kind == (k_))
-
-#define IS_LISTFUL(n_) ((n_)->kind == LISP_CONS || (n_)->kind == LISP_NIL)
 
 #define CONS(n_) ((n_)->as.cons)
 #define CAR(n_) ((n_)->as.cons.car)
@@ -116,7 +112,7 @@ struct LispNode {
 #define BUILTIN_ARGS_N(n_) ((n_)->as.builtin.arity)
 
 #define LIST_ITER(vm_, name_, value_)                                                              \
-    LispNode *name_;                                                                               \
+    Object *name_;                                                                                 \
     for (name_ = value_; OFTYPE(name_, TY_CONS); name_ = CDR(name_)) {
 
 #define END_LIST_ITER(vm_, name_)                                                                  \

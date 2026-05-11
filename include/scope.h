@@ -7,7 +7,7 @@
 
 typedef struct {
     StringName key;
-    LispNode *value;
+    Object *value;
 } ScopeItem;
 
 struct Scope {
@@ -19,8 +19,8 @@ struct Scope {
     bool marked;
 };
 
-bool scope_define(Scope *scope, StringName name, LispNode *value);
-LispNode *scope_get(Scope *scope, StringName name);
-bool scope_set(Scope *scope, StringName name, LispNode *value);
+bool scope_define(Scope *scope, StringName name, Object *value);
+Object *scope_get(Scope *scope, StringName name);
+bool scope_set(Scope *scope, StringName name, Object *value);
 
 #endif

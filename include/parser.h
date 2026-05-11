@@ -14,7 +14,7 @@
 typedef struct {
     Token *tokens;
     size_t tokens_count;
-    LispNodePtrDA exprs;
+    ObjectPtrDA exprs;
 
     GC *gc;
     StringInterner *si;
@@ -25,9 +25,8 @@ typedef struct {
 Parser *parser_alloc(TokenDA tokens, GC *gc, StringInterner *si);
 void parser_free(Parser *parser);
 
-void parse_current(Parser *parser);
-void parse_all(Parser *parser);
+void parser_run(Parser *parser);
 
-LispNodePtrDA extract_exprs(Parser *parser);
+ObjectPtrDA extract_exprs(Parser *parser);
 
 #endif
