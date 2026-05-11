@@ -21,7 +21,7 @@ Lexer *lexer_alloc(StringView src) {
     lexer->line = 0;
     lexer->column = 0;
 
-    lexer->is_eof = false;
+    lexer->is_eof = src.size == 0;
     lexer->is_err = false;
 
     return lexer;
@@ -159,8 +159,6 @@ void lex_current(Lexer *lexer) {
 }
 
 void lex_all(Lexer *lexer) {
-    assert(VALID(lexer));
-
     while (VALID(lexer))
         lex_current(lexer);
 }

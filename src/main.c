@@ -4,6 +4,7 @@
 #include <stdlib.h>
 
 #include "dynamic_array.h"
+#include "forwards.h"
 #include "gc.h"
 #include "lexer.h"
 #include "parser.h"
@@ -65,7 +66,6 @@ int main(int argc, char **argv) {
     }
 
     TokenDA tokens = extract_tokens(lexer);
-
     GC *gc = gc_alloc();
     Parser *parser = parser_alloc(tokens, gc, si);
     parse_all(parser);
@@ -84,7 +84,6 @@ int main(int argc, char **argv) {
         si_free(si);
         return 1;
     }
-
     VM *vm = vm_alloc(exprs, gc, si);
 
     vm_push_scope(vm, gc_alloc_scope(gc, NULL));
