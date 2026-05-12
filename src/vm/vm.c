@@ -9,12 +9,9 @@
 #include "object.h"
 #include "vm.h"
 
-VM *vm_alloc(ObjectPtrDA instructions, GC *gc, StringInterner *si) {
+VM *vm_alloc(GC *gc, StringInterner *si) {
     VM *vm = malloc(sizeof(VM));
     assert(vm);
-
-    vm->instructions = instructions;
-    vm->instruction_ptr = 0;
 
     vm->gc = gc;
     vm->si = si;
@@ -32,6 +29,11 @@ VM *vm_alloc(ObjectPtrDA instructions, GC *gc, StringInterner *si) {
 #undef X
 
     return vm;
+}
+
+void vm_load_instructions(VM *vm, ObjectPtrDA instructions) {
+    vm->instructions = instructions;
+    vm->instruction_ptr = 0;
 }
 
 void vm_free(VM *vm) {

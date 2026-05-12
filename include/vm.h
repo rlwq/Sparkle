@@ -48,7 +48,8 @@ struct VM {
 };
 
 // vm.c
-VM *vm_alloc(ObjectPtrDA instructions, GC *gc, StringInterner *si);
+VM *vm_alloc(GC *gc, StringInterner *si);
+void vm_load_instructions(VM *vm, ObjectPtrDA instructions);
 void vm_free(VM *vm);
 void vm_mark(VM *vm);
 void vm_register_builtin(VM *vm, StringName name, BuiltinObject func_ptr);
