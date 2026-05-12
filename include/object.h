@@ -33,6 +33,11 @@ typedef enum {
         TY_NUMERIC = TY_BOOL | TY_INTEGER | TY_FLOAT,
     TY_LISTFUL = TY_CONS | TY_NIL,
     TY_CALLABLE = TY_BUILTIN | TY_LAMBDA,
+
+    TY_ANY = 0
+#define X(k_) | TY_##k_
+    X_KINDS
+#undef X
 } ObjectType;
 
 #define TYPEOF(n_) (1 << (n_)->kind)

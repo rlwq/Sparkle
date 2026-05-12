@@ -27,6 +27,20 @@ void rkl_cdr(VM *vm) {
     vm_pop_prev(vm);
 }
 
+// Cons, Value -> Cons
+void rkl_setcar(VM *vm) {
+    vm_expect2(vm, TY_CONS, TY_ANY);
+    CAR(vm_prev(vm)) = vm_peek(vm);
+    vm_pop(vm);
+}
+
+// Cons, Value -> Cons
+void rkl_setcdr(VM *vm) {
+    vm_expect2(vm, TY_CONS, TY_ANY);
+    CDR(vm_prev(vm)) = vm_peek(vm);
+    vm_pop(vm);
+}
+
 void rkl_list(VM *vm) {
     /* The args. list is already on the stack. Does nothing */
     (void)vm;
@@ -46,8 +60,9 @@ void rkl_len(VM *vm) {
 }
 
 DEFINE_MODULE(CONS_LIST) = {
-    {"cons", rkl_cons, 2, false}, {"car", rkl_car, 1, false}, {"cdr", rkl_cdr, 1, false},
-    {"list", rkl_list, 0, true},  {"len", rkl_len, 1, false},
+    {"cons", rkl_cons, 2, false},     {"car", rkl_car, 1, false},       {"cdr", rkl_cdr, 1, false},
+    {"setcar", rkl_setcar, 2, false}, {"setcdr", rkl_setcdr, 2, false}, {"list", rkl_list, 0, true},
+    {"len", rkl_len, 1, false},
 };
 
 DEFINE_MODULE_SIZE(CONS_LIST);
