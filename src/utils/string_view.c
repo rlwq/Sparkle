@@ -78,7 +78,7 @@ StringView sv_drop_ws(StringView sv) {
 }
 
 int svtoi(StringView sv) {
-    assert(sv.size);
+    assert(sv.size > 0);
     assert(sv_head(sv) == '+' || sv_head(sv) == '-' || isdigit(sv_head(sv)));
 
     int result = 0;

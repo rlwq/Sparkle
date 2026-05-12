@@ -3,6 +3,7 @@
 #include "builtins.h"
 #include "forwards.h"
 #include "object.h"
+#include "utils.h"
 #include "vm.h"
 
 #define NUMERIC_VARIADIC_BUILTIN(func_name_, operator_)                                            \
@@ -10,6 +11,7 @@
         vm_swap(vm);                                                                               \
                                                                                                    \
         LIST_ITER(vm, curr, vm_prev(vm)) vm_push(vm, CAR(curr));                                   \
+        vm_expect2(vm, TY_NUMERIC, TY_NUMERIC);                                                    \
         vm_to_common_numeric(vm);                                                                  \
                                                                                                    \
         if (vm_peek(vm)->kind == KIND_BOOL)                                                        \
@@ -26,13 +28,21 @@
 
 #define NUMERIC_ORDER_BUILTIN(func_name_, operator_)                                               \
     void func_name_(VM *vm) {                                                                      \
+        vm_expect2(vm, TY_NUMERIC, TY_NUMERIC);                                                    \
         vm_to_common_numeric(vm);                                                                  \
-        if (vm_peek(vm)->kind == KIND_BOOL)                                                        \
+        switch (TYPEOF(vm_peek(vm))) {                                                             \
+        case TY_BOOL:                                                                              \
             vm_build_bool(vm, BOOL(vm_prev(vm)) operator_ BOOL(vm_peek(vm)));                      \
-        else if (vm_peek(vm)->kind == KIND_INTEGER)                                                \
+            break;                                                                                 \
+        case TY_INTEGER:                                                                           \
             vm_build_bool(vm, INTEGER(vm_prev(vm)) operator_ INTEGER(vm_peek(vm)));                \
-        else if (vm_peek(vm)->kind == KIND_FLOAT)                                                  \
+            break;                                                                                 \
+        case TY_FLOAT:                                                                             \
             vm_build_bool(vm, FLOAT(vm_prev(vm)) operator_ FLOAT(vm_peek(vm)));                    \
+            break;                                                                                 \
+        default:                                                                                   \
+            UNREACHABLE();                                                                         \
+        }                                                                                          \
         vm_pop_prev_n(vm, 2);                                                                      \
     }
 
@@ -175,7 +185,7 @@ void rkl_logical_not(VM *vm) {
     vm_pop_prev(vm);
 }
 
-DEFINE_MODULE(MATH_LOGIC) = {
+DEFINE_MODULE(ARITHMETIC_LOGIC) = {
     {"+", rkl_add, 1, true},           {"*", rkl_mul, 1, true},
     {"-", rkl_sub, 1, true},           {"/", rkl_truediv, 2, false},
     {"=", rkl_eq, 2, false},           {"!=", rkl_ne, 2, false},
@@ -187,4 +197,5 @@ DEFINE_MODULE(MATH_LOGIC) = {
     {"&&", rkl_logical_and, 0, true},  {"||", rkl_logical_or, 0, true},
 };
 
-DEFINE_MODULE_SIZE(MATH_LOGIC);
+DEFINE_MODULE(ARITHMETIC_LOGIC);
+DEFINE_MODULE_SIZE(ARITHMETIC_LOGIC);

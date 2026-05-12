@@ -48,7 +48,7 @@ bool gc_check_bounds(GC *gc) {
 
 Object *gc_alloc_node(GC *gc, ObjectKind kind) {
     Object *node = malloc(sizeof(Object));
-    assert(node); // TODO: add some error reporting
+    assert(node);
 
     gc->nodes_count++;
     node->kind = kind;

@@ -111,6 +111,8 @@ void eval_lambda_form(VM *vm, size_t argc) {
 
     LambdaArgs args;
     bool is_variadic = false;
+
+    // TODO: memory leak!
     da_init(args);
 
     if (!OFTYPE(vm_peek(vm), TY_SYMBOL | TY_LISTFUL)) {

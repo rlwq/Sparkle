@@ -20,7 +20,7 @@ typedef struct {
 #define DEFINE_MODULE(name_) const BuiltinDef BUILTINS_##name_[]
 
 #define X_MODULES                                                                                  \
-    X(MATH_LOGIC)                                                                                  \
+    X(ARITHMETIC_LOGIC)                                                                            \
     X(CONS_LIST)                                                                                   \
     X(IO)
 

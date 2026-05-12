@@ -32,6 +32,8 @@ void rkl_list(VM *vm) {
 }
 
 void rkl_len(VM *vm) {
+    vm_expect(vm, TY_LISTFUL);
+
     Integer size = 0;
 
     LIST_ITER(vm, curr, vm_peek(vm))
