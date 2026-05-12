@@ -28,6 +28,7 @@ void rkl_cdr(VM *vm) {
 }
 
 void rkl_list(VM *vm) {
+    /* The args. list is already on the stack. Does nothing */
     (void)vm;
 }
 

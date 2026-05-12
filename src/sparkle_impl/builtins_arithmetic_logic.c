@@ -112,12 +112,16 @@ void rkl_truediv(VM *vm) {
 
     vm_to_common_numeric(vm);
 
-    if (vm_peek(vm)->kind == KIND_BOOL)
+    if (vm_peek(vm)->kind == KIND_BOOL) {
+        VM_RECOVER_IF(vm, BOOL(vm_peek(vm)) == 0, WRONG_VALUE);
         vm_build_float(vm, (double)BOOL(vm_prev(vm)) / (double)BOOL(vm_peek(vm)));
-    else if (vm_peek(vm)->kind == KIND_INTEGER)
+    } else if (vm_peek(vm)->kind == KIND_INTEGER) {
+        VM_RECOVER_IF(vm, INTEGER(vm_peek(vm)) == 0, WRONG_VALUE);
         vm_build_float(vm, (double)INTEGER(vm_prev(vm)) / (double)INTEGER(vm_peek(vm)));
-    else if (vm_peek(vm)->kind == KIND_FLOAT)
+    } else if (vm_peek(vm)->kind == KIND_FLOAT) {
+        VM_RECOVER_IF(vm, FLOAT(vm_peek(vm)) == 0, WRONG_VALUE);
         vm_build_float(vm, FLOAT(vm_prev(vm)) / FLOAT(vm_peek(vm)));
+    }
     vm_pop_prev_n(vm, 2);
 }
 
@@ -197,5 +201,4 @@ DEFINE_MODULE(ARITHMETIC_LOGIC) = {
     {"&&", rkl_logical_and, 0, true},  {"||", rkl_logical_or, 0, true},
 };
 
-DEFINE_MODULE(ARITHMETIC_LOGIC);
 DEFINE_MODULE_SIZE(ARITHMETIC_LOGIC);
