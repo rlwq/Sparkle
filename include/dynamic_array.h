@@ -12,6 +12,8 @@
         size_t capacity;                                                                           \
     }
 
+#define da_empty {NULL, 0, 0}
+
 #define da_init(da_)                                                                               \
     do {                                                                                           \
         (da_).capacity = DA_INIT_CAPACITY;                                                         \

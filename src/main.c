@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "diagnostics.h"
 #include "dynamic_array.h"
 #include "forwards.h"
 #include "gc.h"
@@ -42,101 +43,67 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    char *src = read_file(argv[1]);
+    StringView prog = sv_mk(src);
+
     StringInterner *si = si_alloc();
+    GC *gc = gc_alloc();
+
+    Lexer *lexer = lexer_alloc(prog);
+    TokenDA tokens = da_empty;
+
+    Parser *parser = parser_alloc(gc, si);
+    ObjectPtrDA exprs = da_empty;
+
+    VM *vm = vm_alloc(gc, si);
+
+    bool is_err = false;
 
     // TODO: Refactor this. Needs some kind of special form registry
     for (size_t i = 0; i < SPECIAL_FORMS_COUNT; i++)
         SPECIAL_FORMS[i].keyword = si_get(si, SPECIAL_FORMS[i].keyword);
 
-    char *src = read_file(argv[1]);
-    StringView prog = sv_mk(src);
-
-    Lexer *lexer = lexer_alloc(prog);
     lexer_run(lexer);
 
     if (lexer->is_err) {
-        printf(RED "%s:%zu:%zu: [PARSE ERROR] Unexpected character: " SV_FMT "\n" RESET, argv[1],
-               lexer->line + 1, lexer->column + 1,
-               SV_ARGS(sv_take(lexer->src, sv_find(lexer->src, '\n'))));
-
-        free(src);
-        lexer_free(lexer);
-        si_free(si);
-        return 1;
+        diag_lexer(argv[1], lexer);
+        is_err = true;
+        goto cleanup;
     }
 
-    TokenDA tokens = extract_tokens(lexer);
-    GC *gc = gc_alloc();
-    Parser *parser = parser_alloc(tokens, gc, si);
+    tokens = extract_tokens(lexer);
+
+    parser_load(parser, tokens);
     parser_run(parser);
-    ObjectPtrDA exprs = extract_exprs(parser);
 
     if (parser->is_err) {
-        printf(RED "%s:%zu:%zu: [PARSE ERROR] Unexpected token \"" SV_FMT "\".\n" RESET, argv[1],
-               parser->tokens->line + 1, parser->tokens->column + 1, SV_ARGS(parser->tokens->src));
-
-        free(src);
-        lexer_free(lexer);
-        parser_free(parser);
-        da_free(tokens);
-        da_free(exprs);
-        gc_free(gc);
-        si_free(si);
-        return 1;
+        diag_parser(argv[1], parser);
+        is_err = true;
+        goto cleanup;
     }
-    VM *vm = vm_alloc(exprs, gc, si);
 
+    exprs = extract_exprs(parser);
+
+    vm_load_instructions(vm, exprs);
     vm_push_scope(vm, gc_alloc_scope(gc, NULL));
-
     register_builtins(vm);
-
     vm_run(vm);
 
-    bool in_err = vm->is_err;
-    ExceptionKind exception;
-    if (in_err)
-        exception = vm->exception;
-
+    if (vm->is_err) {
+        diag_vm(argv[1], vm);
+        is_err = true;
+        goto cleanup;
+    }
+cleanup:
     vm_free(vm);
     da_free(exprs);
 
     parser_free(parser);
     da_free(tokens);
-
     gc_free(gc);
-
+    si_free(si);
     lexer_free(lexer);
     free(src);
 
-    si_free(si);
-
-    if (!in_err)
-        return 0;
-
-    printf(RED "[RUNTIME ERROR] ");
-    switch (exception) {
-    case INVALID_SPECIAL_FORM:
-        printf("Invalid special form.");
-        break;
-    case SYMBOL_REBINDING:
-        printf("Symbol is already bound.");
-        break;
-    case SYMBOL_UNDEFINED:
-        printf("Symbol has no definition.");
-        break;
-    case UNCALLABLE_CALL:
-        printf("Can't use this kind of object as a function.");
-        break;
-    case WRONG_ARITY:
-        printf("Wrong arity for a function call.");
-        break;
-    case WRONG_TYPE:
-        printf("Function expected some other object type.");
-        break;
-    case WRONG_VALUE:
-        printf("Function expected some other value.");
-        break;
-    }
-    printf("\n" RESET);
-    return 1;
+    return (int)is_err;
 }

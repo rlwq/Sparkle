@@ -15,12 +15,10 @@
 
 #define CURR(p_) (assert((p_)), *((p_)->tokens))
 
-Parser *parser_alloc(TokenDA tokens, GC *gc, StringInterner *si) {
+Parser *parser_alloc(GC *gc, StringInterner *si) {
     Parser *parser = malloc(sizeof(Parser));
     assert(parser);
 
-    parser->tokens = tokens.data;
-    parser->tokens_count = tokens.size;
     parser->is_err = false;
     parser->gc = gc;
     parser->si = si;
@@ -32,7 +30,14 @@ Parser *parser_alloc(TokenDA tokens, GC *gc, StringInterner *si) {
     return parser;
 }
 
+void parser_load(Parser *parser, TokenDA tokens) {
+    parser->tokens = tokens.data;
+    parser->tokens_count = tokens.size;
+}
+
 void parser_free(Parser *parser) {
+    da_free(parser->exprs);
+    da_nullify(parser->exprs);
     free(parser);
 }
 

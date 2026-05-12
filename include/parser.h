@@ -22,7 +22,8 @@ typedef struct {
     bool is_err;
 } Parser;
 
-Parser *parser_alloc(TokenDA tokens, GC *gc, StringInterner *si);
+Parser *parser_alloc(GC *gc, StringInterner *si);
+void parser_load(Parser *parser, TokenDA tokens);
 void parser_free(Parser *parser);
 
 void parser_run(Parser *parser);
