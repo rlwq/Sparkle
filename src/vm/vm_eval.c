@@ -7,6 +7,8 @@
 
 // Cons (args), Node (lambda) -> Node (result)
 void eval_lambda_call(VM *vm) {
+    assert(OFTYPE(vm_peek(vm), TY_LAMBDA));
+    assert(OFTYPE(vm_prev(vm), TY_LISTFUL));
 
     Object *lambda = vm_peek(vm);
     vm_swap(vm);
@@ -22,7 +24,7 @@ void eval_lambda_call(VM *vm) {
         vm_pop(vm);
     }
 
-    if (!LAMBDA_IS_VARIADIC(lambda) && vm_peek(vm)->kind != KIND_NIL)
+    if (!LAMBDA_IS_VARIADIC(lambda) && !OFTYPE(vm_peek(vm), TY_NIL))
         vm_recover(vm, WRONG_ARITY);
 
     if (LAMBDA_IS_VARIADIC(lambda))
@@ -37,22 +39,45 @@ void eval_lambda_call(VM *vm) {
     vm_pop_scope(vm);
 }
 
-// Node (cons) -> Node (cons)
-size_t vm_eval_list(VM *vm) {
-    size_t length = 0;
-    while (OFTYPE(vm_peek(vm), TY_CONS)) {
-        vm_unpack_cons(vm);
-        vm_eval_node(vm);
-        vm_swap(vm);
-        length++;
+// Args (list), Builtin -> Result
+void eval_builtin_call(VM *vm) {
+    assert(OFTYPE(vm_peek(vm), TY_BUILTIN));
+    assert(OFTYPE(vm_prev(vm), TY_LISTFUL));
+
+    Object *builtin = vm_peek(vm);
+    vm_swap(vm);
+    size_t args_count = vm_map_eval(vm);
+
+    if (!BUILTIN_IS_VARIADIC(builtin)) {
+        VM_RECOVER_IF(vm, args_count != BUILTIN_ARGS_N(builtin), WRONG_ARITY);
+        vm_unpack_list(vm);
     }
 
-    ASSERT_KIND(vm, KIND_NIL);
+    if (BUILTIN_IS_VARIADIC(builtin)) {
+        VM_RECOVER_IF(vm, args_count < BUILTIN_ARGS_N(builtin), WRONG_ARITY);
+        vm_unpack_list_n(vm, BUILTIN_ARGS_N(builtin));
+    }
+    BUILTIN_FUNC(builtin)(vm);
+}
+
+// Node (cons) -> Node (cons)
+size_t vm_map_eval(VM *vm) {
+    size_t length = 0;
+
+    LIST_ITER(vm, curr, vm_peek(vm))
+        vm_push(vm, CAR(curr));
+        vm_eval_node(vm);
+        length++;
+    END_LIST_ITER_RECOVER(vm, curr)
+
+    vm_build_nil(vm);
 
     for (size_t i = 0; i < length; i++) {
         vm_swap(vm);
         vm_pack_cons(vm);
     }
+
+    vm_pop_prev(vm);
 
     return length;
 }
@@ -127,6 +152,9 @@ void vm_cast_numeric(VM *vm, ObjectKind kind) {
 
 // (Bool | Integer | Float), (Bool | Integer | Float) -> Node, Node
 ObjectKind vm_to_common_numeric(VM *vm) {
+    assert(OFTYPE(vm_peek(vm), TY_NUMERIC));
+    assert(OFTYPE(vm_prev(vm), TY_NUMERIC));
+
     ObjectKind common = vm_common_numeric(vm);
 
     vm_cast_numeric(vm, common);
@@ -152,29 +180,15 @@ void vm_eval_cons(VM *vm) {
     switch (vm_peek(vm)->kind) {
     case KIND_LAMBDA:
         vm_swap(vm);
-        vm_eval_list(vm);
+        vm_map_eval(vm);
 
         vm_dup_prev(vm);
         eval_lambda_call(vm);
         break;
 
-    case KIND_BUILTIN: {
-        Object *builtin = vm_peek(vm);
-        vm_swap(vm);
-        size_t args_count = vm_eval_list(vm);
-
-        if (!BUILTIN_IS_VARIADIC(builtin)) {
-            VM_RECOVER_IF(vm, args_count != BUILTIN_ARGS_N(builtin), WRONG_ARITY);
-            vm_unpack_list(vm);
-        }
-
-        if (BUILTIN_IS_VARIADIC(builtin)) {
-            VM_RECOVER_IF(vm, args_count < BUILTIN_ARGS_N(builtin), WRONG_ARITY);
-            vm_unpack_list_n(vm, BUILTIN_ARGS_N(builtin));
-        }
-        BUILTIN_FUNC(builtin)(vm);
+    case KIND_BUILTIN:
+        eval_builtin_call(vm);
         break;
-    }
 
     case KIND_CONS:
     case KIND_BOOL:

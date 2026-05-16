@@ -100,6 +100,7 @@ void vm_pop_prev_n(VM *vm, size_t n);
 // vm_ops.c
 void vm_pack_cons(VM *vm);
 void vm_unpack_cons(VM *vm);
+void vm_pack_list(VM *vm, size_t length);
 size_t vm_unpack_list(VM *vm);
 void vm_unpack_list_n(VM *vm, size_t n);
 
@@ -107,7 +108,7 @@ void vm_unpack_list_n(VM *vm, size_t n);
 void vm_eval_node(VM *vm);
 void vm_eval_cons(VM *vm);
 void vm_eval_symbol(VM *vm);
-size_t vm_eval_list(VM *vm);
+size_t vm_map_eval(VM *vm);
 bool vm_cast_to_bool(VM *vm);
 ObjectKind vm_to_common_numeric(VM *vm);
 

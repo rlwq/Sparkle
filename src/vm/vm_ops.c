@@ -17,6 +17,13 @@ void vm_unpack_cons(VM *vm) {
     vm_pop(vm);
 }
 
+void vm_pack_list(VM *vm, size_t length) {
+    for (; length > 1; length--) {
+        vm_swap(vm);
+        vm_pack_cons(vm);
+    }
+}
+
 // [x] -> x * n
 size_t vm_unpack_list(VM *vm) {
     size_t size = 0;

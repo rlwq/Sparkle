@@ -7,7 +7,7 @@
 // Node (Args), Node (Head) -> Node (Maybe :3)
 bool try_dispatch_special_form(VM *vm) {
 
-    if (vm_peek(vm)->kind != KIND_SYMBOL)
+    if (!OFTYPE(vm_peek(vm), TY_SYMBOL))
         return false;
 
     SpecialFormHandler handler = NULL;

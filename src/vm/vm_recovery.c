@@ -24,10 +24,10 @@ void vm_recover(VM *vm, ExceptionKind value) {
 }
 
 void vm_expect(VM *vm, ObjectType type) {
-    VM_RECOVER_IF(vm, !((1 << vm_peek(vm)->kind) & type), WRONG_TYPE);
+    VM_RECOVER_IF(vm, !(OFTYPE(vm_peek(vm), type)), WRONG_TYPE);
 }
 
 void vm_expect2(VM *vm, ObjectType prev, ObjectType peek) {
-    VM_RECOVER_IF(vm, !((1 << vm_peek(vm)->kind) & peek), WRONG_TYPE);
-    VM_RECOVER_IF(vm, !((1 << vm_prev(vm)->kind) & prev), WRONG_TYPE);
+    VM_RECOVER_IF(vm, !(OFTYPE(vm_peek(vm), peek)), WRONG_TYPE);
+    VM_RECOVER_IF(vm, !(OFTYPE(vm_prev(vm), prev)), WRONG_TYPE);
 }

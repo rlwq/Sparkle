@@ -16,94 +16,91 @@
 
 #include "builtins.h"
 
-#define RED "\033[31m"
-#define RESET "\033[0m"
-
 char *read_file(const char *path) {
-  FILE *file = fopen(path, "rb");
-  assert(file);
+    FILE *file = fopen(path, "rb");
+    assert(file);
 
-  fseek(file, 0, SEEK_END);
-  size_t size = ftell(file);
-  rewind(file);
+    fseek(file, 0, SEEK_END);
+    size_t size = ftell(file);
+    rewind(file);
 
-  char *src = malloc(size + 1);
-  assert(src);
+    char *src = malloc(size + 1);
+    assert(src);
 
-  fread(src, 1, size, file);
-  src[size] = '\0';
+    fread(src, 1, size, file);
+    src[size] = '\0';
 
-  fclose(file);
-  return src;
+    fclose(file);
+    return src;
 }
 
 int main(int argc, char **argv) {
-  if (argc != 2) {
-    printf("USAGE: %s source.rkl\n", argv[0]);
-    return 1;
-  }
+    if (argc != 2) {
+        printf("USAGE: %s source.rkl\n", argv[0]);
+        return 1;
+    }
 
-  char *src = read_file(argv[1]);
-  StringView prog = sv_mk(src);
+    char *src = read_file(argv[1]);
+    StringView prog = sv_mk(src);
 
-  StringInterner *si = si_alloc();
-  GC *gc = gc_alloc();
+    StringInterner *si = si_alloc();
+    GC *gc = gc_alloc();
 
-  Lexer *lexer = lexer_alloc(prog);
-  TokenDA tokens = da_empty;
+    Lexer *lexer = lexer_alloc(prog);
+    TokenDA tokens = da_empty;
 
-  Parser *parser = parser_alloc(gc, si);
-  ObjectPtrDA exprs = da_empty;
+    Parser *parser = parser_alloc(gc, si);
+    ObjectPtrDA exprs = da_empty;
 
-  VM *vm = vm_alloc(gc, si);
+    VM *vm = vm_alloc(gc, si);
 
-  bool is_err = false;
+    bool is_err = false;
 
-  // TODO: Refactor this. Needs some kind of special form registry
-  for (size_t i = 0; i < SPECIAL_FORMS_COUNT; i++)
-    SPECIAL_FORMS[i].keyword = si_get(si, SPECIAL_FORMS[i].keyword);
+    // TODO: Refactor this. Needs some kind of special form registry
+    for (size_t i = 0; i < SPECIAL_FORMS_COUNT; i++)
+        SPECIAL_FORMS[i].keyword = si_get(si, SPECIAL_FORMS[i].keyword);
 
-  lexer_run(lexer);
+    lexer_run(lexer);
 
-  if (lexer->is_err) {
-    diag_lexer(argv[1], lexer);
-    is_err = true;
-    goto cleanup;
-  }
+    if (lexer->is_err) {
+        diag_lexer(argv[1], lexer);
+        is_err = true;
+        goto cleanup;
+    }
 
-  tokens = extract_tokens(lexer);
+    tokens = extract_tokens(lexer);
 
-  parser_load(parser, tokens);
-  parser_run(parser);
+    parser_load(parser, tokens);
+    parser_run(parser);
 
-  if (parser->is_err) {
-    diag_parser(argv[1], parser);
-    is_err = true;
-    goto cleanup;
-  }
+    if (parser->is_err) {
+        diag_parser(argv[1], parser);
+        is_err = true;
+        goto cleanup;
+    }
 
-  exprs = extract_exprs(parser);
+    exprs = extract_exprs(parser);
 
-  vm_load_instructions(vm, exprs);
-  vm_push_scope(vm, gc_alloc_scope(gc, NULL));
-  register_builtins(vm);
-  vm_run(vm);
+    vm_push_scope(vm, gc_alloc_scope(vm->gc, NULL));
+    vm_load_instructions(vm, exprs);
+    register_builtins(vm);
+    vm_run(vm);
 
-  if (vm->is_err) {
-    diag_vm(argv[1], vm);
-    is_err = true;
-    goto cleanup;
-  }
+    if (vm->is_err) {
+        diag_vm(argv[1], vm);
+        is_err = true;
+        goto cleanup;
+    }
 cleanup:
-  vm_free(vm);
-  da_free(exprs);
+    vm_free(vm);
+    da_free(exprs);
 
-  parser_free(parser);
-  da_free(tokens);
-  gc_free(gc);
-  si_free(si);
-  lexer_free(lexer);
-  free(src);
+    parser_free(parser);
+    da_free(tokens);
+    gc_free(gc);
+    si_free(si);
+    lexer_free(lexer);
+    free(src);
 
-  return (int)is_err;
+    return (int)is_err;
 }

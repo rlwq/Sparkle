@@ -120,8 +120,12 @@ struct Object {
     Object *name_;                                                                                 \
     for (name_ = value_; OFTYPE(name_, TY_CONS); name_ = CDR(name_)) {
 
-#define END_LIST_ITER(vm_, name_)                                                                  \
+#define END_LIST_ITER_RECOVER(vm_, name_)                                                          \
     }                                                                                              \
     VM_RECOVER_IF(vm_, !OFTYPE(name_, TY_NIL), WRONG_TYPE);
+
+#define END_LIST_ITER_ASSERT(vm_, name_)                                                           \
+    }                                                                                              \
+    assert(OFTYPE(name_, TY_NIL));
 
 #endif
