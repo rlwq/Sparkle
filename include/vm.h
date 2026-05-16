@@ -88,6 +88,7 @@ void vm_push(VM *vm, Object *value);
 void vm_push_prev(VM *vm, Object *value);
 Object *vm_peek(VM *vm);
 Object *vm_prev(VM *vm);
+Object *vm_at(VM *vm, size_t n);
 void vm_dup(VM *vm);
 void vm_dup_prev(VM *vm);
 void vm_swap(VM *vm);

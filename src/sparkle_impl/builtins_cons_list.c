@@ -41,11 +41,13 @@ void rkl_setcdr(VM *vm) {
     vm_pop(vm);
 }
 
+// Cons -> Cons
 void rkl_list(VM *vm) {
     /* The args. list is already on the stack. Does nothing */
     (void)vm;
 }
 
+// Cons -> Integer
 void rkl_len(VM *vm) {
     vm_expect(vm, TY_LISTFUL);
 
@@ -107,17 +109,6 @@ void rkl_filter(VM *vm) {
     vm_pack_list(vm, length);
 
     vm_pop_prev_n(vm, 2);
-}
-
-// Integer, List -> List
-void rkl_take(VM *vm) {
-    vm_expect2(vm, TY_INTEGER, TY_LISTFUL);
-
-    size_t length = INTEGER(vm_prev(vm));
-
-    Object *node = vm_peek(vm);
-    LIST_ITER(vm, curr, vm_peek(vm))
-    END_LIST_ITER_RECOVER(vm, curr)
 }
 
 DEFINE_MODULE(CONS_LIST) = {
