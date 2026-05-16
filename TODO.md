@@ -23,7 +23,6 @@ This document outlines the features and fixes planned for Sparkle.
 ## Language Semantics
 
 * [ ] `String` data type & basic string manipulation.
-* [ ] Type checking & exception throwing on incorrect data types in built-in functions.
 * [ ] Macro support.
 * [ ] Lambda definitions with duplicated argument names.
 * [ ] Functions that accept `List`s MUST check for it.
@@ -37,13 +36,6 @@ This document outlines the features and fixes planned for Sparkle.
     * [ ] Raw printing function for any objects
     * [ ] Input
     * [ ] File reading/writing
-* [ ] Lists & Strings
-    * [x] `map`, `filter`
-    * [ ] `fold`
-    * [ ] `length`, `drop`, `take`
-    * [ ] `append`, `push`, `reverse`
-    * [ ] `find`, `pop`, `replace`
-* [ ] Type checking functions. (`Integer?`, `Cons?`, `List?`...)
 * [ ] System & OS
     * [ ] `exit`, `argc/argv`...
 * [ ] Proper type checking for all built-in functions.
@@ -72,6 +64,11 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Done
 
+* [x] Type checking functions. (`Integer?`, `Cons?`, `List?`...)
+* [x] Type checking & exception throwing on incorrect data types in built-in functions.
+* [x] Lists & Strings
+    * [x] `map`, `filter`
+    * [x] `length`
 * [x] Invalid parser output when fed an empty file.
 * [x] `'` at the end of file is handled improperly.
 * [x] `&` and `|` logical functions.
