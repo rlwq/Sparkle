@@ -2,7 +2,7 @@
 #include "vm.h"
 
 void vm_build_value(VM *vm, ObjectKind kind) {
-    if (gc_check_bounds(vm->gc)) {
+    if (gc_grow_if_needed(vm->gc)) {
         vm_mark(vm);
         gc_sweep(vm->gc);
     }

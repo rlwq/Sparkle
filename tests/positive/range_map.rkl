@@ -3,11 +3,6 @@
      Nil
      (cons a (range (+ a 1) b)))))
 
-(let map (lambda (f l) 
-    (if l
-     (cons (f (car l)) (map f (cdr l)))
-     Nil)))
-
 (let double (lambda (x) (+ x x)))
 (let const (lambda (x) (lambda (n) x)))
 (print (range 7 41))

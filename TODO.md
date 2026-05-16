@@ -26,6 +26,7 @@ This document outlines the features and fixes planned for Sparkle.
 * [ ] Type checking & exception throwing on incorrect data types in built-in functions.
 * [ ] Macro support.
 * [ ] Lambda definitions with duplicated argument names.
+* [ ] Functions that accept `List`s MUST check for it.
 
 ## Base Library
 
@@ -37,7 +38,8 @@ This document outlines the features and fixes planned for Sparkle.
     * [ ] Input
     * [ ] File reading/writing
 * [ ] Lists & Strings
-    * [ ] `map`, `filter`, `fold`
+    * [x] `map`, `filter`
+    * [ ] `fold`
     * [ ] `length`, `drop`, `take`
     * [ ] `append`, `push`, `reverse`
     * [ ] `find`, `pop`, `replace`

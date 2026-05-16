@@ -39,7 +39,7 @@ void gc_free(GC *gc) {
     free(gc);
 }
 
-bool gc_check_bounds(GC *gc) {
+bool gc_grow_if_needed(GC *gc) {
     if (gc->scopes_count + gc->nodes_count < gc->capacity)
         return false;
     gc->capacity *= 2;

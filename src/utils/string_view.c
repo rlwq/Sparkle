@@ -77,11 +77,11 @@ StringView sv_drop_ws(StringView sv) {
     return sv_drop(sv, size);
 }
 
-int svtoi(StringView sv) {
+long long int svtolli(StringView sv) {
     assert(sv.size > 0);
     assert(sv_head(sv) == '+' || sv_head(sv) == '-' || isdigit(sv_head(sv)));
 
-    int result = 0;
+    long long int result = 0;
     int sign = 1;
 
     if (sv_head(sv) == '+')

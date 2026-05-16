@@ -23,7 +23,7 @@ Object *gc_alloc_node(GC *gc, ObjectKind kind);
 Scope *gc_alloc_scope(GC *gc, Scope *parent);
 void gc_free_scope(GC *gc, Scope *scope);
 
-bool gc_check_bounds(GC *gc);
+bool gc_grow_if_needed(GC *gc);
 void gc_mark_scope(Scope *scope);
 void gc_mark_node(Object *expr);
 void gc_free_node(GC *gc, Object *expr);

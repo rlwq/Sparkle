@@ -15,4 +15,5 @@ AllowShortBlocksOnASingleLine: Never
 
 Macros:
   - LIST_ITER(vm, curr, peek)=_FOR {
-  - END_LIST_ITER(vm, curr)=}
+  - END_LIST_ITER_RECOVER(vm, curr)=}
+  - END_LIST_ITER_AASSERT(vm, curr)=}

@@ -153,7 +153,7 @@ Object *parse_expr(Parser *parser) {
     // Integer
     if (parser_match(parser, TK_INTEGER)) {
         Object *ast = gc_alloc_node(parser->gc, KIND_INTEGER);
-        ast->as.integer = svtoi(parser_advance(parser).src);
+        INTEGER(ast) = svtolli(parser_advance(parser).src);
         return ast;
     }
 
