@@ -37,11 +37,6 @@ void vm_build_float(VM *vm, double value) {
     FLOAT(vm_peek(vm)) = value;
 }
 
-void vm_build_exception(VM *vm, ExceptionKind exception) {
-    vm_build_value(vm, KIND_EXCEPTION);
-    EXCEPTION(vm_peek(vm)) = exception;
-}
-
 void vm_build_builtin(VM *vm, BuiltinObject value) {
     vm_build_value(vm, KIND_BUILTIN);
     BUILTIN(vm_peek(vm)) = value;

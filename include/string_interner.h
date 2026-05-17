@@ -13,19 +13,25 @@
     X(if)                                                                                          \
     X(set)                                                                                         \
     X(quote)                                                                                       \
-    X(lambda)
+    X(lambda)                                                                                      \
+    X(TYPE_EXCEPTION)                                                                              \
+    X(ARITY_EXCEPTION)                                                                             \
+    X(UNDEFINED_EXCEPTION)                                                                         \
+    X(REBINDING_EXCEPTION)                                                                         \
+    X(UNCALLABLE_EXCEPTION)                                                                        \
+    X(VALUE_EXCEPTION)
 
 typedef const char *StringName;
 
 typedef struct {
     DA(char *) strings;
 
-#define X(t_) StringName _##t_;
     struct {
+#define X(t_) StringName _##t_;
         PREBUILTS
+#undef X
     } prebuilt;
 } StringInterner;
-#undef X
 
 StringInterner *si_alloc(void);
 void si_free(StringInterner *si);

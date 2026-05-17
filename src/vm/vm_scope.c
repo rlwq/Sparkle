@@ -22,7 +22,7 @@ bool vm_scope_define(VM *vm, StringName name) {
 void vm_scope_get(VM *vm, StringName name) {
     Object *lookup_result = scope_get(VM_CURR_SCOPE(vm), name);
     if (!lookup_result) {
-        vm_recover(vm, SYMBOL_UNDEFINED);
+        vm_recover(vm, vm->si->prebuilt._UNDEFINED_EXCEPTION);
         return;
     }
     vm_push(vm, lookup_result);
@@ -32,5 +32,5 @@ void vm_scope_get(VM *vm, StringName name) {
 void vm_scope_set(VM *vm, StringName name) {
     bool result = scope_set(VM_CURR_SCOPE(vm), name, vm_peek(vm));
     if (!result)
-        vm_recover(vm, SYMBOL_UNDEFINED);
+        vm_recover(vm, vm->si->prebuilt._UNDEFINED_EXCEPTION);
 }

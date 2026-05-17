@@ -72,7 +72,6 @@ void gc_free_node(GC *gc, Object *expr) {
     case KIND_BUILTIN:
     case KIND_STRING:
     case KIND_BOOL:
-    case KIND_EXCEPTION:
     case KIND_FLOAT:
         free(expr);
         break;
@@ -159,7 +158,6 @@ void gc_mark_node(Object *expr) {
         case KIND_STRING:
         case KIND_BUILTIN:
         case KIND_FLOAT:
-        case KIND_EXCEPTION:
         case KIND_BOOL:
             break;
 

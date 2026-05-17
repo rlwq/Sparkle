@@ -17,8 +17,7 @@
     X(INTEGER)                                                                                     \
     X(STRING)                                                                                      \
     X(BUILTIN)                                                                                     \
-    X(LAMBDA)                                                                                      \
-    X(EXCEPTION)
+    X(LAMBDA)
 
 typedef enum {
 #define X(k_) KIND_##k_,
@@ -42,16 +41,6 @@ typedef enum {
 
 #define TYPEOF(n_) (1 << (n_)->kind)
 #define OFTYPE(n_, t_) (TYPEOF(n_) & (t_))
-
-typedef enum {
-    INVALID_SPECIAL_FORM,
-    SYMBOL_REBINDING,
-    SYMBOL_UNDEFINED,
-    UNCALLABLE_CALL,
-    WRONG_ARITY,
-    WRONG_TYPE,
-    WRONG_VALUE,
-} ExceptionKind;
 
 typedef struct {
     Object *car;
@@ -83,7 +72,6 @@ typedef union {
     Integer integer;
     double float_;
     bool bool_;
-    ExceptionKind exception;
 } ObjectUnion;
 
 struct Object {
@@ -102,7 +90,6 @@ struct Object {
 #define INTEGER(n_) ((n_)->as.integer)
 #define FLOAT(n_) ((n_)->as.float_)
 #define BOOL(n_) ((n_)->as.bool_)
-#define EXCEPTION(n_) ((n_)->as.exception)
 
 #define LAMBDA(n_) ((n_)->as.lambda)
 #define LAMBDA_POS_ARGS_N(n_) ((n_)->as.lambda.args.size - ((n_)->as.lambda.is_variadic ? 1 : 0))
@@ -122,7 +109,7 @@ struct Object {
 
 #define END_LIST_ITER_RECOVER(vm_, name_)                                                          \
     }                                                                                              \
-    VM_RECOVER_IF(vm_, !OFTYPE(name_, TY_NIL), WRONG_TYPE);
+    VM_RECOVER_IF(vm_, !OFTYPE(name_, TY_NIL), vm->si->prebuilt._TYPE_EXCEPTION);
 
 #define END_LIST_ITER_ASSERT(vm_, name_)                                                           \
     }                                                                                              \

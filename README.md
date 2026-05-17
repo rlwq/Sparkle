@@ -6,8 +6,9 @@
 ![ISO C11](https://img.shields.io/badge/language-ISO_C11-2c7887)
 ![Dependencies](https://img.shields.io/badge/dependencies-none-2c7887)
 
-Sparkle is a [Lisp](https://en.wikipedia.org/wiki/Lisp_(programming_language)) dialect designed to be intuitive and extensible.
-The **AST-walking interpreter** is written from scratch in **ISO C11**, no dependencies required. For a full language reference, see [Sparkle.md](./Sparkle.md).
+Sparkle is a [Lisp-1](https://en.wikipedia.org/wiki/Lisp_(programming_language)) dialect designed to be intuitive and extensible.
+The **AST-walking interpreter** is written from scratch in **ISO C11**, no dependencies required.
+For a full language reference, see [Sparkle.md](./Sparkle.md).
 
 > [!WARNING]
 > This project is currently under active development.

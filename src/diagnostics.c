@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-#include "object.h"
+#include "utils.h"
 #include "vm.h"
 
 #define RED "\033[31m"
@@ -27,28 +27,19 @@ void diag_vm(const char *path, VM *vm) {
     assert(vm->is_err);
 
     fprintf(stderr, RED "%s: [RUNTIME ERROR] ", path);
-    switch (vm->exception) {
-    case INVALID_SPECIAL_FORM:
-        fprintf(stderr, "Invalid special form.");
-        break;
-    case SYMBOL_REBINDING:
-        fprintf(stderr, "Symbol is already bound.");
-        break;
-    case SYMBOL_UNDEFINED:
-        fprintf(stderr, "Symbol has no definition.");
-        break;
-    case UNCALLABLE_CALL:
-        fprintf(stderr, "Can't use this kind of object as a function.");
-        break;
-    case WRONG_ARITY:
-        fprintf(stderr, "Wrong arity for a function call.");
-        break;
-    case WRONG_TYPE:
-        fprintf(stderr, "Function expected some other object type.");
-        break;
-    case WRONG_VALUE:
+    if (vm->exception == vm->si->prebuilt._VALUE_EXCEPTION)
         fprintf(stderr, "Function expected some other value.");
-        break;
-    }
+    else if (vm->exception == vm->si->prebuilt._REBINDING_EXCEPTION)
+        fprintf(stderr, "Symbol is already bound.");
+    else if (vm->exception == vm->si->prebuilt._TYPE_EXCEPTION)
+        fprintf(stderr, "Function expected some other object type.");
+    else if (vm->exception == vm->si->prebuilt._ARITY_EXCEPTION)
+        fprintf(stderr, "Wrong arity for a function call.");
+    else if (vm->exception == vm->si->prebuilt._UNDEFINED_EXCEPTION)
+        fprintf(stderr, "Symbol has no definition.");
+    else if (vm->exception == vm->si->prebuilt._UNCALLABLE_EXCEPTION)
+        fprintf(stderr, "Can't use this kind of object as a function.");
+    else
+        UNREACHABLE();
     fprintf(stderr, "\n" RESET);
 }

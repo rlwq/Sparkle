@@ -43,7 +43,7 @@ struct VM {
 #undef X
     } singletons;
 
-    ExceptionKind exception;
+    StringName exception;
     bool is_err;
 };
 
@@ -58,7 +58,7 @@ void vm_run(VM *vm);
 // vm_recovery.c
 void vm_push_recovery(VM *vm, jmp_buf *jmp);
 void vm_pop_recovery(VM *vm);
-void vm_recover(VM *vm, ExceptionKind exception) __attribute__((cold));
+void vm_recover(VM *vm, StringName exception) __attribute__((cold));
 void vm_expect(VM *vm, ObjectType type) __attribute__((cold));
 void vm_expect2(VM *vm, ObjectType prev, ObjectType peek) __attribute__((cold));
 
@@ -75,7 +75,6 @@ void vm_build_value(VM *vm, ObjectKind kind);
 void vm_build_integer(VM *vm, Integer value);
 void vm_build_bool(VM *vm, bool value);
 void vm_build_float(VM *vm, double value);
-void vm_build_exception(VM *vm, ExceptionKind value);
 void vm_build_builtin(VM *vm, BuiltinObject value);
 void vm_build_nil(VM *vm);
 void vm_build_lambda(VM *vm, LambdaArgs args, bool is_variadic, Object *expr, Scope *scope);

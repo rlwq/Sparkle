@@ -41,35 +41,6 @@ void print_lambda(Object *expr) {
     printf(")");
 }
 
-void print_exception(Object *expr) {
-    assert(expr->kind == KIND_EXCEPTION);
-    printf("<EXCEPTION: ");
-    switch (expr->as.exception) {
-    case INVALID_SPECIAL_FORM:
-        printf("INVALID_SPECIAL_FORM");
-        break;
-    case SYMBOL_REBINDING:
-        printf("SYMBOL_REBINDING");
-        break;
-    case SYMBOL_UNDEFINED:
-        printf("SYMBOL_UNDEFINED");
-        break;
-    case UNCALLABLE_CALL:
-        printf("UNCALLABLE_CALL");
-        break;
-    case WRONG_ARITY:
-        printf("WRONG_ARITY");
-        break;
-    case WRONG_TYPE:
-        printf("WRONG_TYPE");
-        break;
-    case WRONG_VALUE:
-        printf("WRONG_VALUE");
-        break;
-    }
-    printf(">");
-}
-
 void print_expr(Object *expr) {
     switch (expr->kind) {
     case KIND_NIL:
@@ -100,9 +71,6 @@ void print_expr(Object *expr) {
         break;
     case KIND_LAMBDA:
         print_lambda(expr);
-        break;
-    case KIND_EXCEPTION:
-        print_exception(expr);
         break;
     }
 }

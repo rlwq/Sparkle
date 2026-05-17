@@ -32,25 +32,25 @@ bool try_dispatch_special_form(VM *vm) {
 
 // Symbol (name), Node (value) -> Node
 void eval_let_form(VM *vm, size_t argc) {
-    VM_RECOVER_IF(vm, argc != 2, INVALID_SPECIAL_FORM);
+    VM_RECOVER_IF(vm, argc != 2, vm->si->prebuilt._VALUE_EXCEPTION);
 
     vm_swap(vm);
 
-    VM_RECOVER_IF(vm, !OFTYPE(vm_peek(vm), TY_SYMBOL), INVALID_SPECIAL_FORM);
+    VM_RECOVER_IF(vm, !OFTYPE(vm_peek(vm), TY_SYMBOL), vm->si->prebuilt._VALUE_EXCEPTION);
 
     StringName name = SYMBOL(vm_peek(vm));
     vm_pop(vm);
     vm_eval_node(vm);
-    VM_RECOVER_IF(vm, !vm_scope_define(vm, name), SYMBOL_REBINDING);
+    VM_RECOVER_IF(vm, !vm_scope_define(vm, name), vm->si->prebuilt._REBINDING_EXCEPTION);
 }
 
 // Symbol (name), Node (value) -> Node
 void eval_set_form(VM *vm, size_t argc) {
-    VM_RECOVER_IF(vm, argc != 2, INVALID_SPECIAL_FORM);
+    VM_RECOVER_IF(vm, argc != 2, vm->si->prebuilt._VALUE_EXCEPTION);
 
     vm_swap(vm);
 
-    VM_RECOVER_IF(vm, !OFTYPE(vm_peek(vm), TY_SYMBOL), INVALID_SPECIAL_FORM);
+    VM_RECOVER_IF(vm, !OFTYPE(vm_peek(vm), TY_SYMBOL), vm->si->prebuilt._VALUE_EXCEPTION);
 
     StringName name = SYMBOL(vm_peek(vm));
     vm_pop(vm);
@@ -60,7 +60,7 @@ void eval_set_form(VM *vm, size_t argc) {
 
 // Node (condition), Node (is_true), Node (is_false) -> result
 void eval_if_form(VM *vm, size_t argc) {
-    VM_RECOVER_IF(vm, argc != 2 && argc != 3, INVALID_SPECIAL_FORM);
+    VM_RECOVER_IF(vm, argc != 2 && argc != 3, vm->si->prebuilt._VALUE_EXCEPTION);
 
     if (argc == 2)
         vm_build_nil(vm);
@@ -82,7 +82,7 @@ void eval_if_form(VM *vm, size_t argc) {
 
 // Node (condition), Node (body) -> Nil
 void eval_while_form(VM *vm, size_t argc) {
-    VM_RECOVER_IF(vm, argc != 2, INVALID_SPECIAL_FORM);
+    VM_RECOVER_IF(vm, argc != 2, vm->si->prebuilt._VALUE_EXCEPTION);
 
     vm_dup_prev(vm);
     vm_eval_node(vm);
@@ -106,7 +106,7 @@ void eval_while_form(VM *vm, size_t argc) {
 
 // Cons (Args list), Node (subexpr) -> Lambda
 void eval_lambda_form(VM *vm, size_t argc) {
-    VM_RECOVER_IF(vm, argc != 2, INVALID_SPECIAL_FORM);
+    VM_RECOVER_IF(vm, argc != 2, vm->si->prebuilt._VALUE_EXCEPTION);
 
     vm_build_lambda(vm, (LambdaArgs)da_empty, false, vm_peek(vm), VM_CURR_SCOPE(vm));
     da_init(LAMBDA_ARGS(vm_peek(vm)));
@@ -126,11 +126,11 @@ void eval_lambda_form(VM *vm, size_t argc) {
     // Function with at least one positional argument
     Object *curr = vm_prev(vm);
     for (; curr->kind == KIND_CONS; curr = CDR(curr)) {
-        VM_RECOVER_IF(vm, !OFTYPE(CAR(curr), TY_SYMBOL), INVALID_SPECIAL_FORM);
+        VM_RECOVER_IF(vm, !OFTYPE(CAR(curr), TY_SYMBOL), vm->si->prebuilt._VALUE_EXCEPTION);
         da_push(LAMBDA_ARGS(vm_peek(vm)), SYMBOL(CAR(curr)));
     }
 
-    VM_RECOVER_IF(vm, !OFTYPE(curr, TY_NIL | TY_SYMBOL), INVALID_SPECIAL_FORM);
+    VM_RECOVER_IF(vm, !OFTYPE(curr, TY_NIL | TY_SYMBOL), vm->si->prebuilt._VALUE_EXCEPTION);
 
     if (OFTYPE(curr, TY_SYMBOL)) {
         is_variadic = true;
@@ -144,14 +144,14 @@ end:
 
 // Node -> Node
 void eval_try_form(VM *vm, size_t argc) {
-    VM_RECOVER_IF(vm, argc != 1, INVALID_SPECIAL_FORM);
+    VM_RECOVER_IF(vm, argc != 1, vm->si->prebuilt._VALUE_EXCEPTION);
 
     jmp_buf env;
     vm_push_recovery(vm, &env);
 
     if (setjmp(env)) {
         vm_pop(vm);
-        vm_build_exception(vm, vm->exception);
+        vm_build_symbol(vm, vm->exception);
     } else {
         vm_dup(vm);
         vm_eval_node(vm);
@@ -164,7 +164,7 @@ void eval_try_form(VM *vm, size_t argc) {
 
 // Node -> Node
 void eval_quote_form(VM *vm, size_t argc) {
-    VM_RECOVER_IF(vm, argc != 1, INVALID_SPECIAL_FORM);
+    VM_RECOVER_IF(vm, argc != 1, vm->si->prebuilt._VALUE_EXCEPTION);
 }
 
 void eval_begin_form(VM *vm, size_t argc) {
