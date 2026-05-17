@@ -78,7 +78,7 @@ void vm_expect2(VM *vm, ObjectType prev, ObjectType peek) __attribute__((cold));
 void vm_build_scope(VM *vm);
 void vm_push_scope(VM *vm, Scope *scope);
 void vm_pop_scope(VM *vm);
-bool vm_scope_define(VM *vm, StringName name);
+void vm_scope_define(VM *vm, StringName name);
 void vm_scope_get(VM *vm, StringName name);
 void vm_scope_set(VM *vm, StringName name);
 

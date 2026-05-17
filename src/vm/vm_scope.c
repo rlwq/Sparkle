@@ -15,8 +15,10 @@ void vm_pop_scope(VM *vm) {
     da_pop(vm->scope_stack);
 }
 
-bool vm_scope_define(VM *vm, StringName name) {
-    return scope_define(VM_CURR_SCOPE(vm), name, vm_peek(vm));
+void vm_scope_define(VM *vm, StringName name) {
+    bool result = scope_define(VM_CURR_SCOPE(vm), name, vm_peek(vm));
+    if (!result)
+        vm_recover(vm, vm->singletons._REBINDING_EXCEPTION);
 }
 
 void vm_scope_get(VM *vm, StringName name) {

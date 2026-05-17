@@ -3,7 +3,7 @@
 
 #include "vm.h"
 
-typedef void (*SpecialFormHandler)(VM *vm, size_t argc);
+typedef void (*SpecialFormHandler)(VM *vm);
 
 typedef struct {
     const char *keyword;
