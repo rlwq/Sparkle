@@ -102,7 +102,7 @@ Lambda functions capture the scope in which they are defined, allowing them to a
 
 ### Type System
 
-Sparkle has the following types: `Nil`, `Bool`, `Integer`, `Float`, `String`, `Symbol`, `Cons`, `Lambda`, and `Builtin`. All values are first-class - they can be stored in variables, passed as arguments, and returned from functions. тут лучше написать про динамическую типизацию, а не про то какие у нас есть типы...
+Sparkle is dynamically typed. Types are associated with values, not variables. Type errors are detected and reported at runtime as `TYPE_EXCEPTION`.
 
 ### Automatic Memory Management
 
