@@ -39,11 +39,17 @@ To see what's currently being worked on or what's coming next, check out the [TO
 ## Build
 
 ```bash
-# Optimized build
+# List all available targets
+make help    
+
+# Optimized build (O3)
 make build
 
 # Debug build (with ASan, UBSan, Assertions)
 make debug
+
+# Run the test suite
+make test
 ```
 
 ## Usage
@@ -84,19 +90,45 @@ Sparkle supports lexical closures, allowing functions to capture their defining 
 (print (add3 (add5 7)))  ; 15
 ```
 
-## Internal Design
+## Language Design
+
+### Scoping and Closures
+
+Sparkle uses lexical scoping with chained environments.
+Each scope stores symbol–value bindings and may reference a parent scope. 
+Variable resolution traverses the scope chain outward until a matching binding is found.
+
+Lambda functions capture the scope in which they are defined, allowing them to access variables from their enclosing environment.
+
+### Type System
+
+Sparkle has the following types: `Nil`, `Bool`, `Integer`, `Float`, `String`, `Symbol`, `Cons`, `Lambda`, and `Builtin`. All values are first-class - they can be stored in variables, passed as arguments, and returned from functions. тут лучше написать про динамическую типизацию, а не про то какие у нас есть типы...
+
+### Automatic Memory Management
+
+Memory is managed automatically. The interpreter frees object when they are no longer referenced.
+
+## Interpreter Design
+
+### Pipeline
+
+Source code passes through three stages:
+1. A **lexer** tokenizes the input into a sequence of tokens.
+1. A **recursive-descent** parser builds a sequence of expressions.
+1. The **VM** evaluates the expressions by walking them recursively.
+
+### Stack-Based VM
+
+The VM maintains a value stack for intermediate results. This approach gives the garbage collector the set of currently alive objects.
+
+### Error Recovery
+
+Runtime exceptions use `setjmp`/`longjmp` to unwind to the nearest recovery point.
 
 ### Memory Management
 
 Sparkle uses a **mark-and-sweep** garbage collector that automatically frees unused objects.
 When triggered, the GC traverses all reachable objects, marks them, and then frees everything that remains unmarked.
-
-### Scoping
-
-Sparkle uses lexical scoping with chained environments.
-Each scope stores symbol–value bindings and may reference a parent scope. 
-Variable resolution traverses the scope chain outward until a matching binding is found.
-Lambda functions capture the scope in which they are defined, allowing them to access variables from their enclosing environment.
 
 ## License
 

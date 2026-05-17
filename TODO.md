@@ -22,6 +22,7 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Language Semantics
 
+* [ ] Evaluate improper lists properly :).
 * [ ] `String` data type & basic string manipulation.
 * [ ] Macro support.
 * [ ] Lambda definitions with duplicated argument names.

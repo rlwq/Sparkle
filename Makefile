@@ -32,5 +32,17 @@ rewrite_tests:
 format:
 	clang-format -i $(SRC) $(HEADERS)
 
-.PHONY: build debug clean test rewrite_tests format
+help:
+	@echo "Usage: make [target]"
+	@echo ""
+	@echo "Targets:"
+	@echo "  build          Optimized build (-O3, LTO)"
+	@echo "  debug          Debug build (ASan, UBSan, -O1)"
+	@echo "  test           Run the test suite"
+	@echo "  rewrite_tests  Rewrite expected test output"
+	@echo "  format         Format source with clang-format"
+	@echo "  clean          Remove build artifacts"
+	@echo "  help           Show this message"
+
+.PHONY: build debug clean test rewrite_tests format help
 
