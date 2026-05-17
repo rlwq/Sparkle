@@ -47,12 +47,10 @@ typedef struct {
     Object *cdr;
 } ConsObject;
 
-typedef DA(StringName) LambdaArgs;
-
 typedef long long int Integer;
 
 typedef struct {
-    LambdaArgs args;
+    DA(StringName) args;
     Object *subexpr;
     Scope *scope;
     bool is_variadic;
