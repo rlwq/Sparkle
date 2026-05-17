@@ -46,9 +46,9 @@ void vm_build_nil(VM *vm) {
     vm_push(vm, vm->singletons._Nil);
 }
 
-void vm_build_lambda(VM *vm, LambdaArgs args, bool is_variadic, Object *expr, Scope *scope) {
+void vm_build_lambda(VM *vm, bool is_variadic, Object *expr, Scope *scope) {
     vm_build_value(vm, KIND_LAMBDA);
-    LAMBDA(vm_peek(vm)).args = args;
+    da_init(LAMBDA(vm_peek(vm)).args);
     LAMBDA(vm_peek(vm)).is_variadic = is_variadic;
     LAMBDA(vm_peek(vm)).subexpr = expr;
     LAMBDA(vm_peek(vm)).scope = scope;

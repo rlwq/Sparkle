@@ -89,7 +89,7 @@ void vm_build_bool(VM *vm, bool value);
 void vm_build_float(VM *vm, double value);
 void vm_build_builtin(VM *vm, BuiltinObject value);
 void vm_build_nil(VM *vm);
-void vm_build_lambda(VM *vm, LambdaArgs args, bool is_variadic, Object *expr, Scope *scope);
+void vm_build_lambda(VM *vm, bool is_variadic, Object *expr, Scope *scope);
 void vm_build_symbol(VM *vm, StringName value);
 void vm_build_string(VM *vm, StringName value);
 void vm_build_cons(VM *vm, Object *car, Object *cdr);

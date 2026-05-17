@@ -123,8 +123,7 @@ void eval_lambda_form(VM *vm) {
     size_t argc = vm_unpack_list(vm);
     VM_RECOVER_IF(vm, argc != 2, vm->singletons._VALUE_EXCEPTION);
 
-    vm_build_lambda(vm, (LambdaArgs)da_empty, false, vm_peek(vm), VM_CURR_SCOPE(vm));
-    da_init(LAMBDA_ARGS(vm_peek(vm)));
+    vm_build_lambda(vm, false, vm_peek(vm), VM_CURR_SCOPE(vm));
     vm_pop_prev(vm);
 
     bool is_variadic = false;
