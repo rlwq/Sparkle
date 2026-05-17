@@ -46,7 +46,6 @@ This document outlines the features and fixes planned for Sparkle.
 ## Code base, bugs, & fixes
 
 * [ ] Rewrite special forms handling.
-* [ ] Factor out exceptions definition. 
 * [ ] Two error handler invocations behave differently: one duplicates the expression before entering the frame, the other does not.
 * [ ] Exception call when trying to evaluate an improper list.
 * [ ] Full parser & Lexer refactoring.
@@ -63,6 +62,7 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Done
 
+* [x] Factor out exceptions definition. 
 * [x] Which kind of lisp is that.
 * [x] Write about capitalized self-evaluating symbols.
 * [x] Move error messaging to the `io.h` module.

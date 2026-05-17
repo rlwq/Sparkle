@@ -110,13 +110,13 @@ void rkl_truediv(VM *vm) {
     vm_to_common_numeric(vm);
 
     if (vm_peek(vm)->kind == KIND_BOOL) {
-        VM_RECOVER_IF(vm, BOOL(vm_peek(vm)) == 0, vm->si->prebuilt._VALUE_EXCEPTION);
+        VM_RECOVER_IF(vm, BOOL(vm_peek(vm)) == 0, vm->singletons._VALUE_EXCEPTION);
         vm_build_float(vm, (double)BOOL(vm_prev(vm)) / (double)BOOL(vm_peek(vm)));
     } else if (vm_peek(vm)->kind == KIND_INTEGER) {
-        VM_RECOVER_IF(vm, INTEGER(vm_peek(vm)) == 0, vm->si->prebuilt._VALUE_EXCEPTION);
+        VM_RECOVER_IF(vm, INTEGER(vm_peek(vm)) == 0, vm->singletons._VALUE_EXCEPTION);
         vm_build_float(vm, (double)INTEGER(vm_prev(vm)) / (double)INTEGER(vm_peek(vm)));
     } else if (vm_peek(vm)->kind == KIND_FLOAT) {
-        VM_RECOVER_IF(vm, FLOAT(vm_peek(vm)) == 0, vm->si->prebuilt._VALUE_EXCEPTION);
+        VM_RECOVER_IF(vm, FLOAT(vm_peek(vm)) == 0, vm->singletons._VALUE_EXCEPTION);
         vm_build_float(vm, FLOAT(vm_prev(vm)) / FLOAT(vm_peek(vm)));
     }
     vm_pop_prev_n(vm, 2);
@@ -124,7 +124,7 @@ void rkl_truediv(VM *vm) {
 
 void rkl_div(VM *vm) {
     vm_expect2(vm, TY_INTEGER, TY_INTEGER);
-    VM_RECOVER_IF(vm, INTEGER(vm_peek(vm)) == 0, vm->si->prebuilt._VALUE_EXCEPTION);
+    VM_RECOVER_IF(vm, INTEGER(vm_peek(vm)) == 0, vm->singletons._VALUE_EXCEPTION);
 
     vm_build_integer(vm, INTEGER(vm_prev(vm)) / INTEGER(vm_peek(vm)));
     vm_pop_prev_n(vm, 2);
@@ -132,7 +132,7 @@ void rkl_div(VM *vm) {
 
 void rkl_mod(VM *vm) {
     vm_expect2(vm, TY_INTEGER, TY_INTEGER);
-    VM_RECOVER_IF(vm, INTEGER(vm_peek(vm)) == 0, vm->si->prebuilt._VALUE_EXCEPTION);
+    VM_RECOVER_IF(vm, INTEGER(vm_peek(vm)) == 0, vm->singletons._VALUE_EXCEPTION);
 
     vm_build_integer(vm, INTEGER(vm_prev(vm)) % INTEGER(vm_peek(vm)));
     vm_pop_prev_n(vm, 2);

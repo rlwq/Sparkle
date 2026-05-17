@@ -109,7 +109,7 @@ struct Object {
 
 #define END_LIST_ITER_RECOVER(vm_, name_)                                                          \
     }                                                                                              \
-    VM_RECOVER_IF(vm_, !OFTYPE(name_, TY_NIL), vm->si->prebuilt._TYPE_EXCEPTION);
+    VM_RECOVER_IF(vm_, !OFTYPE(name_, TY_NIL), vm->singletons._TYPE_EXCEPTION);
 
 #define END_LIST_ITER_ASSERT(vm_, name_)                                                           \
     }                                                                                              \

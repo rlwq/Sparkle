@@ -27,17 +27,17 @@ void diag_vm(const char *path, VM *vm) {
     assert(vm->is_err);
 
     fprintf(stderr, RED "%s: [RUNTIME ERROR] ", path);
-    if (vm->exception == vm->si->prebuilt._VALUE_EXCEPTION)
+    if (vm->exception == vm->singletons._VALUE_EXCEPTION)
         fprintf(stderr, "Function expected some other value.");
-    else if (vm->exception == vm->si->prebuilt._REBINDING_EXCEPTION)
+    else if (vm->exception == vm->singletons._REBINDING_EXCEPTION)
         fprintf(stderr, "Symbol is already bound.");
-    else if (vm->exception == vm->si->prebuilt._TYPE_EXCEPTION)
+    else if (vm->exception == vm->singletons._TYPE_EXCEPTION)
         fprintf(stderr, "Function expected some other object type.");
-    else if (vm->exception == vm->si->prebuilt._ARITY_EXCEPTION)
+    else if (vm->exception == vm->singletons._ARITY_EXCEPTION)
         fprintf(stderr, "Wrong arity for a function call.");
-    else if (vm->exception == vm->si->prebuilt._UNDEFINED_EXCEPTION)
+    else if (vm->exception == vm->singletons._UNDEFINED_EXCEPTION)
         fprintf(stderr, "Symbol has no definition.");
-    else if (vm->exception == vm->si->prebuilt._UNCALLABLE_EXCEPTION)
+    else if (vm->exception == vm->singletons._UNCALLABLE_EXCEPTION)
         fprintf(stderr, "Can't use this kind of object as a function.");
     else
         UNREACHABLE();

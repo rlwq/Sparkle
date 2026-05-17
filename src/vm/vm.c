@@ -21,11 +21,18 @@ VM *vm_alloc(GC *gc, StringInterner *si) {
     da_init(vm->recovery_stack);
 
     vm->is_err = false;
+    vm->exception = NULL;
 
 #define X(name_, kind_, init_)                                                                     \
     vm->singletons._##name_ = gc_alloc_node(vm->gc, kind_);                                        \
     vm->singletons._##name_->as = (ObjectUnion)init_;
-    SINGLETONS
+    X_RUNTIME_SINGLETONS
+#undef X
+
+#define X(name_)                                                                                   \
+    vm->singletons._##name_ = gc_alloc_node(vm->gc, KIND_SYMBOL);                                  \
+    SYMBOL(vm->singletons._##name_) = si_get(vm->si, #name_);
+    X_RUNTIME_EXCEPTIONS
 #undef X
 
     return vm;
@@ -56,9 +63,17 @@ void vm_mark(VM *vm) {
     for (size_t i = 0; i < vm->value_stack.size; i++)
         gc_mark_node(da_at(vm->value_stack, i));
 
+    if (vm->exception)
+        gc_mark_node(vm->exception);
+
 // Marking singletons
 #define X(name_, kind_, init_) gc_mark_node(vm->singletons._##name_);
-    SINGLETONS
+    X_RUNTIME_SINGLETONS
+#undef X
+
+// Marking exception symbols
+#define X(name_) gc_mark_node(vm->singletons._##name_);
+    X_RUNTIME_EXCEPTIONS
 #undef X
 }
 

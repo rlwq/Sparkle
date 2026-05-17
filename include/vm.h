@@ -15,10 +15,18 @@
     if ((expr_))                                                                                   \
         vm_recover(vm_, ex_);
 
-#define SINGLETONS                                                                                 \
+#define X_RUNTIME_SINGLETONS                                                                       \
     X(Nil, KIND_NIL, {0})                                                                          \
     X(True, KIND_BOOL, {.bool_ = true})                                                            \
     X(False, KIND_BOOL, {.bool_ = false})
+
+#define X_RUNTIME_EXCEPTIONS                                                                       \
+    X(TYPE_EXCEPTION)                                                                              \
+    X(ARITY_EXCEPTION)                                                                             \
+    X(UNDEFINED_EXCEPTION)                                                                         \
+    X(REBINDING_EXCEPTION)                                                                         \
+    X(UNCALLABLE_EXCEPTION)                                                                        \
+    X(VALUE_EXCEPTION)
 
 typedef struct {
     jmp_buf *jmp;
@@ -39,11 +47,15 @@ struct VM {
 
     struct {
 #define X(name_, kind_, init_) Object *_##name_;
-        SINGLETONS
+        X_RUNTIME_SINGLETONS
+#undef X
+
+#define X(name_) Object *_##name_;
+        X_RUNTIME_EXCEPTIONS
 #undef X
     } singletons;
 
-    StringName exception;
+    Object *exception;
     bool is_err;
 };
 
@@ -58,7 +70,7 @@ void vm_run(VM *vm);
 // vm_recovery.c
 void vm_push_recovery(VM *vm, jmp_buf *jmp);
 void vm_pop_recovery(VM *vm);
-void vm_recover(VM *vm, StringName exception) __attribute__((cold));
+void vm_recover(VM *vm, Object *exception_symbol) __attribute__((cold));
 void vm_expect(VM *vm, ObjectType type) __attribute__((cold));
 void vm_expect2(VM *vm, ObjectType prev, ObjectType peek) __attribute__((cold));
 

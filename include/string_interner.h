@@ -13,13 +13,7 @@
     X(if)                                                                                          \
     X(set)                                                                                         \
     X(quote)                                                                                       \
-    X(lambda)                                                                                      \
-    X(TYPE_EXCEPTION)                                                                              \
-    X(ARITY_EXCEPTION)                                                                             \
-    X(UNDEFINED_EXCEPTION)                                                                         \
-    X(REBINDING_EXCEPTION)                                                                         \
-    X(UNCALLABLE_EXCEPTION)                                                                        \
-    X(VALUE_EXCEPTION)
+    X(lambda)
 
 typedef const char *StringName;
 

@@ -18,14 +18,14 @@ void eval_lambda_call(VM *vm) {
 
     for (size_t i = 0; i < LAMBDA_POS_ARGS_N(lambda); i++) {
         if (vm_peek(vm)->kind != KIND_CONS)
-            vm_recover(vm, vm->si->prebuilt._ARITY_EXCEPTION);
+            vm_recover(vm, vm->singletons._ARITY_EXCEPTION);
         vm_unpack_cons(vm);
         vm_scope_define(vm, da_at(LAMBDA_ARGS(lambda), i));
         vm_pop(vm);
     }
 
     if (!LAMBDA_IS_VARIADIC(lambda) && !OFTYPE(vm_peek(vm), TY_NIL))
-        vm_recover(vm, vm->si->prebuilt._ARITY_EXCEPTION);
+        vm_recover(vm, vm->singletons._ARITY_EXCEPTION);
 
     if (LAMBDA_IS_VARIADIC(lambda))
         vm_scope_define(vm, da_at_end(LAMBDA_ARGS(lambda), 0));
@@ -49,12 +49,12 @@ void eval_builtin_call(VM *vm) {
     size_t args_count = vm_map_eval(vm);
 
     if (!BUILTIN_IS_VARIADIC(builtin)) {
-        VM_RECOVER_IF(vm, args_count != BUILTIN_ARGS_N(builtin), vm->si->prebuilt._ARITY_EXCEPTION);
+        VM_RECOVER_IF(vm, args_count != BUILTIN_ARGS_N(builtin), vm->singletons._ARITY_EXCEPTION);
         vm_unpack_list(vm);
     }
 
     if (BUILTIN_IS_VARIADIC(builtin)) {
-        VM_RECOVER_IF(vm, args_count < BUILTIN_ARGS_N(builtin), vm->si->prebuilt._ARITY_EXCEPTION);
+        VM_RECOVER_IF(vm, args_count < BUILTIN_ARGS_N(builtin), vm->singletons._ARITY_EXCEPTION);
         vm_unpack_list_n(vm, BUILTIN_ARGS_N(builtin));
     }
     BUILTIN_FUNC(builtin)(vm);
@@ -196,7 +196,7 @@ void vm_eval_cons(VM *vm) {
     case KIND_INTEGER:
     case KIND_STRING:
     case KIND_NIL:
-        vm_recover(vm, vm->si->prebuilt._UNCALLABLE_EXCEPTION);
+        vm_recover(vm, vm->singletons._UNCALLABLE_EXCEPTION);
         break;
     }
 
