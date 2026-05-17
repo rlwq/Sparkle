@@ -47,7 +47,6 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Code base, bugs, & fixes
 
-* [ ] Move error messaging to the `io.h` module.
 * [ ] `'x` syntax when printing quoted values.
 * [ ] Two error handler invocations behave differently: one duplicates the expression before entering the frame, the other does not.
 * [ ] Rewrite special forms handling.
@@ -64,6 +63,7 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Done
 
+* [x] Move error messaging to the `io.h` module.
 * [x] Type checking functions. (`Integer?`, `Cons?`, `List?`...)
 * [x] Type checking & exception throwing on incorrect data types in built-in functions.
 * [x] Lists & Strings

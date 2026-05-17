@@ -1,4 +1,5 @@
 #include "special_forms.h"
+#include "dynamic_array.h"
 #include "object.h"
 #include "string_interner.h"
 #include "vm.h"
@@ -107,50 +108,37 @@ void eval_while_form(VM *vm, size_t argc) {
 void eval_lambda_form(VM *vm, size_t argc) {
     VM_RECOVER_IF(vm, argc != 2, INVALID_SPECIAL_FORM);
 
-    vm_swap(vm);
+    vm_build_lambda(vm, (LambdaArgs)da_empty, false, vm_peek(vm), VM_CURR_SCOPE(vm));
+    da_init(LAMBDA_ARGS(vm_peek(vm)));
+    vm_pop_prev(vm);
 
-    LambdaArgs args;
     bool is_variadic = false;
 
-    // TODO: memory leak!
-    da_init(args);
-
-    if (!OFTYPE(vm_peek(vm), TY_SYMBOL | TY_LISTFUL)) {
-        da_free(args);
-        vm_recover(vm, INVALID_SPECIAL_FORM);
-    }
+    vm_expect2(vm, TY_SYMBOL | TY_LISTFUL, TY_ANY);
 
     // Variadic function with no positional arguments
     if (OFTYPE(vm_peek(vm), TY_SYMBOL)) {
         is_variadic = true;
-        da_push(args, SYMBOL(vm_peek(vm)));
+        da_push(LAMBDA_ARGS(vm_peek(vm)), SYMBOL(vm_prev(vm)));
+        goto end;
     }
 
     // Function with at least one positional argument
-    else {
-        Object *curr = vm_peek(vm);
-        for (; curr->kind == KIND_CONS; curr = CDR(curr)) {
-            if (!OFTYPE(CAR(curr), TY_SYMBOL)) {
-                da_free(args);
-                vm_recover(vm, INVALID_SPECIAL_FORM);
-            }
-            da_push(args, SYMBOL(CAR(curr)));
-        }
-
-        if (!OFTYPE(curr, TY_NIL) && !OFTYPE(curr, TY_SYMBOL)) {
-            da_free(args);
-            vm_recover(vm, INVALID_SPECIAL_FORM);
-        }
-
-        if (OFTYPE(curr, TY_SYMBOL)) {
-            is_variadic = true;
-            da_push(args, SYMBOL(curr));
-        }
+    Object *curr = vm_prev(vm);
+    for (; curr->kind == KIND_CONS; curr = CDR(curr)) {
+        VM_RECOVER_IF(vm, !OFTYPE(CAR(curr), TY_SYMBOL), INVALID_SPECIAL_FORM);
+        da_push(LAMBDA_ARGS(vm_peek(vm)), SYMBOL(CAR(curr)));
     }
-    vm_pop(vm);
-    Object *subexpr = vm_peek(vm);
 
-    vm_build_lambda(vm, args, is_variadic, subexpr, VM_CURR_SCOPE(vm));
+    VM_RECOVER_IF(vm, !OFTYPE(curr, TY_NIL | TY_SYMBOL), INVALID_SPECIAL_FORM);
+
+    if (OFTYPE(curr, TY_SYMBOL)) {
+        is_variadic = true;
+        da_push(LAMBDA_ARGS(vm_peek(vm)), SYMBOL(curr));
+    }
+
+end:
+    LAMBDA_IS_VARIADIC(vm_peek(vm)) = is_variadic;
     vm_pop_prev(vm);
 }
 
@@ -165,7 +153,7 @@ void eval_try_form(VM *vm, size_t argc) {
         vm_pop(vm);
         vm_build_exception(vm, vm->exception);
     } else {
-        vm_push(vm, da_at_end(vm->value_stack, 0));
+        vm_dup(vm);
         vm_eval_node(vm);
         vm_pop_n(vm, 2);
         vm_build_nil(vm);
