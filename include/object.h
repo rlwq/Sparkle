@@ -80,6 +80,8 @@ struct Object {
     ObjectUnion as;
 };
 
+bool is_proper_list(Object *object);
+
 #define CONS(n_) ((n_)->as.cons)
 #define CAR(n_) ((n_)->as.cons.car)
 #define CDR(n_) ((n_)->as.cons.cdr)

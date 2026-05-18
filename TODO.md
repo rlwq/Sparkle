@@ -17,12 +17,11 @@ This document outlines the features and fixes planned for Sparkle.
  
 * [ ] Integer Interning.
 * [ ] Hash tables for fast search in scopes.
-* [ ] Arena allocations instead of an linked list in GC.
+* [ ] Arena allocations instead of a linked list in GC.
 * [ ] An attempt/research on Tail Call Optimization.
 
 ## Language Semantics
 
-* [ ] Evaluate improper lists properly :).
 * [ ] `String` data type & basic string manipulation.
 * [ ] Macro support.
 * [ ] Lambda definitions with duplicated argument names.
@@ -63,6 +62,7 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Done
 
+* [x] Evaluate improper lists properly :).
 * [x] Rewrite special forms handling.
 * [x] Factor out exceptions definition. 
 * [x] Which kind of lisp is that.

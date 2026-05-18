@@ -4,6 +4,7 @@
 #include "vm.h"
 #include <assert.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 // Cons (args), Node (lambda) -> Node (result)
 void eval_lambda_call(VM *vm) {
@@ -167,6 +168,8 @@ ObjectKind vm_to_common_numeric(VM *vm) {
 // Cons -> Node
 void vm_eval_cons(VM *vm) {
     ASSERT_KIND(vm, KIND_CONS);
+
+    VM_RECOVER_IF(vm, !is_proper_list(vm_peek(vm)), vm->singletons._TYPE_EXCEPTION);
 
     vm_unpack_cons(vm);
 
