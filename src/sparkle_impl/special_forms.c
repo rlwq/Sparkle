@@ -71,28 +71,30 @@ void rkl_set_form(VM *vm) {
 }
 
 void rkl_if_form(VM *vm) {
-    size_t argc = vm_unpack_list(vm);
-
-    if (argc == 3)
-        /* do nothing */;
-    else if (argc == 2)
-        vm_build_nil(vm);
-    else
-        vm_recover(vm, vm->singletons._VALUE_EXCEPTION);
-
-    vm_rot(vm);
-    vm_eval_node(vm);
-    vm_cast_to_bool(vm);
-
-    bool is_positive = BOOL(vm_peek(vm));
-    vm_pop(vm);
-
-    if (is_positive)
+    Object *curr = vm_peek(vm);
+    for (; OFTYPE(curr, TY_CONS) && OFTYPE(CDR(curr), TY_CONS); curr = CDR(CDR(curr))) {
+        vm_push(vm, CAR(curr));
+        vm_eval_node(vm);
+        bool result = vm_cast_to_bool(vm);
         vm_pop(vm);
-    else
-        vm_pop_prev(vm);
 
+        if (result) {
+            vm_push(vm, CAR(CDR(curr)));
+            vm_eval_node(vm);
+            vm_pop_prev(vm);
+            return;
+        }
+    }
+
+    if (OFTYPE(curr, TY_NIL)) {
+        vm_pop(vm);
+        vm_build_nil(vm);
+        return;
+    }
+
+    vm_push(vm, CAR(curr));
     vm_eval_node(vm);
+    vm_pop_prev(vm);
 }
 
 void rkl_while_form(VM *vm) {
@@ -209,7 +211,7 @@ void rkl_and_form(VM *vm) {
 }
 
 void rkl_or_form(VM *vm) {
-    bool result = true;
+    bool result = false;
     for (Object *curr = vm_peek(vm); OFTYPE(curr, TY_CONS); curr = CDR(curr)) {
         vm_push(vm, CAR(curr));
         vm_eval_node(vm);
