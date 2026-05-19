@@ -28,7 +28,7 @@ bool try_dispatch_special_form(VM *vm) {
     return false;
 }
 
-void eval_let_form(VM *vm) {
+void rkl_let_form(VM *vm) {
     Object *curr = vm_peek(vm);
     for (; OFTYPE(curr, TY_CONS) && OFTYPE(CDR(curr), TY_CONS); curr = CDR(CDR(curr))) {
         VM_RECOVER_IF(vm, !OFTYPE(CAR(curr), TY_SYMBOL), vm->singletons._VALUE_EXCEPTION);
@@ -49,7 +49,7 @@ void eval_let_form(VM *vm) {
     vm_build_nil(vm);
 }
 
-void eval_set_form(VM *vm) {
+void rkl_set_form(VM *vm) {
     Object *curr = vm_peek(vm);
     for (; OFTYPE(curr, TY_CONS) && OFTYPE(CDR(curr), TY_CONS); curr = CDR(CDR(curr))) {
         VM_RECOVER_IF(vm, !OFTYPE(CAR(curr), TY_SYMBOL), vm->singletons._VALUE_EXCEPTION);
@@ -70,7 +70,7 @@ void eval_set_form(VM *vm) {
     vm_build_nil(vm);
 }
 
-void eval_if_form(VM *vm) {
+void rkl_if_form(VM *vm) {
     size_t argc = vm_unpack_list(vm);
 
     if (argc == 3)
@@ -95,7 +95,7 @@ void eval_if_form(VM *vm) {
     vm_eval_node(vm);
 }
 
-void eval_while_form(VM *vm) {
+void rkl_while_form(VM *vm) {
     size_t argc = vm_unpack_list(vm);
     VM_RECOVER_IF(vm, argc != 2, vm->singletons._VALUE_EXCEPTION);
 
@@ -119,7 +119,7 @@ void eval_while_form(VM *vm) {
     vm_build_nil(vm);
 }
 
-void eval_lambda_form(VM *vm) {
+void rkl_lambda_form(VM *vm) {
     size_t argc = vm_unpack_list(vm);
     VM_RECOVER_IF(vm, argc != 2, vm->singletons._VALUE_EXCEPTION);
 
@@ -156,7 +156,7 @@ end:
     vm_pop_prev(vm);
 }
 
-void eval_try_form(VM *vm) {
+void rkl_try_form(VM *vm) {
     size_t argc = vm_unpack_list(vm);
     VM_RECOVER_IF(vm, argc != 1, vm->singletons._VALUE_EXCEPTION);
 
@@ -176,27 +176,57 @@ void eval_try_form(VM *vm) {
     vm_pop_recovery(vm);
 }
 
-void eval_quote_form(VM *vm) {
+void rkl_quote_form(VM *vm) {
     size_t argc = vm_unpack_list(vm);
     VM_RECOVER_IF(vm, argc != 1, vm->singletons._VALUE_EXCEPTION);
 }
 
-void eval_begin_form(VM *vm) {
+void rkl_begin_form(VM *vm) {
     vm_build_scope(vm);
     vm_build_nil(vm);
     LIST_ITER(vm, curr, vm_prev(vm))
         vm_pop(vm);
         vm_push(vm, CAR(curr));
         vm_eval_node(vm);
-    END_LIST_ITER_RECOVER(vm, curr)
+    END_LIST_ITER(vm, curr)
     vm_pop_prev(vm);
     vm_pop_scope(vm);
 }
 
-SpecialFormDef SPECIAL_FORMS[] = {
-    {"let", eval_let_form},     {"set", eval_set_form},       {"if", eval_if_form},
-    {"while", eval_while_form}, {"lambda", eval_lambda_form}, {"begin", eval_begin_form},
-    {"quote", eval_quote_form}, {"try", eval_try_form},
-};
+void rkl_and_form(VM *vm) {
+    bool result = true;
+    for (Object *curr = vm_peek(vm); OFTYPE(curr, TY_CONS); curr = CDR(curr)) {
+        vm_push(vm, CAR(curr));
+        vm_eval_node(vm);
+        vm_cast_to_bool(vm);
+        result = BOOL(vm_peek(vm));
+        vm_pop(vm);
+        if (!result)
+            break;
+    }
+    vm_pop(vm);
+    vm_build_bool(vm, result);
+}
+
+void rkl_or_form(VM *vm) {
+    bool result = true;
+    for (Object *curr = vm_peek(vm); OFTYPE(curr, TY_CONS); curr = CDR(curr)) {
+        vm_push(vm, CAR(curr));
+        vm_eval_node(vm);
+        vm_cast_to_bool(vm);
+        result = BOOL(vm_peek(vm));
+        vm_pop(vm);
+        if (result)
+            break;
+    }
+    vm_pop(vm);
+    vm_build_bool(vm, result);
+}
+
+SpecialFormDef SPECIAL_FORMS[] = {{"let", rkl_let_form},       {"set", rkl_set_form},
+                                  {"if", rkl_if_form},         {"while", rkl_while_form},
+                                  {"lambda", rkl_lambda_form}, {"begin", rkl_begin_form},
+                                  {"quote", rkl_quote_form},   {"try", rkl_try_form},
+                                  {"and", rkl_and_form},       {"or", rkl_or_form}};
 
 size_t SPECIAL_FORMS_COUNT = sizeof(SPECIAL_FORMS) / sizeof(SPECIAL_FORMS[0]);

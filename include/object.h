@@ -111,8 +111,6 @@ bool is_proper_list(Object *object);
     }                                                                                              \
     VM_RECOVER_IF(vm_, !OFTYPE(name_, TY_NIL), vm->singletons._TYPE_EXCEPTION);
 
-#define END_LIST_ITER_ASSERT(vm_, name_)                                                           \
-    }                                                                                              \
-    assert(OFTYPE(name_, TY_NIL));
+#define END_LIST_ITER(vm_, name_) }
 
 #endif
