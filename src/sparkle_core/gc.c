@@ -70,9 +70,13 @@ void gc_free_node(GC *gc, Object *expr) {
     case KIND_CONS:
     case KIND_SYMBOL:
     case KIND_BUILTIN:
-    case KIND_STRING:
     case KIND_BOOL:
     case KIND_FLOAT:
+        free(expr);
+        break;
+
+    case KIND_STRING:
+        free(STRING(expr));
         free(expr);
         break;
 

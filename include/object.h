@@ -70,6 +70,7 @@ typedef union {
     Integer integer;
     double float_;
     bool bool_;
+    char *string;
 } ObjectUnion;
 
 struct Object {
@@ -90,6 +91,7 @@ bool is_proper_list(Object *object);
 #define INTEGER(n_) ((n_)->as.integer)
 #define FLOAT(n_) ((n_)->as.float_)
 #define BOOL(n_) ((n_)->as.bool_)
+#define STRING(n_) ((n_)->as.string)
 
 #define LAMBDA(n_) ((n_)->as.lambda)
 #define LAMBDA_POS_ARGS_N(n_) ((n_)->as.lambda.args.size - ((n_)->as.lambda.is_variadic ? 1 : 0))

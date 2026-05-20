@@ -11,7 +11,6 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Special Forms & Control Flow 
 
-* [ ] Flow control logical forms (`and`, `or`).
 
 ## Optimizations
  
@@ -22,7 +21,7 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Language Semantics
 
-* [ ] `String` data type & basic string manipulation.
+* [ ] Basic `String` manipulation.
 * [ ] Macro support.
 * [ ] Lambda definitions with duplicated argument names.
 * [ ] Functions that accept `List`s MUST check for it.
@@ -62,6 +61,8 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Done
 
+* [x] `String` data type.
+* [x] Flow control logical forms (`and`, `or`).
 * [x] Evaluate improper lists properly :).
 * [x] Rewrite special forms handling.
 * [x] Factor out exceptions definition. 

@@ -59,7 +59,7 @@ void print_expr(Object *expr) {
         printf("%f", FLOAT(expr));
         break;
     case KIND_STRING:
-        printf("NOT IMPLEMENTED");
+        printf("%s", STRING(expr));
         break;
     case KIND_SYMBOL:
         printf("%s", SYMBOL(expr));

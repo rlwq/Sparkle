@@ -90,6 +90,16 @@ Object *parse_expr(Parser *parser) {
         return NULL;
     }
 
+    if (parser_match(parser, TK_STRING)) {
+        Token token = parser_advance(parser);
+        Object *result = gc_alloc_node(parser->gc, KIND_STRING);
+        char *string = malloc(token.src.size + 1);
+        memcpy(string, token.src.data + 1, token.src.size - 1);
+        string[token.src.size - 2] = '\0';
+        STRING(result) = string;
+        return result;
+    }
+
     if (parser_eat(parser, TK_QUOTE)) {
         Object *subexpr = parse_expr(parser);
         if (subexpr == NULL) {

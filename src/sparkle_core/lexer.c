@@ -118,9 +118,31 @@ Token lex_symbol(Lexer *lexer) {
     StringView src = lexer->src;
     size_t size = 0;
     while (VALID(lexer) && issymbolchar(CURR(lexer))) {
-        size++;
         lexer_advance(lexer);
+        size++;
     }
+
+    result.src = sv_take(src, size);
+    return result;
+}
+
+Token lex_string(Lexer *lexer) {
+    assert(VALID(lexer));
+
+    Token result = EMIT_TOKEN(lexer, TK_STRING);
+
+    StringView src = lexer->src;
+    size_t size = 2;
+    lexer_advance(lexer);
+    while (VALID(lexer) && CURR(lexer) != '"') {
+        lexer_advance(lexer);
+        size++;
+    }
+    if (!VALID(lexer)) {
+        lexer->is_err = true;
+        return EMIT_TOKEN(lexer, TK_ERR);
+    }
+    lexer_advance(lexer);
 
     result.src = sv_take(src, size);
     return result;
@@ -137,6 +159,8 @@ Token lex_token(Lexer *lexer) {
     char curr = sv_head(lexer->src);
     char next = sv_next(lexer->src);
 
+    if (curr == '"')
+        return lex_string(lexer);
     if (curr == '(')
         return lex_char_token(lexer, TK_L_PAREN);
     if (curr == ')')
