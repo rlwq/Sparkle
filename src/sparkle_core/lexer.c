@@ -24,13 +24,11 @@
         lexer_advance((lexer_));                                                                   \
     }
 
-#ifndef NDEBUG
 const char *token_kind_names[] = {
 #define X(t_) #t_,
     X_TOKEN_KINDS
 #undef X
 };
-#endif
 
 Lexer *lexer_alloc(StringView src, TokenDA *tokens) {
     Lexer *lexer = malloc(sizeof(Lexer));

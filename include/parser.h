@@ -8,13 +8,14 @@
 #include "lexer.h"
 #include "string_interner.h"
 
-#define PARSER_DONE(p_) ((p_)->tokens_count == 0)
+#define PARSER_DONE(p_) ((p_)->cursor == (p_)->tokens->size)
 #define PARSER_VALID(p_) (!PARSER_DONE(p_) && !(p_)->is_err)
 
 typedef struct {
-    Token *tokens;
-    size_t tokens_count;
-    ObjectPtrDA exprs;
+    TokenDA *tokens;
+    size_t cursor;
+
+    ObjectPtrDA *exprs;
 
     GC *gc;
     StringInterner *si;
@@ -22,12 +23,9 @@ typedef struct {
     bool is_err;
 } Parser;
 
-Parser *parser_alloc(GC *gc, StringInterner *si);
-void parser_load(Parser *parser, TokenDA tokens);
+Parser *parser_alloc(TokenDA *tokens, ObjectPtrDA *exprs, GC *gc, StringInterner *si);
 void parser_free(Parser *parser);
 
 void parser_run(Parser *parser);
-
-ObjectPtrDA extract_exprs(Parser *parser);
 
 #endif

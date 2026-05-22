@@ -51,8 +51,9 @@ int main(int argc, char **argv) {
 
     Lexer *lexer = lexer_alloc(prog, &tokens);
 
-    Parser *parser = parser_alloc(gc, si);
-    ObjectPtrDA exprs = da_empty;
+    ObjectPtrDA exprs;
+    da_init(exprs);
+    Parser *parser = parser_alloc(&tokens, &exprs, gc, si);
 
     VM *vm = vm_alloc(gc, si);
 
@@ -70,7 +71,6 @@ int main(int argc, char **argv) {
         goto cleanup;
     }
 
-    parser_load(parser, tokens);
     parser_run(parser);
 
     if (parser->is_err) {
@@ -78,8 +78,6 @@ int main(int argc, char **argv) {
         is_err = true;
         goto cleanup;
     }
-
-    exprs = extract_exprs(parser);
 
     vm_push_scope(vm, gc_alloc_scope(vm->gc, NULL));
     vm_load_instructions(vm, exprs);

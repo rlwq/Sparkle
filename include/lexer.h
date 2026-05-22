@@ -21,9 +21,7 @@ typedef struct {
     X(STRING)                                                                                      \
     X(ERR)
 
-#ifndef NDEBUG
 extern const char *token_kind_names[];
-#endif
 
 typedef enum {
 #define X(t_) TK_##t_,
