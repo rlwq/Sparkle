@@ -7,7 +7,6 @@ This document outlines the features and fixes planned for Sparkle.
 * [ ] Multiline comments.
 * [ ] String escaping sequences.
 * [ ] More descriptive parsing errors (on expected tokens).
-* [ ] `Float` literals.
 
 ## Special Forms & Control Flow 
 
@@ -46,8 +45,6 @@ This document outlines the features and fixes planned for Sparkle.
 ## Code base, bugs, & fixes
 
 * [ ] Two error handler invocations behave differently: one duplicates the expression before entering the frame, the other does not.
-* [ ] Exception call when trying to evaluate an improper list.
-* [ ] Full parser & Lexer refactoring.
 * [ ] `'x` syntax when printing quoted values.
 
 ## Tooling
@@ -60,6 +57,9 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Done
 
+* [x] `Float` literals.
+* [x] Exception call when trying to evaluate an improper list.
+* [x] Full parser & Lexer refactoring.
 * [x] In `Readme.md`, split `Internal Design` section into `Language design` and `Interpreter design`.
 * [x] `String` data type.
 * [x] Flow control logical forms (`and`, `or`).

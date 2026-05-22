@@ -98,3 +98,31 @@ long long int svtolli(StringView sv) {
 
     return sign * result;
 }
+
+double svtod(StringView sv) {
+    long long int digits = 0;
+    int sign = 1;
+
+    double decimals = 0;
+    double p = 0.1;
+
+    if (sv_head(sv) == '+')
+        sv = sv_drop(sv, 1);
+    else if (sv_head(sv) == '-') {
+        sv = sv_drop(sv, 1);
+        sign = -1;
+    }
+
+    size_t i = 0;
+    for (; sv_at(sv, i) != '.'; i++)
+        digits = 10 * digits + sv_at(sv, i) - '0';
+
+    sv = sv_drop(sv, i + 1);
+
+    for (size_t j = 0; j < sv.size; j++) {
+        decimals += p * (sv_at(sv, j) - '0');
+        p /= 10;
+    }
+
+    return sign * (digits + decimals);
+}

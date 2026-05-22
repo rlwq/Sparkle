@@ -154,17 +154,23 @@ Object *parse_list(Parser *parser) {
 }
 
 Object *parse_integer(Parser *parser) {
-    Object *ast = gc_alloc_node(parser->gc, KIND_INTEGER);
-    INTEGER(ast) = svtolli(parser_advance(parser).src);
-    return ast;
+    Object *object = gc_alloc_node(parser->gc, KIND_INTEGER);
+    INTEGER(object) = svtolli(parser_advance(parser).src);
+    return object;
+}
+
+Object *parse_float(Parser *parser) {
+    Object *object = gc_alloc_node(parser->gc, KIND_FLOAT);
+    FLOAT(object) = svtod(parser_advance(parser).src);
+    return object;
 }
 
 Object *parse_symbol(Parser *parser) {
-    Object *ast = gc_alloc_node(parser->gc, KIND_SYMBOL);
+    Object *object = gc_alloc_node(parser->gc, KIND_SYMBOL);
     StringView symbol = parser_advance(parser).src;
 
-    ast->as.symbol = si_getn(parser->si, symbol.data, symbol.size);
-    return ast;
+    object->as.symbol = si_getn(parser->si, symbol.data, symbol.size);
+    return object;
 }
 
 Object *parse_expr(Parser *parser) {
@@ -186,6 +192,10 @@ Object *parse_expr(Parser *parser) {
     // Integer
     if (parser_match(parser, TK_INTEGER))
         return parse_integer(parser);
+
+    // Float
+    if (parser_match(parser, TK_DECIMAL))
+        return parse_float(parser);
 
     // Symbol
     if (parser_match(parser, TK_SYMBOL))

@@ -43,5 +43,6 @@ size_t sv_find(StringView sv, char c);
 StringView sv_drop_ws(StringView sv);
 
 long long int svtolli(StringView sv);
+double svtod(StringView sv);
 
 #endif
