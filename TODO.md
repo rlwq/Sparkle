@@ -52,7 +52,6 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Tooling
 
-* [ ] In `Readme.md`, split `Internal Design` section into `Language design` and `Interpreter design`.
 
 ## UX
 
@@ -61,6 +60,7 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Done
 
+* [x] In `Readme.md`, split `Internal Design` section into `Language design` and `Interpreter design`.
 * [x] `String` data type.
 * [x] Flow control logical forms (`and`, `or`).
 * [x] Evaluate improper lists properly :).

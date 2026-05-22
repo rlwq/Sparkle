@@ -85,10 +85,8 @@ bool parser_expect(Parser *parser, TokenKind kind) {
 Object *parse_expr(Parser *parser) {
     assert(PARSER_VALID(parser));
 
-    if (parser_match(parser, TK_EOF)) {
-        parser->tokens_count = 0;
+    if (parser->tokens_count == 0)
         return NULL;
-    }
 
     if (parser_match(parser, TK_STRING)) {
         Token token = parser_advance(parser);

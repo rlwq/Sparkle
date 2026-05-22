@@ -1,195 +1,178 @@
 #include <assert.h>
 #include <ctype.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #include "dynamic_array.h"
 #include "lexer.h"
 #include "string_view.h"
 
-#define CURR(l_) (sv_head((l_)->src))
-#define VALID(l_) (!(l_)->is_err && !(l_)->is_eof)
-#define EMIT_TOKEN(l_, k_)                                                                         \
-    ((Token){.kind = (k_), .src = sv(NULL, 0), .line = (l_)->line, .column = (l_)->column})
+#define CURR(l_) ((l_)->src.size == 0 ? '\0' : *((l_)->src.data))
+#define NEXT(l_) ((l_)->src.size < 2 ? '\0' : *((l_)->src.data + 1))
+#define BUILD_TOKEN(l_, k_) ((Token){.kind = (k_), .src = sv(NULL, 0), .pos = (l_)->pos})
 
-Lexer *lexer_alloc(StringView src) {
+#define IS_EOF(l_) ((l_)->src.size == 0)
+
+#define issign(c_) ((c_) == '+' || (c_) == '-')
+#define in_range(v_, l_, r_) ((v_) >= (l_) && (v_) <= (r_))
+
+#define issymbolic(c_)                                                                             \
+    (in_range((c_), '!', '~') && (c_) != '"' && (c_) != '(' && (c_) != ')' && (c_) != '\'')
+
+#define lexer_skip_while(lexer_, expr_)                                                            \
+    while ((expr_)) {                                                                              \
+        lexer_advance((lexer_));                                                                   \
+    }
+
+#ifndef NDEBUG
+const char *token_kind_names[] = {
+#define X(t_) #t_,
+    X_TOKEN_KINDS
+#undef X
+};
+#endif
+
+Lexer *lexer_alloc(StringView src, TokenDA *tokens) {
     Lexer *lexer = malloc(sizeof(Lexer));
     assert(lexer);
 
+    lexer->tokens = tokens;
+
     lexer->src = src;
-    da_init(lexer->tokens);
+    lexer->pos = TEXT_BEGIN;
 
-    lexer->line = 0;
-    lexer->column = 0;
+    lexer->marker = src;
+    lexer->marker_pos = TEXT_BEGIN;
 
-    lexer->is_eof = src.size == 0;
     lexer->is_err = false;
 
     return lexer;
 }
 
 void lexer_free(Lexer *lexer) {
-    da_free(lexer->tokens);
     free(lexer);
 }
 
 char lexer_advance(Lexer *lexer) {
-    if (!VALID(lexer))
+    if (IS_EOF(lexer))
         return '\0';
 
-    char curr = sv_head(lexer->src);
+    char curr = CURR(lexer);
+
     lexer->src = sv_drop(lexer->src, 1);
 
-    lexer->column++;
+    lexer->pos.column++;
     if (curr == '\n') {
-        lexer->column = 0;
-        lexer->line++;
+        lexer->pos.column = 0;
+        lexer->pos.line++;
     }
-
-    if (!lexer->src.size)
-        lexer->is_eof = true;
-
     return curr;
 }
 
-Token lex_char_token(Lexer *lexer, TokenKind kind) {
-    assert(VALID(lexer));
+void lexer_marker_set(Lexer *lexer) {
+    lexer->marker = lexer->src;
+    lexer->marker_pos = lexer->pos;
+}
 
-    StringView src = sv_take(lexer->src, 1);
+Token lexer_marker_cut(Lexer *lexer, TokenKind kind) {
+    size_t size = lexer->src.data - lexer->marker.data;
+    StringView src = (StringView){.data = lexer->marker.data, .size = size};
+    Token result = (Token){.kind = kind, .src = src, .pos = lexer->marker_pos};
+    return result;
+}
+
+void lexer_skip_ws(Lexer *lexer) {
+    lexer_skip_while(lexer, isspace(CURR(lexer)));
+}
+
+void lexer_skip_line_comment(Lexer *lexer) {
+    if (CURR(lexer) != ';')
+        return;
     lexer_advance(lexer);
-    Token result = EMIT_TOKEN(lexer, kind);
+
+    lexer_skip_while(lexer, CURR(lexer) != '\n' && CURR(lexer) != '\0');
+}
+
+Token lex_char_token(Lexer *lexer, TokenKind kind) {
+    StringView src = sv_take(lexer->src, 1);
+    Token result = BUILD_TOKEN(lexer, kind);
+    lexer_advance(lexer);
     result.src = src;
 
     return result;
 }
 
-bool issymbolchar(char c) {
-    return (unsigned char)c <= 127 && !isspace(c) && c != '(' && c != ')' && c != '"';
+Token lex_numeric_token(Lexer *lexer) {
+    lexer_marker_set(lexer);
+
+    if (issign(CURR(lexer)))
+        lexer_advance(lexer);
+
+    lexer_skip_while(lexer, isdigit(CURR(lexer)));
+
+    bool is_decimal = false;
+    if (CURR(lexer) == '.') {
+        is_decimal = true;
+        lexer_advance(lexer);
+        lexer_skip_while(lexer, isdigit(CURR(lexer)));
+    }
+
+    return lexer_marker_cut(lexer, is_decimal ? TK_DECIMAL : TK_INTEGER);
 }
 
-void lexer_skip_ws(Lexer *lexer) {
-    while (VALID(lexer) && isspace(sv_head(lexer->src)))
-        lexer_advance(lexer);
+Token lex_symbol_token(Lexer *lexer) {
+    lexer_marker_set(lexer);
+
+    lexer_skip_while(lexer, issymbolic(CURR(lexer)));
+
+    return lexer_marker_cut(lexer, TK_SYMBOL);
 }
 
-void lexer_skip_line_comment(Lexer *lexer) {
-    assert(CURR(lexer) == ';');
-    lexer_advance(lexer);
-    while (VALID(lexer) && CURR(lexer) != '\n')
-        lexer_advance(lexer);
+Token lex_token(Lexer *lexer) {
+    char curr = CURR(lexer);
+    char next = NEXT(lexer);
+
+    if (curr == '(')
+        return lex_char_token(lexer, TK_L_PAREN);
+
+    if (curr == ')')
+        return lex_char_token(lexer, TK_R_PAREN);
+
+    if (curr == '.')
+        return lex_char_token(lexer, TK_DOT);
+
+    if (curr == '\'')
+        return lex_char_token(lexer, TK_QUOTE);
+
+    if (isdigit(curr) || (isdigit(next) && issign(curr)))
+        return lex_numeric_token(lexer);
+
+    if (issymbolic(curr))
+        return lex_symbol_token(lexer);
+
+    lexer->is_err = true;
+    return BUILD_TOKEN(lexer, TK_ERR);
 }
 
 void lexer_skip_to_token(Lexer *lexer) {
-    while (VALID(lexer)) {
+    while (!IS_EOF(lexer)) {
         if (isspace(CURR(lexer)))
             lexer_skip_ws(lexer);
-        if (CURR(lexer) == ';')
+        else if (CURR(lexer) == ';')
             lexer_skip_line_comment(lexer);
         else
             break;
     }
 }
 
-Token lex_integer(Lexer *lexer) {
-    assert(VALID(lexer));
-
-    Token result = EMIT_TOKEN(lexer, TK_INTEGER);
-
-    StringView src = lexer->src;
-    size_t size = 0;
-    if (CURR(lexer) == '+' || CURR(lexer) == '-') {
-        size++;
-        lexer_advance(lexer);
-    }
-
-    while (VALID(lexer) && isdigit(CURR(lexer))) {
-        size++;
-        lexer_advance(lexer);
-    }
-
-    result.src = sv_take(src, size);
-    return result;
-}
-
-Token lex_symbol(Lexer *lexer) {
-    assert(VALID(lexer));
-
-    Token result = EMIT_TOKEN(lexer, TK_SYMBOL);
-
-    StringView src = lexer->src;
-    size_t size = 0;
-    while (VALID(lexer) && issymbolchar(CURR(lexer))) {
-        lexer_advance(lexer);
-        size++;
-    }
-
-    result.src = sv_take(src, size);
-    return result;
-}
-
-Token lex_string(Lexer *lexer) {
-    assert(VALID(lexer));
-
-    Token result = EMIT_TOKEN(lexer, TK_STRING);
-
-    StringView src = lexer->src;
-    size_t size = 2;
-    lexer_advance(lexer);
-    while (VALID(lexer) && CURR(lexer) != '"') {
-        lexer_advance(lexer);
-        size++;
-    }
-    if (!VALID(lexer)) {
-        lexer->is_err = true;
-        return EMIT_TOKEN(lexer, TK_ERR);
-    }
-    lexer_advance(lexer);
-
-    result.src = sv_take(src, size);
-    return result;
-}
-
-Token lex_token(Lexer *lexer) {
-    assert(!lexer->is_err);
-
-    lexer_skip_to_token(lexer);
-
-    if (lexer->is_eof)
-        return EMIT_TOKEN(lexer, TK_EOF);
-
-    char curr = sv_head(lexer->src);
-    char next = sv_next(lexer->src);
-
-    if (curr == '"')
-        return lex_string(lexer);
-    if (curr == '(')
-        return lex_char_token(lexer, TK_L_PAREN);
-    if (curr == ')')
-        return lex_char_token(lexer, TK_R_PAREN);
-    if (curr == '.')
-        return lex_char_token(lexer, TK_DOT);
-    if (curr == '\'')
-        return lex_char_token(lexer, TK_QUOTE);
-    if (isdigit(curr) || ((curr == '+' || curr == '-') && isdigit(next)))
-        return lex_integer(lexer);
-    if (issymbolchar(curr))
-        return lex_symbol(lexer);
-
-    lexer->is_err = true;
-    return EMIT_TOKEN(lexer, TK_ERR);
-}
-
 void lex_current(Lexer *lexer) {
-    assert(VALID(lexer));
-    da_push(lexer->tokens, lex_token(lexer));
+    lexer_skip_to_token(lexer);
+    if (!IS_EOF(lexer))
+        da_push(*(lexer->tokens), lex_token(lexer));
 }
 
 void lexer_run(Lexer *lexer) {
-    while (VALID(lexer))
+    while (!IS_EOF(lexer) && !lexer->is_err) {
         lex_current(lexer);
-}
-
-TokenDA extract_tokens(Lexer *lexer) {
-    TokenDA result = lexer->tokens;
-    da_nullify(lexer->tokens);
-    return result;
+    }
 }

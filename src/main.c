@@ -46,8 +46,10 @@ int main(int argc, char **argv) {
     StringInterner *si = si_alloc();
     GC *gc = gc_alloc();
 
-    Lexer *lexer = lexer_alloc(prog);
-    TokenDA tokens = da_empty;
+    TokenDA tokens;
+    da_init(tokens);
+
+    Lexer *lexer = lexer_alloc(prog, &tokens);
 
     Parser *parser = parser_alloc(gc, si);
     ObjectPtrDA exprs = da_empty;
@@ -67,8 +69,6 @@ int main(int argc, char **argv) {
         is_err = true;
         goto cleanup;
     }
-
-    tokens = extract_tokens(lexer);
 
     parser_load(parser, tokens);
     parser_run(parser);
@@ -91,6 +91,7 @@ int main(int argc, char **argv) {
         is_err = true;
         goto cleanup;
     }
+
 cleanup:
     vm_free(vm);
     da_free(exprs);
