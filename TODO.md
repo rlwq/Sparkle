@@ -5,7 +5,6 @@ This document outlines the features and fixes planned for Sparkle.
 ## Syntax & Parser
 
 * [ ] Multiline comments.
-* [ ] String escaping sequences.
 * [ ] More descriptive parsing errors (on expected tokens).
 
 ## Special Forms & Control Flow 
@@ -14,30 +13,22 @@ This document outlines the features and fixes planned for Sparkle.
 ## Optimizations
  
 * [ ] Integer Interning.
-* [ ] Hash tables for fast search in scopes.
 * [ ] Arena allocations instead of a linked list in GC.
-* [ ] An attempt/research on Tail Call Optimization.
 
 ## Language Semantics
 
 * [ ] Basic `String` manipulation.
-* [ ] Macro support.
+    * [ ] String escaping sequences.
 * [ ] Lambda definitions with duplicated argument names.
-* [ ] Functions that accept `List`s MUST check for it.
 * [ ] `set` replaces all symbol definition simultaneously.
 
 ## Base Library
 
-* [ ] Math library.
-* [ ] Some kind of structure equality and ref equality for compound objects.
+* [ ] Structure equality. 
 * [ ] I/O
     * [ ] Formatted printing function 
     * [ ] Raw printing function for any objects
     * [ ] Input
-    * [ ] File reading/writing
-* [ ] System & OS
-    * [ ] `exit`, `argc/argv`...
-* [ ] Proper type checking for all built-in functions.
 
 ## Documentation & Presentation
 
@@ -57,6 +48,9 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Done
 
+* [x] Proper type checking for all built-in functions.
+* [x] Ref equality for compound objects.
+* [x] Functions that accept `List`s MUST check for it.
 * [x] `Float` literals.
 * [x] Exception call when trying to evaluate an improper list.
 * [x] Full parser & Lexer refactoring.

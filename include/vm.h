@@ -70,7 +70,7 @@ void vm_run(VM *vm);
 // vm_recovery.c
 void vm_push_recovery(VM *vm, jmp_buf *jmp);
 void vm_pop_recovery(VM *vm);
-void vm_recover(VM *vm, Object *exception_symbol) __attribute__((cold));
+void vm_recover(VM *vm, Object *exception_symbol) __attribute__((noreturn)) __attribute__((cold));
 void vm_expect(VM *vm, ObjectType type) __attribute__((cold));
 void vm_expect2(VM *vm, ObjectType prev, ObjectType peek) __attribute__((cold));
 

@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 
 // Cons (args), Node (lambda) -> Node (result)
 void eval_lambda_call(VM *vm) {
@@ -98,7 +99,7 @@ bool vm_cast_to_bool(VM *vm) {
         result = INTEGER(vm_peek(vm)) != 0;
         break;
     case KIND_STRING:
-        assert(0);
+        result = strlen(STRING(vm_peek(vm))) != 0;
         break;
     case KIND_CONS:
     case KIND_SYMBOL:

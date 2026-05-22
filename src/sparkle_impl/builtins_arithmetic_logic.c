@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <string.h>
 
 #include "builtins.h"
 #include "forwards.h"
@@ -74,13 +75,13 @@ void rkl_eq(VM *vm) {
     case KIND_BOOL:
         is_equal = BOOL(vm_peek(vm)) == BOOL(vm_prev(vm));
         break;
-    case KIND_CONS:
-        is_equal = vm_peek(vm) == vm_prev(vm);
-        break;
-    case KIND_BUILTIN:
-    case KIND_LAMBDA:
     case KIND_STRING:
-        assert(0 && "NOT IMPLEMENTED");
+        is_equal = strcmp(STRING(vm_peek(vm)), STRING(vm_prev(vm))) == 0;
+        break;
+    case KIND_CONS:
+    case KIND_LAMBDA:
+    case KIND_BUILTIN:
+        is_equal = vm_peek(vm) == vm_prev(vm);
         break;
     }
 
@@ -109,17 +110,21 @@ void rkl_truediv(VM *vm) {
 
     vm_to_common_numeric(vm);
 
-    if (vm_peek(vm)->kind == KIND_BOOL) {
-        VM_RECOVER_IF(vm, BOOL(vm_peek(vm)) == 0, vm->singletons._VALUE_EXCEPTION);
-        vm_build_float(vm, (double)BOOL(vm_prev(vm)) / (double)BOOL(vm_peek(vm)));
-    } else if (vm_peek(vm)->kind == KIND_INTEGER) {
-        VM_RECOVER_IF(vm, INTEGER(vm_peek(vm)) == 0, vm->singletons._VALUE_EXCEPTION);
-        vm_build_float(vm, (double)INTEGER(vm_prev(vm)) / (double)INTEGER(vm_peek(vm)));
-    } else if (vm_peek(vm)->kind == KIND_FLOAT) {
-        VM_RECOVER_IF(vm, FLOAT(vm_peek(vm)) == 0, vm->singletons._VALUE_EXCEPTION);
-        vm_build_float(vm, FLOAT(vm_prev(vm)) / FLOAT(vm_peek(vm)));
+    double v1 = 0;
+    double v2 = 0;
+
+    if (OFTYPE(vm_peek(vm), TY_INTEGER)) {
+        v1 = INTEGER(vm_prev(vm));
+        v2 = INTEGER(vm_peek(vm));
     }
-    vm_pop_prev_n(vm, 2);
+
+    else if (OFTYPE(vm_peek(vm), TY_FLOAT)) {
+        v1 = FLOAT(vm_prev(vm));
+        v2 = FLOAT(vm_peek(vm));
+    }
+
+    vm_pop_n(vm, 2);
+    vm_build_float(vm, v1 / v2);
 }
 
 void rkl_div(VM *vm) {
