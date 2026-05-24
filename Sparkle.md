@@ -26,8 +26,8 @@ A **Proper list** terminator.
 Represents an empty **proper list**.
 
 ```lisp 
-(eval 'Nil)  ; Nil (object of type Nil)
-(print ())   ; Nil
+(eval 'Nil)      ; Nil (object of type Nil)
+(print "$0" ())  ; Nil
 ```
 
 ### Bool
@@ -66,7 +66,6 @@ Evaluation:
 * Any other symbol beginning with an uppercase letter - self-evaluating, produces itself as a symbol.
 * Any other symbol resolves to the value bound to the name in the current scope. Raises `UNDEFINED_EXCEPTION` if not found.
 
-
 When unevaluated (e.g. via `quote`), represents itself - a name, not a reference.
 
 ```lisp
@@ -99,6 +98,8 @@ Evaluation: self-evaluating - a float value produces itself.
 
 An immutable sequence of characters.
 Ex.: `"hello"`, `"world"`.
+
+Use `str` to cast a value to a representing `String`.
 
 ### Cons 
 
@@ -196,82 +197,98 @@ An incorrect call of a special form raises an `VALUE_EXCEPTION` exception.
 
 `let` introduces a new binding in the current lexical scope.
 
-Usage: `(let name expr)`
+Usage: `(let name1 expr1 name2 expr2 ...)`
 
-Evaluates `expr` and binds the result to name in the current scope.
-Returns the bound value.
+Evaluates each `expr` in order and binds the result to the corresponding `name`.
+Each binding is visible to subsequent expressions in the same `let` form. 
+An odd number of arguments raises `VALUE_EXCEPTION`.
+Returns the last bound value.
 
-`name` must be a `symbol`.
+Each `name` must be a `symbol`.
 Binding a name that is already bound in the current scope raises an `REBINDING_EXCEPTION` exception.
 shadowing a name from a parent scope is allowed.
 
 ```lisp
-(let x 42)
-
-(print x)        ; 42
-
-(begin
-    (let x 10)
-    (print x))   ; 10
-
-(print x)        ; 42
+(let x 42)              ; 42
+(let a 1                ; a = 1
+     b (+ a 1))         ; b = 2
+(let q 1 p 2)           ; binds q to 1, then p to 2
 ```
 
 ### set
 
-`set` updates an existing binding.
+`set` updates an existing bindings in parallel.
 
-Usage: `(set name expr)`
+Usage: `(set name1 expr1 name2 expr2 ...)`
 
-Evaluates expr and updates the existing binding of name to the result. Searches outward
-through enclosing scopes. Returns the new value.
-
+All `expr`s are evaluated first, in order.
+Then all assignments are performed.
+Searches outward through enclosing scopes for each name.
+Returns the last assigned value.
+An odd number of arguments raises `VALUE_EXCEPTION`.
 Using `set` on an unbound name raises an `UNDEFINED_EXCEPTION` exception.
 
 ```lisp
-(let x 1)
-(set x 2)
-(print x)  ; 2
+(let x 17
+     y 49)
+
+(set x 2)  ; 2
+
+(set y x          ; y = 2
+     x (+ x y))   ; x = 51
 ```
 
 ### if
 
-Conditional expression.
+Conditional expression with multiple branches.
 
 Usage:
-* `(if condition then)`
-* `(if condition then else)`
+* `(if condition1 then1 condition2 then2 ... [default])`
 
-Evaluates the `condition` and casts the result to `Bool`. If truthy, evaluates and returns`then` expression. If falsy, evaluates and returns `else` if provided, otherwise returns `Nil`.
+Evaluates `condition`s and casts the result to `Bool` until one of them is `True` and then evaluates and returns the corresponding `then`.
+If no condition is `True` and a `default` expression is provided, evaluates and returns it, `Nil` otherwise.
 
 ```lisp
-(if (< 1 2) (print "yes"))   ; yes
-(if False (print "no"))      ; Nil
+(if False (print "no"))     ; Nil
+
+(if True (print "yes"))     ; yes
+
+(if False 1
+    False 2
+    3)                      ; 3  — default branch
+
+(if False 1
+    True  2
+    False 3)                ; 2  — second condition matched
+
+(if False 1
+    False 2)                ; Nil — no match, no default
 ```
 
 ### lambda
 
 Creates and returns a `Lambda` object that captures the current scope.
 
-Usage: `(lambda args expr)`
+Usage: `(lambda args expr1 expr2 ...)`
+
 `args` is either:
 * a proper list of symbols: `(x y z)` - evaluates to a fixed-arity lambda.
 * a symbol: `args` - variadic lambda with no positional arguments.
 * an improper list of symbols: `(x y . args)` - fixed amount of positional arguments with a list of variadic arguments.
 
-`expr` is the lambda body, evaluated when the lambda is called.
+The body consists of one or more expressions evaluated in order in a new lexical
+scope.
+The value of the last expression is returned.
+Duplicate argument names raise `VALUE_EXCEPTION`.
 
 ```lisp
-(lambda (x y) (+ x y))
-(lambda (x) (lambda (y) (+ x y)))  ; curried
+(let add (lambda (x y) (+ x y)))
+(add 1 2)  ; 3
 
-(let square (lambda (x) (* x x)))
-(square 5)  ; 25
-```
-
-``` lisp
-(let drop (lambda (head . tail) tail))
-(print (drop 1 2 3 4))  ; 2 3 4
+(let verbose-add (lambda (x y)
+  (let result (+ x y))
+  result))
+(verbose-add 3 4)  ; 7
 ```
 
 ### quote
@@ -291,6 +308,7 @@ Shorthand: `'expr`.
 ### begin
 
 Evaluates a sequence of expressions in order in a new lexical scope, returns the value of the last one.
+Returns `Nil` if no body was provided.
 
 Usage: `(begin expr1 expr2 ...)`
 
@@ -310,7 +328,7 @@ Usage: `(while condition expr)`
 ```lisp
 (let i 0)
 (while (< i 5) (begin
-  (print i)
+  (print "$0" i)
   (set i (+ i 1))
 ))
 ```
@@ -319,14 +337,18 @@ Usage: `(while condition expr)`
 
 Catches exceptions, raised when evaluating an expression.
 
-Usage: `(try exception)`
+Usage: `(try ExceptionSymbol expr1 expr2...)`
 
-Evaluates its argument.
-If a runtime exception occurs, catches it and returns a `Symbol` identifying the exception kind, otherwise returns `Nil`.
+Evaluates `expr1 expr2 ...` as a local lexical scope.
+If an exception matching `ExceptionSymbol` is raised, catches it and returns `ExceptionSymbol`.
+If a different exception is raised, it propagates normally.
+If no exception occurs, returns the value of the last expression.
+`ExceptionSymbol` is evaluated, so it must me an self-evaluating symbol or an expression resulting in a symbol.
 
 ```lisp
-(try (car Nil))  ;  TYPE_EXCEPTION - an exception was caught
-(try (+ 1 2))    ;  Nil - no exception occurred
+(try TYPE_EXCEPTION (car Nil))   ; TYPE_EXCEPTION — caught
+(try TYPE_EXCEPTION (+ 1 2))     ; 3 — no exception
+(try TYPE_EXCEPTION (div 1 0))   ; propagates VALUE_EXCEPTION — not caught
 ```
 
 ### and
@@ -371,13 +393,14 @@ With no arguments, returns `False`.
 * **`(car pair)`** - returns the `car` of a **Cons cell**.
 * **`(cdr pair)`** - returns the `cdr` of a **Cons cell**.
 * **`(list expr1 expr2 expr3 ...)`** - constructs a proper list from its arguments. With no arguments, returns `Nil`.
+* **`(len l)`** - length of a proper list `l`.
 * **`(setcar pair x)`** - updates the `car` of an existing Cons cell in place.
 * **`(setcdr pair x)`** - updates the `cdr` of an existing Cons cell in place.
+* **`(map func li)`** - builds a new list by applying `func` to every `li` item.
 
 ### I/O
  
-* **`(show expr)`** - prints its argument in its proper lisp syntax format. Returns `Nil`.
-* **`(print fmt arg ...)`** - prints a formatted string. Placeholders `$0`, `$1`, ... are replaced with the corresponding arguments. If a placeholder index has no matching argument, a runtime exception is raised. Returns `Nil`.
+* **`(print fmt arg1 arg2 ...)`** - prints a formatted string. Placeholders `$0`, `$1`, ... are replaced with the corresponding arguments. If a placeholder index has no matching argument, a runtime exception is raised. Returns `Nil`.
  
 ```lisp
 (print "Hello $0!" "World")       ; Hello World!
@@ -404,11 +427,12 @@ If at least one argument is `Float`, the result is `Float`. Otherwise the result
 Integer division and modulo by zero are runtime exceptions.
 
 * `(+ x y ...)` - sum of all arguments. With no arguments, returns `0`.
-* `(- x y1 y2 ...)` - difference `x - y1 - y2 ...`.
 * `(* x y ...)` - product of all arguments. With no arguments, returns `1`.
-* `(/ x y1 y2 ...)` - floating-point division `x / y1 / y2 ...`.
-* `(div x y)` - integer division of `x` by  `y`.
+* `(- x y)` - difference `x - y`.
+* `(/ x y)` - floating-point division `x` by `y`.
+* `(div x y)` - integer division of `x` by `y`.
 * `(mod x y)` - remainder of `x / y`.
+* `(neg x) `  - negation. `-x`.
 
 ### Logic
 
@@ -426,7 +450,7 @@ Integer division and modulo by zero are runtime exceptions.
 `=` and `!=` compare values differently depending on their type:
 
 * `Nil` - all `Nil` are equal.
-* `Bool`, `Integer`, `Float`, `String` - comparison by value.
+* `Bool`, `Integer`, `Float`, `String`, `Symbol` - comparison by value.
 * `Cons`, `Lambda`, `Builtin` - reference - two objects are equal only if they are the same object.
 * `Bool`, `Integer`, and `Float` values are comparable with each other. 
 * Any other cross-type comparison is a runtime exception.
@@ -460,8 +484,8 @@ Each exception carries a kind identifying the cause:
 Catching exceptions with `try`:
 
 ```lisp
-(let result (try (car Nil)))
-(print result)      ; TYPE_EXCEPTION
+(let result (try TYPE_EXCEPTION (car Nil)))
+(print "$0" result)      ; TYPE_EXCEPTION
 ```
 
 When an exception is not caught, the interpreter exits with a non-zero status and prints a human-readable description of the error.
