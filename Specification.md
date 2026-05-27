@@ -216,6 +216,122 @@ A `Builtin` value is always truthy.
 
 ## Special Forms
 
+Special forms look like function calls but are evaluated differently - arguments are not evaluated before being passed and are not bound to any scope - there is no function-like machinery involved.
+Special forms handle flow control and state mutation.
+An incorrect call of a special form raises an `VALUE_EXCEPTION` exception.
+
+### let
+
+`let` introduces a new binding in the current lexical scope.
+
+Usage: `(let name1 expr1 name2 expr2 ...)`
+
+Evaluates each `expr` in order and binds the result to the corresponding `name`.
+Each binding is visible to subsequent expressions in the same `let` form. 
+An odd number of arguments raises `VALUE_EXCEPTION`.
+Returns the last bound value.
+
+Each `name` must be a `symbol`.
+Binding a name that is already bound in the current scope raises an `REBINDING_EXCEPTION` exception.
+shadowing a name from a parent scope is allowed.
+
+### set
+
+`set` updates an existing bindings in parallel.
+
+Usage: `(set name1 expr1 name2 expr2 ...)`
+
+All `expr`s are evaluated first, in order.
+Then all assignments are performed.
+Searches outward through enclosing scopes for each name.
+Returns the last assigned value.
+An odd number of arguments raises `VALUE_EXCEPTION`.
+Using `set` on an unbound name raises an `UNDEFINED_EXCEPTION` exception.
+
+### if
+
+Conditional expression with multiple branches.
+
+Usage:
+* `(if condition1 then1 condition2 then2 ... [default])`
+
+Evaluates `condition`s and casts the result to `Bool` until one of them is `True` and then evaluates and returns the corresponding `then`.
+If no condition is `True` and a `default` expression is provided, evaluates and returns it, `Nil` otherwise.
+
+### lambda
+
+Creates and returns a `Lambda` object that captures the current scope.
+
+Usage: `(lambda args expr1 expr2 ...)`
+
+`args` is either:
+* a proper list of symbols: `(x y z)` - evaluates to a fixed-arity lambda.
+* a symbol: `args` - variadic lambda with no positional arguments.
+* an improper list of symbols: `(x y . args)` - fixed amount of positional arguments with a list of variadic arguments.
+
+The body consists of one or more expressions evaluated in order in a new lexical
+scope.
+The value of the last expression is returned.
+Duplicate argument names raise `VALUE_EXCEPTION`.
+
+### quote
+
+Returns its argument unevaluated.
+
+Usage: `(quote expr)`
+
+Shorthand: `'expr`.
+
+### begin
+
+Evaluates a sequence of expressions in order in a new lexical scope, returns the value of the last one.
+Returns `Nil` if no body was provided.
+
+Usage: `(begin expr1 expr2 ...)`
+
+### while
+
+Conditional loop. Evaluates `condition` and casts the result to `Bool`. While truthy, evaluates `expr` then re-evaluates `condition`. Returns `Nil`.
+
+Usage: `(while condition expr)`
+
+### try
+
+Catches exceptions, raised when evaluating an expression.
+
+Usage: `(try ExceptionSymbol expr1 expr2...)`
+
+Evaluates `expr1 expr2 ...` as a local lexical scope.
+If an exception matching `ExceptionSymbol` is raised, catches it and returns `ExceptionSymbol`.
+If a different exception is raised, it propagates normally.
+If no exception occurs, returns the value of the last expression.
+`ExceptionSymbol` is evaluated, so it must me an self-evaluating symbol or an expression resulting in a symbol.
+
+### and
+
+Short-circuiting logical AND.
+
+Usage: `(and expr1 expr2...)`
+
+Evaluates its arguments left-to-right and casts the result to `Bool`.
+As soon as any argument evaluates to `False` it stops the arguments evaluation and returns `False`.
+If all arguments evaluated to `True`, returns `True`.
+With no arguments, returns True.
+
+### or
+
+Short-circuiting logical OR.
+
+Usage: `(or expr1 expr2...)`
+
+Evaluates arguments left-to-right and casts them to `Bool`.
+As soon as any argument evaluates to `True` it stops the arguments evaluation and returns `True`.
+If all arguments are evaluated to `False`, returns `False`.
+With no arguments, returns `False`.
+
+## Built-in Functions
+
+
 ## Standard Library
 
 ## Exception Model
