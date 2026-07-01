@@ -92,7 +92,7 @@ void vm_build_nil(VM *vm);
 void vm_build_lambda(VM *vm, bool is_variadic, Object *expr, Scope *scope);
 void vm_build_symbol(VM *vm, StringName value);
 void vm_build_string(VM *vm, StringName value);
-void vm_build_cons(VM *vm, Object *car, Object *cdr);
+void vm_build_list(VM *vm);
 
 // vm_stack.c
 void vm_push(VM *vm, Object *value);
@@ -109,11 +109,8 @@ void vm_pop_prev(VM *vm);
 void vm_pop_prev_n(VM *vm, size_t n);
 
 // vm_ops.c
-void vm_pack_cons(VM *vm);
-void vm_unpack_cons(VM *vm);
 void vm_pack_list(VM *vm, size_t length);
 size_t vm_unpack_list(VM *vm);
-void vm_unpack_list_n(VM *vm, size_t n);
 
 // vm_eval.c
 void vm_eval_node(VM *vm);

@@ -136,9 +136,6 @@ Token lex_token(Lexer *lexer) {
     if (curr == ')')
         return lex_char_token(lexer, TK_R_PAREN);
 
-    if (curr == '.')
-        return lex_char_token(lexer, TK_DOT);
-
     if (curr == '\'')
         return lex_char_token(lexer, TK_QUOTE);
 

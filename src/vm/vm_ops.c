@@ -2,39 +2,28 @@
 #include "vm.h"
 #include <assert.h>
 
-// t, h -> (h . t)
-void vm_pack_cons(VM *vm) {
-    vm_build_cons(vm, vm_peek(vm), vm_prev(vm));
-    vm_pop_prev_n(vm, 2);
-}
-
-// (h . t) -> t, h
-void vm_unpack_cons(VM *vm) {
-    ASSERT_KIND(vm, KIND_CONS);
-
-    vm_push_prev(vm, CDR(vm_peek(vm)));
-    vm_push_prev(vm, CAR(vm_peek(vm)));
-    vm_pop(vm);
-}
-
+// v0, v1, ..., v[n-1] -> List(v0, v1, ..., v[n-1])
 void vm_pack_list(VM *vm, size_t length) {
-    for (; length > 1; length--) {
-        vm_swap(vm);
-        vm_pack_cons(vm);
-    }
+    vm_build_list(vm);
+    Object *list = vm_peek(vm);
+
+    for (size_t i = length; i >= 1; i--)
+        da_push(LIST_ITEMS(list), da_at_end(vm->value_stack, i));
+
+    vm_pop_prev_n(vm, length);
 }
 
-// [x] -> x * n
+// List(v0, v1, ..., v[n-1]) -> v0, v1, ..., v[n-1]
 size_t vm_unpack_list(VM *vm) {
-    size_t size = 0;
-    while (OFTYPE(vm_peek(vm), TY_CONS)) {
-        vm_unpack_cons(vm);
-        vm_swap(vm);
+    ASSERT_KIND(vm, KIND_LIST);
 
-        size++;
-    }
+    Object *list = vm_peek(vm);
+    size_t size = LIST_SIZE(list);
 
-    assert(OFTYPE(vm_peek(vm), TY_NIL));
     vm_pop(vm);
+
+    for (size_t i = 0; i < size; i++)
+        vm_push(vm, LIST_AT(list, i));
+
     return size;
 }

@@ -1,11 +1,10 @@
 (let range (lambda (a b)
     (if (> a b)
-     Nil
-     (cons a (range (+ a 1) b)))))
+     (list)
+     (append (list a) (range (+ a 1) b)))))
 
 (let double (lambda (x) (+ x x)))
 (let const (lambda (x) (lambda (n) x)))
 (print (range 7 41))
 (print (map double (range 5 11)))
 (print (map (const 7) (range 101 108)))
-

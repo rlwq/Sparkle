@@ -7,81 +7,84 @@
 #include <stdio.h>
 #include <string.h>
 
-// Cons (args), Node (lambda) -> Node (result)
+// List (args, unevaluated), Lambda -> Node (result)
 void eval_lambda_call(VM *vm) {
     assert(OFTYPE(vm_peek(vm), TY_LAMBDA));
-    assert(OFTYPE(vm_prev(vm), TY_LISTFUL));
+    assert(OFTYPE(vm_prev(vm), TY_LIST));
 
     Object *lambda = vm_peek(vm);
     vm_swap(vm);
 
+    Object *args = vm_peek(vm);
+    size_t argc = LIST_SIZE(args);
+    for (size_t i = 0; i < argc; i++) {
+        vm_push(vm, LIST_AT(args, i));
+        vm_eval_node(vm);
+    }
+    vm_pack_list(vm, argc);
+    vm_pop_prev(vm);
+
+    Object *evargs = vm_peek(vm);
+    size_t pos_args = LAMBDA_POS_ARGS_N(lambda);
+
+    bool bad_arity = LAMBDA_IS_VARIADIC(lambda) ? LIST_SIZE(evargs) < pos_args
+                                                : LIST_SIZE(evargs) != pos_args;
+    VM_RECOVER_IF(vm, bad_arity, vm->singletons._ARITY_EXCEPTION);
+
     vm_push_scope(vm, LAMBDA_SCOPE(lambda));
     vm_build_scope(vm);
 
-    for (size_t i = 0; i < LAMBDA_POS_ARGS_N(lambda); i++) {
-        if (vm_peek(vm)->kind != KIND_CONS)
-            vm_recover(vm, vm->singletons._ARITY_EXCEPTION);
-        vm_unpack_cons(vm);
+    for (size_t i = 0; i < pos_args; i++) {
+        vm_push(vm, LIST_AT(evargs, i));
         vm_scope_define(vm, da_at(LAMBDA_ARGS(lambda), i));
         vm_pop(vm);
     }
 
-    if (!LAMBDA_IS_VARIADIC(lambda) && !OFTYPE(vm_peek(vm), TY_NIL))
-        vm_recover(vm, vm->singletons._ARITY_EXCEPTION);
-
-    if (LAMBDA_IS_VARIADIC(lambda))
+    if (LAMBDA_IS_VARIADIC(lambda)) {
+        for (size_t i = pos_args; i < LIST_SIZE(evargs); i++)
+            vm_push(vm, LIST_AT(evargs, i));
+        vm_pack_list(vm, LIST_SIZE(evargs) - pos_args);
         vm_scope_define(vm, da_at_end(LAMBDA_ARGS(lambda), 0));
-    vm_pop(vm);
+        vm_pop(vm);
+    }
 
     vm_push(vm, LAMBDA_SUBEXPR(lambda));
     vm_eval_node(vm);
-    vm_pop_prev(vm);
 
     vm_pop_scope(vm);
     vm_pop_scope(vm);
+
+    vm_pop_prev(vm);
+    vm_pop_prev(vm);
 }
 
-// Args (list), Builtin -> Result
+// List (args, unevaluated), Builtin -> Node (result)
 void eval_builtin_call(VM *vm) {
     assert(OFTYPE(vm_peek(vm), TY_BUILTIN));
-    assert(OFTYPE(vm_prev(vm), TY_LISTFUL));
+    assert(OFTYPE(vm_prev(vm), TY_LIST));
 
     Object *builtin = vm_peek(vm);
-    vm_swap(vm);
-    size_t args_count = vm_map_eval(vm);
+    vm_pop(vm);
 
-    if (!BUILTIN_IS_VARIADIC(builtin)) {
-        VM_RECOVER_IF(vm, args_count != BUILTIN_ARGS_N(builtin), vm->singletons._ARITY_EXCEPTION);
-        vm_unpack_list(vm);
-    }
-
-    if (BUILTIN_IS_VARIADIC(builtin)) {
-        VM_RECOVER_IF(vm, args_count < BUILTIN_ARGS_N(builtin), vm->singletons._ARITY_EXCEPTION);
-        vm_unpack_list_n(vm, BUILTIN_ARGS_N(builtin));
-    }
-    BUILTIN_FUNC(builtin)(vm);
-}
-
-// Node (cons) -> Node (cons)
-size_t vm_map_eval(VM *vm) {
-    size_t length = 0;
-
-    LIST_ITER(vm, curr, vm_peek(vm))
-        vm_push(vm, CAR(curr));
+    Object *args = vm_peek(vm);
+    size_t argc = LIST_SIZE(args);
+    for (size_t i = 0; i < argc; i++) {
+        vm_push(vm, LIST_AT(args, i));
         vm_eval_node(vm);
-        length++;
-    END_LIST_ITER_RECOVER(vm, curr)
-
-    vm_build_nil(vm);
-
-    for (size_t i = 0; i < length; i++) {
-        vm_swap(vm);
-        vm_pack_cons(vm);
     }
-
+    vm_pack_list(vm, argc);
     vm_pop_prev(vm);
 
-    return length;
+    if (!BUILTIN_IS_VARIADIC(builtin)) {
+        VM_RECOVER_IF(vm, argc != BUILTIN_ARGS_N(builtin), vm->singletons._ARITY_EXCEPTION);
+        vm_unpack_list(vm);
+    } else {
+        VM_RECOVER_IF(vm, argc < BUILTIN_ARGS_N(builtin), vm->singletons._ARITY_EXCEPTION);
+        vm_unpack_list(vm);
+        vm_pack_list(vm, argc - BUILTIN_ARGS_N(builtin));
+    }
+
+    BUILTIN_FUNC(builtin)(vm);
 }
 
 // Node -> Bool
@@ -101,7 +104,9 @@ bool vm_cast_to_bool(VM *vm) {
     case KIND_STRING:
         result = strlen(STRING(vm_peek(vm))) != 0;
         break;
-    case KIND_CONS:
+    case KIND_LIST:
+        result = LIST_SIZE(vm_peek(vm)) != 0;
+        break;
     case KIND_SYMBOL:
     case KIND_BUILTIN:
     case KIND_LAMBDA:
@@ -115,14 +120,6 @@ bool vm_cast_to_bool(VM *vm) {
     vm_pop(vm);
     vm_build_bool(vm, result);
     return result;
-}
-
-void vm_unpack_list_n(VM *vm, size_t n) {
-    for (; n > 0; n--) {
-        ASSERT_KIND(vm, KIND_CONS);
-        vm_unpack_cons(vm);
-        vm_swap(vm);
-    }
 }
 
 // (Bool | Integer | Float), (Bool | Integer | Float) -> Node, Node
@@ -166,26 +163,34 @@ ObjectKind vm_to_common_numeric(VM *vm) {
     return common;
 }
 
-// Cons -> Node
-void vm_eval_cons(VM *vm) {
-    ASSERT_KIND(vm, KIND_CONS);
+// List -> Node
+void vm_eval_list(VM *vm) {
+    ASSERT_KIND(vm, KIND_LIST);
 
-    VM_RECOVER_IF(vm, !is_proper_list(vm_peek(vm)), vm->singletons._TYPE_EXCEPTION);
+    Object *call = vm_peek(vm);
+    size_t size = LIST_SIZE(call);
 
-    vm_unpack_cons(vm);
-
-    bool is_special_form = try_dispatch_special_form(vm);
-    if (is_special_form)
+    if (size == 0)
         return;
 
+    Object *head = LIST_AT(call, 0);
+
+    for (size_t i = 1; i < size; i++)
+        vm_push(vm, LIST_AT(call, i));
+    vm_pack_list(vm, size - 1);
+
+    if (OFTYPE(head, TY_SYMBOL) && try_dispatch_special_form(vm, SYMBOL(head))) {
+        vm_pop_prev(vm);
+        return;
+    }
+
+    vm_push(vm, head);
     vm_eval_node(vm);
+    vm_rot(vm);
+    vm_pop(vm);
 
     switch (vm_peek(vm)->kind) {
     case KIND_LAMBDA:
-        vm_swap(vm);
-        vm_map_eval(vm);
-
-        vm_dup_prev(vm);
         eval_lambda_call(vm);
         break;
 
@@ -193,7 +198,7 @@ void vm_eval_cons(VM *vm) {
         eval_builtin_call(vm);
         break;
 
-    case KIND_CONS:
+    case KIND_LIST:
     case KIND_BOOL:
     case KIND_FLOAT:
     case KIND_SYMBOL:
@@ -203,8 +208,6 @@ void vm_eval_cons(VM *vm) {
         vm_recover(vm, vm->singletons._UNCALLABLE_EXCEPTION);
         break;
     }
-
-    vm_pop_prev(vm);
 }
 
 // Symbol -> Node
@@ -243,8 +246,8 @@ void vm_eval_node(VM *vm) {
         vm_eval_symbol(vm);
         break;
 
-    case KIND_CONS:
-        vm_eval_cons(vm);
+    case KIND_LIST:
+        vm_eval_list(vm);
         break;
     }
 }

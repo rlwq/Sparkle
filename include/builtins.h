@@ -22,7 +22,7 @@ typedef struct {
 #define X_MODULES                                                                                  \
     X(TYPE_PREDICATES)                                                                             \
     X(ARITHMETIC_LOGIC)                                                                            \
-    X(CONS_LIST)                                                                                   \
+    X(LIST)                                                                                       \
     X(IO)
 
 #define X DEFINE_MODULE_HEADER

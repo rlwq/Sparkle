@@ -1,10 +1,10 @@
 (let fib_iter (lambda (pair n) (
     if (= n 0)
     pair
-    (fib_iter (cons (cdr pair) (+ (car pair) (cdr pair))) (- n 1))
+    (fib_iter (list (get pair 1) (+ (get pair 0) (get pair 1))) (- n 1))
 )))
 
-(let fib (lambda (n) (car (fib_iter (cons 0 1) n))))
+(let fib (lambda (n) (get (fib_iter (list 0 1) n) 0)))
 
 (print (fib 1))
 (print (fib 2))

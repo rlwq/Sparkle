@@ -5,10 +5,11 @@
 #include <stdio.h>
 
 void rkl_print(VM *vm) {
-    LIST_ITER(vm, list, vm_peek(vm))
-        print_expr(CAR(list));
+    Object *args_ = vm_peek(vm);
+    LIST_FOREACH(item, args_)
+        print_expr(item);
         printf("\n");
-    END_LIST_ITER_RECOVER(vm, list)
+    END_LIST_FOREACH
 
     vm_pop(vm);
     vm_build_nil(vm);

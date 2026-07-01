@@ -5,162 +5,168 @@
 #include "vm.h"
 #include <stdio.h>
 
-bool try_dispatch_special_form(VM *vm) {
-
-    if (!OFTYPE(vm_peek(vm), TY_SYMBOL))
-        return false;
-
-    SpecialFormHandler handler = NULL;
-
+bool try_dispatch_special_form(VM *vm, StringName name) {
     for (size_t i = 0; i < SPECIAL_FORMS_COUNT; i++) {
-        if (SYMBOL(vm_peek(vm)) == SPECIAL_FORMS[i].keyword) {
-            handler = SPECIAL_FORMS[i].func;
-            break;
+        if (name == SPECIAL_FORMS[i].keyword) {
+            SPECIAL_FORMS[i].func(vm);
+            return true;
         }
-    }
-
-    if (handler) {
-        vm_pop(vm);
-        handler(vm);
-        return true;
     }
 
     return false;
 }
 
 void rkl_let_form(VM *vm) {
-    Object *curr = vm_peek(vm);
-    for (; OFTYPE(curr, TY_CONS) && OFTYPE(CDR(curr), TY_CONS); curr = CDR(CDR(curr))) {
-        VM_RECOVER_IF(vm, !OFTYPE(CAR(curr), TY_SYMBOL), vm->singletons._VALUE_EXCEPTION);
+    Object *args = vm_peek(vm);
+    size_t n = LIST_SIZE(args);
 
-        StringName name = SYMBOL(CAR(curr));
-        Object *value = CAR(CDR(curr));
+    VM_RECOVER_IF(vm, n % 2 != 0, vm->singletons._VALUE_EXCEPTION);
 
-        vm_push(vm, value);
+    for (size_t i = 0; i + 1 < n; i += 2) {
+        Object *name = LIST_AT(args, i);
+        VM_RECOVER_IF(vm, !OFTYPE(name, TY_SYMBOL), vm->singletons._VALUE_EXCEPTION);
+
+        vm_push(vm, LIST_AT(args, i + 1));
         vm_eval_node(vm);
 
-        vm_scope_define(vm, name);
+        vm_scope_define(vm, SYMBOL(name));
         vm_pop(vm);
     }
-
-    VM_RECOVER_IF(vm, !OFTYPE(curr, TY_NIL), vm->singletons._VALUE_EXCEPTION);
 
     vm_pop(vm);
     vm_build_nil(vm);
 }
 
 void rkl_set_form(VM *vm) {
-    Object *curr = vm_peek(vm);
-    for (; OFTYPE(curr, TY_CONS) && OFTYPE(CDR(curr), TY_CONS); curr = CDR(CDR(curr))) {
-        VM_RECOVER_IF(vm, !OFTYPE(CAR(curr), TY_SYMBOL), vm->singletons._VALUE_EXCEPTION);
+    Object *args = vm_peek(vm);
+    size_t n = LIST_SIZE(args);
 
-        StringName name = SYMBOL(CAR(curr));
-        Object *value = CAR(CDR(curr));
+    VM_RECOVER_IF(vm, n % 2 != 0, vm->singletons._VALUE_EXCEPTION);
 
-        vm_push(vm, value);
+    for (size_t i = 0; i + 1 < n; i += 2) {
+        Object *name = LIST_AT(args, i);
+        VM_RECOVER_IF(vm, !OFTYPE(name, TY_SYMBOL), vm->singletons._VALUE_EXCEPTION);
+
+        vm_push(vm, LIST_AT(args, i + 1));
         vm_eval_node(vm);
 
-        vm_scope_set(vm, name);
+        vm_scope_set(vm, SYMBOL(name));
         vm_pop(vm);
     }
-
-    VM_RECOVER_IF(vm, !OFTYPE(curr, TY_NIL), vm->singletons._VALUE_EXCEPTION);
 
     vm_pop(vm);
     vm_build_nil(vm);
 }
 
 void rkl_if_form(VM *vm) {
-    Object *curr = vm_peek(vm);
-    for (; OFTYPE(curr, TY_CONS) && OFTYPE(CDR(curr), TY_CONS); curr = CDR(CDR(curr))) {
-        vm_push(vm, CAR(curr));
+    Object *args = vm_peek(vm);
+    size_t n = LIST_SIZE(args);
+
+    size_t i = 0;
+    for (; i + 1 < n; i += 2) {
+        vm_push(vm, LIST_AT(args, i));
         vm_eval_node(vm);
         bool result = vm_cast_to_bool(vm);
         vm_pop(vm);
 
         if (result) {
-            vm_push(vm, CAR(CDR(curr)));
+            vm_push(vm, LIST_AT(args, i + 1));
             vm_eval_node(vm);
             vm_pop_prev(vm);
             return;
         }
     }
 
-    if (OFTYPE(curr, TY_NIL)) {
-        vm_pop(vm);
-        vm_build_nil(vm);
+    if (i < n) {
+        vm_push(vm, LIST_AT(args, i));
+        vm_eval_node(vm);
+        vm_pop_prev(vm);
         return;
     }
 
-    vm_push(vm, CAR(curr));
-    vm_eval_node(vm);
-    vm_pop_prev(vm);
+    vm_pop(vm);
+    vm_build_nil(vm);
 }
 
 void rkl_while_form(VM *vm) {
-    size_t argc = vm_unpack_list(vm);
-    VM_RECOVER_IF(vm, argc != 2, vm->singletons._VALUE_EXCEPTION);
+    Object *args = vm_peek(vm);
+    VM_RECOVER_IF(vm, LIST_SIZE(args) != 2, vm->singletons._VALUE_EXCEPTION);
 
-    vm_dup_prev(vm);
+    Object *condition = LIST_AT(args, 0);
+    Object *body = LIST_AT(args, 1);
+
+    vm_push(vm, condition);
     vm_eval_node(vm);
     bool result = vm_cast_to_bool(vm);
 
     while (result) {
         vm_pop(vm);
-        vm_dup(vm);
+
+        vm_push(vm, body);
         vm_eval_node(vm);
         vm_pop(vm);
 
-        vm_dup_prev(vm);
+        vm_push(vm, condition);
         vm_eval_node(vm);
         result = vm_cast_to_bool(vm);
     }
 
-    vm_pop_n(vm, 3);
-
+    vm_pop(vm);
+    vm_pop(vm);
     vm_build_nil(vm);
 }
 
 void rkl_lambda_form(VM *vm) {
-    size_t argc = vm_unpack_list(vm);
-    VM_RECOVER_IF(vm, argc != 2, vm->singletons._VALUE_EXCEPTION);
+    Object *args = vm_peek(vm);
+    VM_RECOVER_IF(vm, LIST_SIZE(args) != 2, vm->singletons._VALUE_EXCEPTION);
 
-    vm_build_lambda(vm, false, vm_peek(vm), VM_CURR_SCOPE(vm));
-    vm_pop_prev(vm);
+    Object *params = LIST_AT(args, 0);
+    Object *body = LIST_AT(args, 1);
+
+    VM_RECOVER_IF(vm, !OFTYPE(params, TY_SYMBOL | TY_LIST), vm->singletons._VALUE_EXCEPTION);
+
+    vm_build_lambda(vm, false, body, VM_CURR_SCOPE(vm));
+    Object *lambda = vm_peek(vm);
 
     bool is_variadic = false;
 
-    vm_expect2(vm, TY_SYMBOL | TY_LISTFUL, TY_ANY);
-
-    // Variadic function with no positional arguments
-    if (OFTYPE(vm_peek(vm), TY_SYMBOL)) {
+    if (OFTYPE(params, TY_SYMBOL)) {
         is_variadic = true;
-        da_push(LAMBDA_ARGS(vm_peek(vm)), SYMBOL(vm_prev(vm)));
-        goto end;
+        da_push(LAMBDA_ARGS(lambda), SYMBOL(params));
+    } else {
+        StringName var_marker = vm->si->prebuilt._Var;
+        size_t np = LIST_SIZE(params);
+
+        for (size_t i = 0; i < np; i++) {
+            Object *param = LIST_AT(params, i);
+            VM_RECOVER_IF(vm, !OFTYPE(param, TY_SYMBOL), vm->singletons._VALUE_EXCEPTION);
+
+            if (SYMBOL(param) == var_marker) {
+                VM_RECOVER_IF(vm, i != np - 2, vm->singletons._VALUE_EXCEPTION);
+
+                Object *rest = LIST_AT(params, np - 1);
+                VM_RECOVER_IF(vm, !OFTYPE(rest, TY_SYMBOL), vm->singletons._VALUE_EXCEPTION);
+
+                is_variadic = true;
+                da_push(LAMBDA_ARGS(lambda), SYMBOL(rest));
+                break;
+            }
+
+            da_push(LAMBDA_ARGS(lambda), SYMBOL(param));
+        }
     }
 
-    // Function with at least one positional argument
-    Object *curr = vm_prev(vm);
-    for (; curr->kind == KIND_CONS; curr = CDR(curr)) {
-        VM_RECOVER_IF(vm, !OFTYPE(CAR(curr), TY_SYMBOL), vm->singletons._VALUE_EXCEPTION);
-        da_push(LAMBDA_ARGS(vm_peek(vm)), SYMBOL(CAR(curr)));
-    }
-
-    VM_RECOVER_IF(vm, !OFTYPE(curr, TY_NIL | TY_SYMBOL), vm->singletons._VALUE_EXCEPTION);
-
-    if (OFTYPE(curr, TY_SYMBOL)) {
-        is_variadic = true;
-        da_push(LAMBDA_ARGS(vm_peek(vm)), SYMBOL(curr));
-    }
-
-end:
-    LAMBDA_IS_VARIADIC(vm_peek(vm)) = is_variadic;
+    LAMBDA_IS_VARIADIC(lambda) = is_variadic;
     vm_pop_prev(vm);
 }
 
 void rkl_try_form(VM *vm) {
-    size_t argc = vm_unpack_list(vm);
-    VM_RECOVER_IF(vm, argc != 1, vm->singletons._VALUE_EXCEPTION);
+    Object *args = vm_peek(vm);
+    VM_RECOVER_IF(vm, LIST_SIZE(args) != 1, vm->singletons._VALUE_EXCEPTION);
+
+    Object *expr = LIST_AT(args, 0);
+    vm_pop(vm);
+    vm_push(vm, expr);
 
     jmp_buf env;
     vm_push_recovery(vm, &env);
@@ -179,48 +185,62 @@ void rkl_try_form(VM *vm) {
 }
 
 void rkl_quote_form(VM *vm) {
-    size_t argc = vm_unpack_list(vm);
-    VM_RECOVER_IF(vm, argc != 1, vm->singletons._VALUE_EXCEPTION);
+    Object *args = vm_peek(vm);
+    VM_RECOVER_IF(vm, LIST_SIZE(args) != 1, vm->singletons._VALUE_EXCEPTION);
+
+    Object *expr = LIST_AT(args, 0);
+    vm_pop(vm);
+    vm_push(vm, expr);
 }
 
 void rkl_begin_form(VM *vm) {
+    Object *args = vm_peek(vm);
+
     vm_build_scope(vm);
     vm_build_nil(vm);
-    LIST_ITER(vm, curr, vm_prev(vm))
+
+    LIST_FOREACH(curr, args)
         vm_pop(vm);
-        vm_push(vm, CAR(curr));
+        vm_push(vm, curr);
         vm_eval_node(vm);
-    END_LIST_ITER(vm, curr)
+    END_LIST_FOREACH
+
     vm_pop_prev(vm);
     vm_pop_scope(vm);
 }
 
 void rkl_and_form(VM *vm) {
+    Object *args = vm_peek(vm);
+
     bool result = true;
-    for (Object *curr = vm_peek(vm); OFTYPE(curr, TY_CONS); curr = CDR(curr)) {
-        vm_push(vm, CAR(curr));
+    LIST_FOREACH(curr, args)
+        vm_push(vm, curr);
         vm_eval_node(vm);
         vm_cast_to_bool(vm);
         result = BOOL(vm_peek(vm));
         vm_pop(vm);
         if (!result)
             break;
-    }
+    END_LIST_FOREACH
+
     vm_pop(vm);
     vm_build_bool(vm, result);
 }
 
 void rkl_or_form(VM *vm) {
+    Object *args = vm_peek(vm);
+
     bool result = false;
-    for (Object *curr = vm_peek(vm); OFTYPE(curr, TY_CONS); curr = CDR(curr)) {
-        vm_push(vm, CAR(curr));
+    LIST_FOREACH(curr, args)
+        vm_push(vm, curr);
         vm_eval_node(vm);
         vm_cast_to_bool(vm);
         result = BOOL(vm_peek(vm));
         vm_pop(vm);
         if (result)
             break;
-    }
+    END_LIST_FOREACH
+
     vm_pop(vm);
     vm_build_bool(vm, result);
 }

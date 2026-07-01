@@ -76,7 +76,7 @@ Examples: `my_variable`, `Hello123`, `>>=`.
 ```ebnf
 symbol      = symbol-char+ - (integer | float);
 
-symbol-char = ? any character except whitespace, '(', ')', '\'', '.', '"', ';' ?;
+symbol-char = ? any character except whitespace, '(', ')', '\'', '"', ';' ?;
 ```
 
 > `True`, `False`, `Nil` are syntactically valid symbols and parsed as ones. 
@@ -84,7 +84,7 @@ symbol-char = ? any character except whitespace, '(', ')', '\'', '.', '"', ';' ?
 #### S-expression
 
 An s-expression is either a literal or a list.
-A list is a parenthesized sequence of s-expressions, optionally terminated by a dotted tail.
+A list is a parenthesized sequence of s-expressions.
 
 ```ebnf
 s-expr      = atom
@@ -92,7 +92,7 @@ s-expr      = atom
             | quoted-expr;
 
 list        = '(', list-body, ')';
-list-body   = s-expr*, ['.', s-expr];
+list-body   = s-expr*;
 
 quoted-expr = '\'', s-expr;
 
@@ -102,14 +102,14 @@ atom        = integer | float | string | symbol;
 ## Types
  
 Sparkle is dynamically typed. Type errors are detected at runtime.
-The language defines these types: `Nil`, `Bool`, `Integer`, `Float`, `String`, `Symbol`, `Cons`, `Lambda`, and `Builtin`.
+The language defines these types: `Nil`, `Bool`, `Integer`, `Float`, `String`, `Symbol`, `List`, `Lambda`, and `Builtin`.
  
 ### Nil
  
 `Nil` is a unit type with exactly one value.
 
-It represents the absence of a meaningful value and serves as the terminator of proper lists.
-The symbol `Nil` and the empty list literal `()` both evaluate to the `Nil` value.
+It represents the absence of a meaningful value.
+The symbol `Nil` evaluates to the `Nil` value. `Nil` is distinct from the empty list `()`, which is its own empty `List` value.
 `Nil` is falsy.
  
 ### Bool
@@ -129,7 +129,8 @@ Any value can be cast to `Bool` via the `?` function. The truthiness rules are:
 | `Integer` | `0` | otherwise |
 | `Float` | `0.0` | otherwise |
 | `String` | empty | non-empty |
-| `Symbol`, `Cons`, `Lambda`, `Builtin` | - | always |
+| `List` | empty | non-empty |
+| `Symbol`, `Lambda`, `Builtin` | - | always |
  
 ### Integer
  
@@ -178,23 +179,26 @@ Evaluation of a symbol depends on its name:
 - All other symbols resolve to the value bound to that name in the current scope. If no binding exists, `UNDEFINED_EXCEPTION` is raised.
 A `Symbol` value is always truthy.
  
-### Cons
+### List
  
-`Cons` is an ordered pair of two values, referred to as `car` and `cdr`.
- 
-Two `Cons` values are equal if and only if they are the same object (reference equality).
- 
-#### Lists
- 
-Lists are a convention built on nested `Cons` cells.
- 
-A **proper list** is a `Cons` chain whose last `cdr` is `Nil`. The `Nil` value itself represents the empty proper list.
+`List` is an ordered, dynamically-sized, index-addressable sequence of values. It is represented as a dynamic array; the reference implementation uses a growable array of object references. A `List` is not built from pairs.
 
-An **improper list** is a `Cons` chain whose last `cdr` is not `Nil`.
+Every list is a flat, finite sequence of elements indexed from `0`. The number of elements is its length.
 
-When a `Cons` value is evaluated as the head of a call, the `cdr` must be a proper list; an improper list raises `TYPE_EXCEPTION`.
+The empty list `()` is its own empty `List` value (length 0), distinct from `Nil`. Both `()` and `(list)` produce an empty `List`. `Nil` does not terminate lists and is not an element of a list unless explicitly stored.
+ 
+Two `List` values are equal if and only if they are the same object (reference equality).
 
-A `Cons` value is always truthy.
+An empty `List` is falsy. A non-empty `List` is truthy.
+
+#### Evaluation as a call
+ 
+The empty list `()` self-evaluates to the empty list.
+
+A non-empty list expression is evaluated as a call or special form, determined by its first element (index 0):
+
+- If the first element is a symbol naming a special form, that special form is invoked and receives the remaining elements unevaluated.
+- Otherwise the first element is evaluated. It must yield a `Lambda` or `Builtin`; if it yields any other type, `UNCALLABLE_EXCEPTION` is raised. The remaining elements are then evaluated left-to-right and passed as arguments.
  
 ### Lambda
  
@@ -265,9 +269,9 @@ Creates and returns a `Lambda` object that captures the current scope.
 Usage: `(lambda args expr1 expr2 ...)`
 
 `args` is either:
-* a proper list of symbols: `(x y z)` - evaluates to a fixed-arity lambda.
-* a symbol: `args` - variadic lambda with no positional arguments.
-* an improper list of symbols: `(x y . args)` - fixed amount of positional arguments with a list of variadic arguments.
+* a list of symbols: `(x y z)` - evaluates to a fixed-arity lambda.
+* a single symbol: `args` - fully variadic lambda with no positional arguments; all arguments are collected into a `List` bound to that symbol.
+* a list of symbols containing the reserved marker symbol `Var` as its second-to-last element: `(x y Var rest)` - the symbols before `Var` are fixed positional parameters, and the single symbol after `Var` is bound to a `List` of the remaining arguments.
 
 The body consists of one or more expressions evaluated in order in a new lexical
 scope.
@@ -331,6 +335,19 @@ With no arguments, returns `False`.
 
 ## Built-in Functions
 
+### List operations
+
+The following built-ins operate on `List` values. Passing a non-`List` value where a `List` is expected raises `TYPE_EXCEPTION`.
+
+* `(list e1 e2 ...)` - constructs a `List` from the evaluated arguments. With no arguments, returns an empty `List`.
+* `(len l)` - returns the length of `List` `l` as an `Integer`.
+* `(get l i)` - returns the element of `l` at 0-based index `i`. An out-of-range index raises `VALUE_EXCEPTION`.
+* `(put l i x)` - sets the element of `l` at 0-based index `i` to `x` in place and returns `l`. An out-of-range index raises `VALUE_EXCEPTION`.
+* `(push l x)` - appends `x` to the end of `l` in place and returns `l`.
+* `(pop l)` - removes and returns the last element of `l`. An empty list raises `VALUE_EXCEPTION`.
+* `(append l1 l2)` - returns a new `List` containing the elements of `l1` followed by the elements of `l2`.
+* `(map func l)` - returns a new `List` obtained by applying `func` to each element of `l`.
+* `(filter func l)` - returns a new `List` containing the elements of `l` for which `func` returns a truthy value.
 
 ## Standard Library
 

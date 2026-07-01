@@ -19,10 +19,9 @@ void vm_build_symbol(VM *vm, StringName value) {
     SYMBOL(vm_peek(vm)) = value;
 }
 
-void vm_build_cons(VM *vm, Object *car, Object *cdr) {
-    vm_build_value(vm, KIND_CONS);
-    CAR(vm_peek(vm)) = car;
-    CDR(vm_peek(vm)) = cdr;
+void vm_build_list(VM *vm) {
+    vm_build_value(vm, KIND_LIST);
+    da_init(LIST_ITEMS(vm_peek(vm)));
 }
 
 void vm_build_bool(VM *vm, bool value) {

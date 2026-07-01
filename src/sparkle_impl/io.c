@@ -4,19 +4,14 @@
 #include <assert.h>
 #include <stdio.h>
 
-void print_cons(Object *expr) {
-    assert(expr->kind == KIND_CONS);
+void print_list(Object *expr) {
+    assert(expr->kind == KIND_LIST);
 
     printf("(");
-    for (; CDR(expr)->kind == KIND_CONS; expr = CDR(expr)) {
-        print_expr(CAR(expr));
-        printf(" ");
-    }
-    print_expr(CAR(expr));
-    expr = CDR(expr);
-    if (expr->kind != KIND_NIL) {
-        printf(" . ");
-        print_expr(expr);
+    for (size_t i = 0; i < LIST_SIZE(expr); i++) {
+        if (i > 0)
+            printf(" ");
+        print_expr(LIST_AT(expr, i));
     }
     printf(")");
 }
@@ -34,7 +29,7 @@ void print_lambda(Object *expr) {
         printf(" %s", curr);
     }
     if (expr->as.lambda.is_variadic) {
-        printf(" . %s", da_at_end(expr->as.lambda.args, 0));
+        printf(" Var %s", da_at_end(expr->as.lambda.args, 0));
     }
     printf(") ");
     print_expr(expr->as.lambda.subexpr);
@@ -64,8 +59,8 @@ void print_expr(Object *expr) {
     case KIND_SYMBOL:
         printf("%s", SYMBOL(expr));
         break;
-    case KIND_CONS:
-        print_cons(expr);
+    case KIND_LIST:
+        print_list(expr);
         break;
     case KIND_BUILTIN:
         break;

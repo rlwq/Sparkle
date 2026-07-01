@@ -11,7 +11,8 @@
     void func_name_(VM *vm) {                                                                      \
         vm_swap(vm);                                                                               \
                                                                                                    \
-        LIST_ITER(vm, curr, vm_prev(vm)) vm_push(vm, CAR(curr));                                   \
+        Object *args_ = vm_prev(vm);                                                                \
+        LIST_FOREACH(curr, args_) vm_push(vm, curr);                                                \
         vm_expect2(vm, TY_NUMERIC, TY_NUMERIC);                                                    \
         vm_to_common_numeric(vm);                                                                  \
                                                                                                    \
@@ -24,7 +25,7 @@
                                                                                                    \
         vm_pop_prev_n(vm, 2);                                                                      \
                                                                                                    \
-        END_LIST_ITER_RECOVER(vm, curr) vm_pop_prev(vm);                                           \
+        END_LIST_FOREACH vm_pop_prev(vm);                                                          \
     }
 
 #define NUMERIC_ORDER_BUILTIN(func_name_, operator_)                                               \
@@ -78,7 +79,7 @@ void rkl_eq(VM *vm) {
     case KIND_STRING:
         is_equal = strcmp(STRING(vm_peek(vm)), STRING(vm_prev(vm))) == 0;
         break;
-    case KIND_CONS:
+    case KIND_LIST:
     case KIND_LAMBDA:
     case KIND_BUILTIN:
         is_equal = vm_peek(vm) == vm_prev(vm);
@@ -160,12 +161,13 @@ void rkl_cast_to_bool(VM *vm) {
 void rkl_logical_and(VM *vm) {
     bool result = true;
 
-    LIST_ITER(vm, curr, vm_peek(vm))
-        vm_push(vm, CAR(curr));
+    Object *args_ = vm_peek(vm);
+    LIST_FOREACH(curr, args_)
+        vm_push(vm, curr);
         vm_cast_to_bool(vm);
         result = result && BOOL(vm_peek(vm));
         vm_pop(vm);
-    END_LIST_ITER_RECOVER(vm, curr)
+    END_LIST_FOREACH
 
     vm_pop(vm);
     vm_build_bool(vm, result);
@@ -174,12 +176,13 @@ void rkl_logical_and(VM *vm) {
 void rkl_logical_or(VM *vm) {
     bool result = false;
 
-    LIST_ITER(vm, curr, vm_peek(vm))
-        vm_push(vm, CAR(curr));
+    Object *args_ = vm_peek(vm);
+    LIST_FOREACH(curr, args_)
+        vm_push(vm, curr);
         vm_cast_to_bool(vm);
         result = result || BOOL(vm_peek(vm));
         vm_pop(vm);
-    END_LIST_ITER_RECOVER(vm, curr)
+    END_LIST_FOREACH
 
     vm_pop(vm);
     vm_build_bool(vm, result);

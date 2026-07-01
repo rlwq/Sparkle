@@ -10,7 +10,7 @@
 
 #define X_KINDS                                                                                    \
     X(NIL)                                                                                         \
-    X(CONS)                                                                                        \
+    X(LIST)                                                                                        \
     X(SYMBOL)                                                                                      \
     X(BOOL)                                                                                        \
     X(FLOAT)                                                                                       \
@@ -30,7 +30,6 @@ typedef enum {
     X_KINDS
 #undef X
         TY_NUMERIC = TY_BOOL | TY_INTEGER | TY_FLOAT,
-    TY_LISTFUL = TY_CONS | TY_NIL,
     TY_CALLABLE = TY_BUILTIN | TY_LAMBDA,
 
     TY_ANY = 0
@@ -43,9 +42,8 @@ typedef enum {
 #define OFTYPE(n_, t_) (TYPEOF(n_) & (t_))
 
 typedef struct {
-    Object *car;
-    Object *cdr;
-} ConsObject;
+    DA(Object *) items;
+} ListObject;
 
 typedef long long int Integer;
 
@@ -66,7 +64,7 @@ typedef union {
     StringName symbol;
     BuiltinObject builtin;
     LambdaObject lambda;
-    ConsObject cons;
+    ListObject list;
     Integer integer;
     double float_;
     bool bool_;
@@ -81,11 +79,10 @@ struct Object {
     ObjectUnion as;
 };
 
-bool is_proper_list(Object *object);
-
-#define CONS(n_) ((n_)->as.cons)
-#define CAR(n_) ((n_)->as.cons.car)
-#define CDR(n_) ((n_)->as.cons.cdr)
+#define LIST(n_) ((n_)->as.list)
+#define LIST_ITEMS(n_) ((n_)->as.list.items)
+#define LIST_SIZE(n_) ((n_)->as.list.items.size)
+#define LIST_AT(n_, i_) (da_at((n_)->as.list.items, (i_)))
 
 #define SYMBOL(n_) ((n_)->as.symbol)
 #define INTEGER(n_) ((n_)->as.integer)
@@ -105,14 +102,10 @@ bool is_proper_list(Object *object);
 #define BUILTIN_IS_VARIADIC(n_) ((n_)->as.builtin.is_variadic)
 #define BUILTIN_ARGS_N(n_) ((n_)->as.builtin.arity)
 
-#define LIST_ITER(vm_, name_, value_)                                                              \
-    Object *name_;                                                                                 \
-    for (name_ = value_; OFTYPE(name_, TY_CONS); name_ = CDR(name_)) {
+#define LIST_FOREACH(name_, list_)                                                                  \
+    for (size_t name_##_i = 0; name_##_i < LIST_SIZE(list_); name_##_i++) {                         \
+        Object *name_ = LIST_AT(list_, name_##_i);
 
-#define END_LIST_ITER_RECOVER(vm_, name_)                                                          \
-    }                                                                                              \
-    VM_RECOVER_IF(vm_, !OFTYPE(name_, TY_NIL), vm->singletons._TYPE_EXCEPTION);
-
-#define END_LIST_ITER(vm_, name_) }
+#define END_LIST_FOREACH }
 
 #endif

@@ -98,12 +98,13 @@ Object *parse_quote(Parser *parser) {
         return NULL;
     }
 
-    Object *result = gc_alloc_node(parser->gc, KIND_CONS);
-    CAR(result) = gc_alloc_node(parser->gc, KIND_SYMBOL);
-    CAR(result)->as.symbol = parser->si->prebuilt._quote;
-    CDR(result) = gc_alloc_node(parser->gc, KIND_CONS);
-    CAR(CDR(result)) = subexpr;
-    CDR(CDR(result)) = gc_alloc_node(parser->gc, KIND_NIL);
+    Object *symbol = gc_alloc_node(parser->gc, KIND_SYMBOL);
+    symbol->as.symbol = parser->si->prebuilt._quote;
+
+    Object *result = gc_alloc_node(parser->gc, KIND_LIST);
+    da_init(LIST_ITEMS(result));
+    da_push(LIST_ITEMS(result), symbol);
+    da_push(LIST_ITEMS(result), subexpr);
     return result;
 }
 
@@ -111,46 +112,16 @@ Object *parse_list(Parser *parser) {
     if (!parser_eat(parser, TK_L_PAREN))
         return NULL;
 
-    if (parser_eat(parser, TK_DOT)) {
-        Object *result = gc_alloc_node(parser->gc, KIND_CONS);
-        CAR(result) = gc_alloc_node(parser->gc, KIND_NIL);
-        CDR(result) = parse_expr(parser);
-        parser_expect(parser, TK_R_PAREN);
-        return result;
-    }
+    Object *result = gc_alloc_node(parser->gc, KIND_LIST);
+    da_init(LIST_ITEMS(result));
 
-    DA(Object *) args;
-    da_init(args);
+    while (PARSER_VALID(parser) && !parser_match(parser, TK_R_PAREN))
+        da_push(LIST_ITEMS(result), parse_expr(parser));
 
-    while (PARSER_VALID(parser) && !parser_match(parser, TK_R_PAREN) &&
-           !parser_match(parser, TK_DOT))
-        da_push(args, parse_expr(parser));
-
-    if (parser_eat(parser, TK_DOT)) {
-        if (parser_eat(parser, TK_R_PAREN)) {
-            da_push(args, gc_alloc_node(parser->gc, KIND_NIL));
-        } else {
-            da_push(args, parse_expr(parser));
-            parser_expect(parser, TK_R_PAREN);
-        }
-    } else if (parser_eat(parser, TK_R_PAREN)) {
-        da_push(args, gc_alloc_node(parser->gc, KIND_NIL));
-    } else {
-        da_free(args);
-        parser->is_err = true;
+    if (!parser_expect(parser, TK_R_PAREN))
         return NULL;
-    }
 
-    Object *node = da_at_end(args, 0);
-    for (size_t i = 1; i < args.size; i++) {
-        Object *head = gc_alloc_node(parser->gc, KIND_CONS);
-        head->as.cons.cdr = node;
-        head->as.cons.car = da_at_end(args, i);
-        node = head;
-    }
-
-    da_free(args);
-    return node;
+    return result;
 }
 
 Object *parse_integer(Parser *parser) {

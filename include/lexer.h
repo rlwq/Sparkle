@@ -13,7 +13,6 @@ typedef struct {
 #define X_TOKEN_KINDS                                                                              \
     X(L_PAREN)                                                                                     \
     X(R_PAREN)                                                                                     \
-    X(DOT)                                                                                         \
     X(QUOTE)                                                                                       \
     X(SYMBOL)                                                                                      \
     X(INTEGER)                                                                                     \

@@ -1,34 +1,20 @@
-(print 1234321)              ; 1234321
-(print Nil)                  ; Nil
-(print ())                   ; Nil
-(print (quote Hello!))       ; Hello!
-(print (quote (1 2 3 4 5)))  ; 1 2 3 4 5
-(print (cons 1 2))           ; (cons 1 2)
+(print 1234321)                  ; 1234321
+(print Nil)                      ; Nil
+(print ())                       ; ()
+(print (quote Hello!))           ; Hello!
+(print (quote (1 2 3 4 5)))      ; (1 2 3 4 5)
+(print (list 1 2))               ; (1 2)
 
-;      o
-;     / \
-;    o   2
-;   / \
-;  1  Nil
-(print (cons (quote (1)) 2))  ; (cons (1) 2)
-(print (quote (cons (1) 2)))  ; (cons (1) 2)
+; Nested lists
+(print (list (quote (1)) 2))     ; ((1) 2)
+(print (quote ((1) 2)))          ; ((1) 2)
 
+; A list of pairs, represented as nested lists
+(let x (list (list 1 2) (list 3 4)))
+(print x)                        ; ((1 2) (3 4))
 
-;        o
-;      /   \
-;    o       o
-;   / \     / \
-;  1   2   3   4
-(let x '((1 . 2) . (3 . 4)))
-(print x)
+(let y (list (list (list 1 2) (list 3 4)) (list (list 5 6) (list 7 8))))
+(print y)                        ; (((1 2) (3 4)) ((5 6) (7 8)))
 
-;         o
-;     o       o
-;   o   o   o   o
-;  1 2 3 4 5 6 7 8
-(let y '(((1 . 2) . (3 . 4)) . ((5 . 6) . (7 . 8))))
-(print y)
-
-(print ())
-(print (cons () ()))
-
+(print ())                       ; ()
+(print (list () ()))             ; (() ())

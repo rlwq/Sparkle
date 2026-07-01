@@ -11,23 +11,21 @@ evaluated left-to-right before the function is invoked.
 
 ## Core Types
 
-Sparkle has the following types: `Nil`, `Bool`, `Integer`, `Float`, `String`, `Symbol`, `Cons`, `Lambda` and `Builtin`.
+Sparkle has the following types: `Nil`, `Bool`, `Integer`, `Float`, `String`, `Symbol`, `List`, `Lambda` and `Builtin`.
 
 ### Nil
 
 Represents the absence of a value.
 
-Literal syntax: `()`.
 A symbol with value `Nil` evaluates to the `Nil` object.
 
 Evaluation: self-evaluating - produces the `Nil` object.
 
-A **Proper list** terminator.
-Represents an empty **proper list**.
+`Nil` is purely the absence of a value. It is distinct from the empty list `()` and does not serve as a list terminator.
 
 ```lisp 
-(eval 'Nil)      ; Nil (object of type Nil)
-(print "$0" ())  ; Nil
+(eval 'Nil)         ; Nil (object of type Nil)
+(print "$0" Nil)    ; Nil
 ```
 
 ### Bool
@@ -46,7 +44,8 @@ Truthiness rules for casting:
 * `Bool` → itself
 * `Integer`, `Float` → `False` if `0`, otherwise `True`
 * `String` → `False` if empty, otherwise `True`
-* `Cons`, `Lambda`, `Builtin`, `Symbol` → always `True`
+* `List` → `False` if empty, otherwise `True`
+* `Lambda`, `Builtin`, `Symbol` → always `True`
 
 ```lisp
 (? 0)    ; False
@@ -101,69 +100,38 @@ Ex.: `"hello"`, `"world"`.
 
 Use `str` to cast a value to a representing `String`.
 
-### Cons 
+### List
 
-#### Cons pairs
+A **List** is an ordered, dynamically-sized sequence of values, backed by a dynamic array (not nested pairs).
 
-A **Cons Cell** is an ordered pair of two values.
-Its "left" and "right" slots are named `car` and `cdr` respectively.
+Literal syntax: `(a b c)` - elements enclosed in parentheses. There is no dotted-pair syntax; the dot `.` is an ordinary symbol character.
 
-Literal syntax:
-* `(x . y)` - a cell where `car` is `x` and `cdr` is `y`. Shorthand for `(cons x y)`.
-* `(x .  )` is parsed as `(x . Nil)`.
-* `(  . x)` is parsed as `(Nil . x)`.
+The empty list `()` is its own empty `List` value (size 0). It is distinct from `Nil`. Both `()` and `(list)` produce an empty List.
 
-* Use the `cons` function to build a new cell. 
-* Use the `car` and `cdr` functions to retrieve values from the slots.
-* Use `setcar` and `setcdr` to update the values within an existing cell.
+Every list is a flat sequence of elements - there are no "proper" or "improper" lists.
+
+Truthiness: an empty List is falsy; a non-empty List is truthy (mirrors `String`).
+
+Equality (`=` / `!=`): reference equality - two Lists are equal only if they are the same object.
+
+Elements are accessed by 0-based index with `get` and `put`. Build and grow lists with `list`, `push`, `pop` and `append`, and query the size with `len`.
 
 ```lisp
-(cons 1 2)        ; a pair
-(car (cons 1 2))  ; 1
-(cdr (cons 1 2))  ; 2
+(list 1 2 3)          ; (1 2 3)
+'(1 2 3)              ; (1 2 3)
+()                    ; ()  - the empty list
+(get '(1 2 3) 0)      ; 1
+(len '(1 2 3))        ; 3
 ```
-
-#### Lists
-
-Lists are not a separate type - they are a convention built on nested `Cons` cells.
 
 Evaluation:
-Evaluated as a function call or a special form, depending on the `car`.
-* If `car` is a symbol naming a special form - the special form is invoked. Arguments are passed unevaluated.
-* If `car` evaluates to a `Lambda` or `Builtin` - called as a function. Arguments are evaluated left-to-right before the call.
-* If `car` evaluates to anything else - raises `UNCALLABLE_EXCEPTION`.
-* `cdr` must be a proper list. An improper list raises `TYPE_EXCEPTION`.
+* The empty list `()` self-evaluates to the empty list.
+* A non-empty list is evaluated as a function call or a special form, determined by its first element (index 0):
+  * If the first element is a symbol naming a special form - the special form is invoked. The remaining elements are passed unevaluated.
+  * Otherwise the first element is evaluated and must be a `Lambda` or `Builtin`. The remaining elements are evaluated left-to-right and passed as arguments.
+  * If the first element evaluates to anything else - raises `UNCALLABLE_EXCEPTION`.
 
-##### Proper lists
-
-A **proper list** is a chain of `Cons` cells terminated by `Nil`.
-
-Literal syntax: `(a b c d)` - elements of a list enclosed in parentheses. The `Nil` terminator is added implicitly.
-
-```lisp
-; Lists are nested cons cells terminated by Nil
-(cons 1 (cons 2 (cons 3 Nil)))  ; (1 2 3)
-
-(car '(1 2 3 4 5))              ; 1
-(cdr '(1 2 3 4 5))              ; (2 3 4 5)
-```
-
-##### Improper lists
-
-An **improper list** is a **Cons** chain where the last `cdr` is not `Nil`.
-
-A sequence of values enclosed in parentheses where the final element is preceded by a dot defines an **improper list**.
-
-Literal syntax: `(1 2 3 4 . 5)` defines an improper list with `5` as its terminal value.
-
-In this form, the list is terminated by the object following the dot.
-
-```lisp
-(cons 1 2)           ; (1 . 2)      - improper
-(cons 1 (cons 2 3))  ; (1 2 . 3)    - improper
-(1 2 3 . 4)          ; (1 2 3 . 4)  - improper
-(A B C . Nil)        ; (A B C)      - a proper list, terminated by Nil object
-```
+A List prints as `(elem1 elem2 ...)`; the empty list prints as `()`.
 
 ### Built-in functions
 
@@ -272,9 +240,9 @@ Creates and returns a `Lambda` object that captures the current scope.
 Usage: `(lambda args expr1 expr2 ...)`
 
 `args` is either:
-* a proper list of symbols: `(x y z)` - evaluates to a fixed-arity lambda.
-* a symbol: `args` - variadic lambda with no positional arguments.
-* an improper list of symbols: `(x y . args)` - fixed amount of positional arguments with a list of variadic arguments.
+* a list of symbols: `(x y z)` - evaluates to a fixed-arity lambda.
+* a single symbol: `args` - fully variadic lambda; all arguments are collected into a `List` bound to that symbol.
+* a list of symbols containing the `Var` marker: `(x y Var rest)` - `x` and `y` are fixed positional parameters; the symbol immediately following the `Var` marker (`rest`) is bound to a `List` of all remaining arguments.
 
 The body consists of one or more expressions evaluated in order in a new lexical
 scope.
@@ -284,6 +252,14 @@ Duplicate argument names raise `VALUE_EXCEPTION`.
 ```lisp
 (let add (lambda (x y) (+ x y)))
 (add 1 2)  ; 3
+
+; Fully variadic - all arguments collected into a List
+(let collect (lambda args args))
+(collect 1 2 3)  ; (1 2 3)
+
+; Fixed positional params plus a variadic tail
+(let f (lambda (x y Var rest) rest))
+(f 1 2 3 4 5)  ; (3 4 5)
 
 (let verbose-add (lambda (x y)
   (let result (+ x y))
@@ -346,9 +322,9 @@ If no exception occurs, returns the value of the last expression.
 `ExceptionSymbol` is evaluated, so it must me an self-evaluating symbol or an expression resulting in a symbol.
 
 ```lisp
-(try TYPE_EXCEPTION (car Nil))   ; TYPE_EXCEPTION — caught
-(try TYPE_EXCEPTION (+ 1 2))     ; 3 — no exception
-(try TYPE_EXCEPTION (div 1 0))   ; propagates VALUE_EXCEPTION — not caught
+(try TYPE_EXCEPTION (get Nil 0))  ; TYPE_EXCEPTION — caught
+(try TYPE_EXCEPTION (+ 1 2))      ; 3 — no exception
+(try TYPE_EXCEPTION (div 1 0))    ; propagates VALUE_EXCEPTION — not caught
 ```
 
 ### and
@@ -388,15 +364,31 @@ With no arguments, returns `False`.
 ## Built-in Functions
 
 ### List Operations
- 
-* **`(cons x y)`** - constructs a **Cons cell** with `car = x`, `cdr = y`.
-* **`(car pair)`** - returns the `car` of a **Cons cell**.
-* **`(cdr pair)`** - returns the `cdr` of a **Cons cell**.
-* **`(list expr1 expr2 expr3 ...)`** - constructs a proper list from its arguments. With no arguments, returns `Nil`.
-* **`(len l)`** - length of a proper list `l`.
-* **`(setcar pair x)`** - updates the `car` of an existing Cons cell in place.
-* **`(setcdr pair x)`** - updates the `cdr` of an existing Cons cell in place.
-* **`(map func li)`** - builds a new list by applying `func` to every `li` item.
+
+All of these operate on `List` values and raise `TYPE_EXCEPTION` if given a non-List where a List is expected.
+
+* **`(list e1 e2 ...)`** - constructs a `List` from its arguments. With no arguments, returns the empty List.
+* **`(len l)`** - number of elements in list `l`.
+* **`(get l i)`** - returns the element at 0-based index `i`. An out-of-range index raises `VALUE_EXCEPTION`.
+* **`(put l i x)`** - sets the element at 0-based index `i` to `x`, in place; returns the list. An out-of-range index raises `VALUE_EXCEPTION`.
+* **`(push l x)`** - appends `x` to the end of list `l` in place; returns the list.
+* **`(pop l)`** - removes and returns the last element of `l`. Popping an empty list raises `VALUE_EXCEPTION`.
+* **`(append l1 l2)`** - returns a new List containing the elements of `l1` followed by the elements of `l2`.
+* **`(map func l)`** - returns a new List built by applying `func` to every element of `l`.
+* **`(filter func l)`** - returns a new List of the elements of `l` for which `func` returns truthy.
+
+```lisp
+(list 1 2 3)                    ; (1 2 3)
+(list)                          ; ()
+(len '(1 2 3))                  ; 3
+(get '(a b c) 1)               ; b
+(put (list 1 2 3) 0 9)          ; (9 2 3)
+(push (list 1 2) 3)             ; (1 2 3)
+(pop (list 1 2 3))             ; 3
+(append '(1 2) '(3 4))         ; (1 2 3 4)
+(map (lambda (x) (* x x)) '(1 2 3))       ; (1 4 9)
+(filter (lambda (x) (> x 1)) '(1 2 3))    ; (2 3)
+```
 
 ### I/O
  
@@ -451,7 +443,7 @@ Integer division and modulo by zero are runtime exceptions.
 
 * `Nil` - all `Nil` are equal.
 * `Bool`, `Integer`, `Float`, `String`, `Symbol` - comparison by value.
-* `Cons`, `Lambda`, `Builtin` - reference - two objects are equal only if they are the same object.
+* `List`, `Lambda`, `Builtin` - reference - two objects are equal only if they are the same object.
 * `Bool`, `Integer`, and `Float` values are comparable with each other. 
 * Any other cross-type comparison is a runtime exception.
 
@@ -484,7 +476,7 @@ Each exception carries a kind identifying the cause:
 Catching exceptions with `try`:
 
 ```lisp
-(let result (try TYPE_EXCEPTION (car Nil)))
+(let result (try TYPE_EXCEPTION (get Nil 0)))
 (print "$0" result)      ; TYPE_EXCEPTION
 ```
 

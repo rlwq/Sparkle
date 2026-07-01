@@ -13,7 +13,8 @@
     X(if)                                                                                          \
     X(set)                                                                                         \
     X(quote)                                                                                       \
-    X(lambda)
+    X(lambda)                                                                                      \
+    X(Var)
 
 typedef const char *StringName;
 

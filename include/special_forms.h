@@ -13,6 +13,6 @@ typedef struct {
 extern SpecialFormDef SPECIAL_FORMS[];
 extern size_t SPECIAL_FORMS_COUNT;
 
-bool try_dispatch_special_form(VM *vm);
+bool try_dispatch_special_form(VM *vm, StringName name);
 
 #endif
