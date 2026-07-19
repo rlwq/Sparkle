@@ -64,8 +64,7 @@ string-character = ? any character except '"' and '\\' ?
                  | escape-sequence;
 
 escape-sequence  = '\\\\' | '\\"' | '\\n' | '\\r' | '\\t'
-                 | '\\x', 2 * hex-digit
-                 | '\\u', 4 * hex-digit;
+                 | '\\x', 2 * hex-digit;
 ```
 
 #### Symbol
@@ -79,7 +78,7 @@ symbol      = symbol-char+ - (integer | float);
 symbol-char = ? any character except whitespace, '(', ')', '\'', '"', ';' ?;
 ```
 
-> `True`, `False`, `Nil` are syntactically valid symbols and parsed as ones. 
+> `True`, `False`, `Nil` are syntactically valid symbols and are parsed as such.
 
 #### S-expression
 
@@ -97,6 +96,22 @@ list-body   = s-expr*;
 quoted-expr = '\'', s-expr;
 
 atom        = integer | float | string | symbol;
+```
+
+#### Comments
+
+A line comment starts with `;` and runs to the end of the line.
+A block comment starts with `/*` and runs, across any number of lines, to the
+matching `*/`. Unlike in C, block comments nest: every inner `/*` must be
+closed by its own `*/`. Neither marker has any meaning inside a string
+literal. A `;` always starts a comment outside strings (it is not a symbol
+character), while `/*` adjacent to symbol characters is part of the symbol -
+block comments are recognized only between tokens. A block comment left
+unterminated at end of input is a lexing error.
+
+```ebnf
+line-comment  = ';', ? any character except newline ?*;
+block-comment = '/*', (block-comment | ? any text without '/*' or '*/' ?)*, '*/';
 ```
 
 ## Types
@@ -160,7 +175,7 @@ Operations on mixed numeric types outside of arithmetic and ordering comparisons
  
 ### String
  
-`String` is an immutable sequence of characters.
+`String` is an immutable sequence of ASCII characters.
  
 Two `String` values are equal if and only if they contain the same sequence of characters.
 
@@ -222,7 +237,7 @@ A `Builtin` value is always truthy.
 
 Special forms look like function calls but are evaluated differently - arguments are not evaluated before being passed and are not bound to any scope - there is no function-like machinery involved.
 Special forms handle flow control and state mutation.
-An incorrect call of a special form raises an `VALUE_EXCEPTION` exception.
+An incorrect call of a special form raises a `VALUE_EXCEPTION` exception.
 
 ### let
 
@@ -235,13 +250,13 @@ Each binding is visible to subsequent expressions in the same `let` form.
 An odd number of arguments raises `VALUE_EXCEPTION`.
 Returns the last bound value.
 
-Each `name` must be a `symbol`.
-Binding a name that is already bound in the current scope raises an `REBINDING_EXCEPTION` exception.
-shadowing a name from a parent scope is allowed.
+Each `name` must be a `Symbol`.
+Binding a name that is already bound in the current scope raises a `REBINDING_EXCEPTION` exception.
+Shadowing a name from a parent scope is allowed.
 
 ### set
 
-`set` updates an existing bindings in parallel.
+`set` updates existing bindings in parallel.
 
 Usage: `(set name1 expr1 name2 expr2 ...)`
 
@@ -301,15 +316,15 @@ Usage: `(while condition expr)`
 
 ### try
 
-Catches exceptions, raised when evaluating an expression.
+Catches exceptions raised when evaluating an expression.
 
 Usage: `(try ExceptionSymbol expr1 expr2...)`
 
-Evaluates `expr1 expr2 ...` as a local lexical scope.
+Evaluates `expr1 expr2 ...` in a local lexical scope.
 If an exception matching `ExceptionSymbol` is raised, catches it and returns `ExceptionSymbol`.
 If a different exception is raised, it propagates normally.
 If no exception occurs, returns the value of the last expression.
-`ExceptionSymbol` is evaluated, so it must me an self-evaluating symbol or an expression resulting in a symbol.
+`ExceptionSymbol` is evaluated, so it must be a self-evaluating symbol or an expression resulting in a symbol.
 
 ### and
 
@@ -318,9 +333,9 @@ Short-circuiting logical AND.
 Usage: `(and expr1 expr2...)`
 
 Evaluates its arguments left-to-right and casts the result to `Bool`.
-As soon as any argument evaluates to `False` it stops the arguments evaluation and returns `False`.
-If all arguments evaluated to `True`, returns `True`.
-With no arguments, returns True.
+As soon as any argument evaluates to `False` it stops evaluating the arguments and returns `False`.
+If all arguments evaluate to `True`, returns `True`.
+With no arguments, returns `True`.
 
 ### or
 
@@ -329,8 +344,8 @@ Short-circuiting logical OR.
 Usage: `(or expr1 expr2...)`
 
 Evaluates arguments left-to-right and casts them to `Bool`.
-As soon as any argument evaluates to `True` it stops the arguments evaluation and returns `True`.
-If all arguments are evaluated to `False`, returns `False`.
+As soon as any argument evaluates to `True` it stops evaluating the arguments and returns `True`.
+If all arguments evaluate to `False`, returns `False`.
 With no arguments, returns `False`.
 
 ## Built-in Functions
@@ -348,6 +363,20 @@ The following built-ins operate on `List` values. Passing a non-`List` value whe
 * `(append l1 l2)` - returns a new `List` containing the elements of `l1` followed by the elements of `l2`.
 * `(map func l)` - returns a new `List` obtained by applying `func` to each element of `l`.
 * `(filter func l)` - returns a new `List` containing the elements of `l` for which `func` returns a truthy value.
+
+### String operations
+
+The following built-ins operate on `String` values. Passing a non-`String` value where a `String` is expected raises `TYPE_EXCEPTION`.
+`String` values are immutable: these functions never modify their arguments and always return new values.
+
+* `(str x)` - returns the printed representation of `x` (any type, as `print` would show it) as a `String`. A `String` argument is returned unchanged.
+* `(str-len s)` - returns the length of `String` `s` as an `Integer`.
+* `(str-get s i)` - returns the character of `s` at 0-based index `i` as a `String` of length 1. An out-of-range index raises `VALUE_EXCEPTION`.
+* `(str-sub s start len)` - returns the substring of `s` of length `len` starting at 0-based index `start`. A negative or out-of-range `start` or `len` raises `VALUE_EXCEPTION`.
+* `(str-cat s1 s2 ...)` - returns the concatenation of the evaluated arguments. With no arguments, returns an empty `String`.
+* `(str-find s sub)` - returns the 0-based index of the first occurrence of `sub` in `s` as an `Integer`, or `-1` if there is none. An empty `sub` is found at index `0`.
+* `(str-ord s)` - returns the character code of the first character of `s` as an `Integer`. An empty `s` raises `VALUE_EXCEPTION`.
+* `(str-chr code)` - returns a `String` of length 1 containing the character with code `code`. A `code` outside the ASCII range (`0`-`127`) raises `VALUE_EXCEPTION`.
 
 ## Standard Library
 

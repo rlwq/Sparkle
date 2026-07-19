@@ -1,0 +1,37 @@
+; str-len
+(print (str-len "hello"))
+(print (str-len ""))
+
+; str-get
+(print (str-get "hello" 0))
+(print (str-get "hello" 4))
+
+; str-sub
+(print (str-sub "hello world" 6 5))
+(print (str-sub "abc" 0 3))
+(print (str-len (str-sub "abc" 1 0)))
+
+; str-cat
+(print (str-cat "foo" "-" "bar"))
+(print (str-len (str-cat)))
+(print (= (str-cat "ab" "c") "abc"))
+
+; str-find
+(print (str-find "hello" "llo"))
+(print (str-find "hello" "hello"))
+(print (str-find "hello" "x"))
+(print (str-find "hello" ""))
+
+; str-ord / str-chr
+(print (str-ord "A"))
+(print (str-chr 66))
+(print (str-ord (str-chr 97)))
+
+; composition with lists
+(print (map str-len '("a" "bb" "ccc")))
+(let shout (lambda (s) (str-cat s "!")))
+(print (shout "wow"))
+
+; results are real strings: GC-owned, comparable, truthy rules apply
+(print (if (str-sub "abc" 0 0) "truthy" "falsy"))
+(print (if (str-cat "a" "") "truthy" "falsy"))

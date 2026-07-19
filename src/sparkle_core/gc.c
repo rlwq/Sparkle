@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "dynamic_array.h"
 #include "forwards.h"
@@ -46,7 +47,7 @@ bool gc_grow_if_needed(GC *gc) {
     return true;
 }
 
-Object *gc_alloc_node(GC *gc, ObjectKind kind) {
+Object *gc_alloc_object(GC *gc, ObjectKind kind) {
     Object *node = malloc(sizeof(Object));
     assert(node);
 
@@ -58,6 +59,62 @@ Object *gc_alloc_node(GC *gc, ObjectKind kind) {
     gc->nodes_heap = node;
 
     return node;
+}
+
+Object *gc_alloc_integer(GC *gc, Integer value) {
+    Object *object = gc_alloc_object(gc, KIND_INTEGER);
+    INTEGER(object) = value;
+    return object;
+}
+
+Object *gc_alloc_float(GC *gc, double value) {
+    Object *object = gc_alloc_object(gc, KIND_FLOAT);
+    FLOAT(object) = value;
+    return object;
+}
+
+Object *gc_alloc_symbol(GC *gc, StringName value) {
+    Object *object = gc_alloc_object(gc, KIND_SYMBOL);
+    SYMBOL(object) = value;
+    return object;
+}
+
+Object *gc_alloc_builtin(GC *gc, BuiltinObject value) {
+    Object *object = gc_alloc_object(gc, KIND_BUILTIN);
+    BUILTIN(object) = value;
+    return object;
+}
+
+Object *gc_alloc_list(GC *gc) {
+    Object *object = gc_alloc_object(gc, KIND_LIST);
+    da_init(LIST_ITEMS(object));
+    return object;
+}
+
+Object *gc_alloc_lambda(GC *gc, bool is_variadic, Object *expr, Scope *scope) {
+    Object *object = gc_alloc_object(gc, KIND_LAMBDA);
+    da_init(LAMBDA(object).args);
+    LAMBDA(object).is_variadic = is_variadic;
+    LAMBDA(object).subexpr = expr;
+    LAMBDA(object).scope = scope;
+    return object;
+}
+
+// Adopts data: a malloc'd buffer of at least size + 1 bytes (so it is never
+// zero-sized) that the GC will free with the object.
+Object *gc_alloc_string_own(GC *gc, char *data, size_t size) {
+    Object *object = gc_alloc_object(gc, KIND_STRING);
+    STRING_DATA(object) = data;
+    STRING_SIZE(object) = size;
+    return object;
+}
+
+// Copies the bytes: the argument is only read, never adopted.
+Object *gc_alloc_string(GC *gc, const char *data, size_t size) {
+    char *buffer = malloc(size + 1);
+    assert(buffer);
+    memcpy(buffer, data, size);
+    return gc_alloc_string_own(gc, buffer, size);
 }
 
 void gc_free_node(GC *gc, Object *expr) {
@@ -80,7 +137,7 @@ void gc_free_node(GC *gc, Object *expr) {
         break;
 
     case KIND_STRING:
-        free(STRING(expr));
+        free(STRING_DATA(expr));
         free(expr);
         break;
 

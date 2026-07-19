@@ -3,6 +3,13 @@
 
 #include "vm.h"
 
+// A builtin is called with its arguments already evaluated, arity-checked and
+// unpacked on the value stack; a variadic one additionally gets the trailing
+// arguments packed in a list on top. It must consume them and leave exactly
+// one result. Each implementation states its stack effect as a comment, top of
+// the stack rightmost: `String, Integer -> String`. Do all vm_expect /
+// VM_RECOVER_IF checks before allocating or building anything - vm_recover
+// unwinds and never returns.
 typedef struct {
     const char *name;
     void (*func)(VM *vm);
@@ -23,6 +30,7 @@ typedef struct {
     X(TYPE_PREDICATES)                                                                             \
     X(ARITHMETIC_LOGIC)                                                                            \
     X(LIST)                                                                                       \
+    X(STRING)                                                                                      \
     X(IO)
 
 #define X DEFINE_MODULE_HEADER

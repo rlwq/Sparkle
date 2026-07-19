@@ -17,7 +17,7 @@ For a full language reference, see [Sparkle.md](./Sparkle.md).
 
 > [!WARNING]
 > Not all features described in [Sparkle.md](./Sparkle.md) are yet implemented.
-> The language specification is under active development - some described behaviour may differ from the actual interpreter.
+> The language specification is under active development - some described behavior may differ from the actual interpreter.
 
 ## Main features
 
@@ -106,7 +106,7 @@ Sparkle is dynamically typed. Types are associated with values, not variables. T
 
 ### Automatic Memory Management
 
-Memory is managed automatically. The interpreter frees object when they are no longer referenced.
+Memory is managed automatically. The interpreter frees objects when they are no longer referenced.
 
 ## Interpreter Design
 

@@ -1,0 +1,1 @@
+(print 1) /* outer /* inner closed */ but outer is not

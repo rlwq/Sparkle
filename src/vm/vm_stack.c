@@ -28,6 +28,12 @@ Object *vm_prev(VM *vm) {
     return STACK_AT(vm, 1);
 }
 
+// x[n], ..., x[1], x[0]
+Object *vm_peek_at(VM *vm, size_t n) {
+    ASSERT_HAS(vm, n + 1);
+    return STACK_AT(vm, n);
+}
+
 // a -> a, a
 void vm_dup(VM *vm) {
     ASSERT_HAS(vm, 1);

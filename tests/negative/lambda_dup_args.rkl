@@ -1,0 +1,2 @@
+; Duplicated argument names in a lambda definition must raise VALUE_EXCEPTION
+(let f (lambda (x y x) x))

@@ -1,19 +1,14 @@
 #include "dynamic_array.h"
 #include "object.h"
-#include "special_forms.h"
 #include "vm.h"
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
-// List (args, unevaluated), Lambda -> Node (result)
-static void eval_lambda_call(VM *vm) {
-    assert(OFTYPE(vm_peek(vm), TY_LAMBDA));
-    assert(OFTYPE(vm_prev(vm), TY_LIST));
-
-    Object *lambda = vm_peek(vm);
-    vm_swap(vm);
+// List (args, unevaluated) -> List (args, evaluated)
+static void eval_args(VM *vm) {
+    assert(OFTYPE(vm_peek(vm), TY_LIST));
 
     Object *args = vm_peek(vm);
     size_t argc = LIST_SIZE(args);
@@ -23,8 +18,15 @@ static void eval_lambda_call(VM *vm) {
     }
     vm_pack_list(vm, argc);
     vm_pop_prev(vm);
+}
 
-    Object *evargs = vm_peek(vm);
+// List (args, evaluated), Lambda -> Node (result)
+static void call_lambda(VM *vm) {
+    assert(OFTYPE(vm_peek(vm), TY_LAMBDA));
+    assert(OFTYPE(vm_prev(vm), TY_LIST));
+
+    Object *lambda = vm_peek(vm);
+    Object *evargs = vm_prev(vm);
     size_t pos_args = LAMBDA_POS_ARGS_N(lambda);
 
     bool bad_arity = LAMBDA_IS_VARIADIC(lambda) ? LIST_SIZE(evargs) < pos_args
@@ -58,22 +60,18 @@ static void eval_lambda_call(VM *vm) {
     vm_pop_prev(vm);
 }
 
-// List (args, unevaluated), Builtin -> Node (result)
-static void eval_builtin_call(VM *vm) {
+// List (args, evaluated), Builtin -> Node (result)
+static void call_builtin(VM *vm) {
     assert(OFTYPE(vm_peek(vm), TY_BUILTIN));
     assert(OFTYPE(vm_prev(vm), TY_LIST));
 
+    // The builtin object survives the collection points below unrooted: every
+    // builtin is permanently reachable through the global scope it was
+    // registered in.
     Object *builtin = vm_peek(vm);
     vm_pop(vm);
 
-    Object *args = vm_peek(vm);
-    size_t argc = LIST_SIZE(args);
-    for (size_t i = 0; i < argc; i++) {
-        vm_push(vm, LIST_AT(args, i));
-        vm_eval_node(vm);
-    }
-    vm_pack_list(vm, argc);
-    vm_pop_prev(vm);
+    size_t argc = LIST_SIZE(vm_peek(vm));
 
     if (!BUILTIN_IS_VARIADIC(builtin)) {
         VM_RECOVER_IF(vm, argc != BUILTIN_ARGS_N(builtin), vm->singletons._ARITY_EXCEPTION);
@@ -85,6 +83,29 @@ static void eval_builtin_call(VM *vm) {
     }
 
     BUILTIN_FUNC(builtin)(vm);
+}
+
+// List (args, evaluated), Callable -> Node (result)
+void vm_call(VM *vm) {
+    switch (vm_peek(vm)->kind) {
+    case KIND_LAMBDA:
+        call_lambda(vm);
+        break;
+
+    case KIND_BUILTIN:
+        call_builtin(vm);
+        break;
+
+    case KIND_LIST:
+    case KIND_BOOL:
+    case KIND_FLOAT:
+    case KIND_SYMBOL:
+    case KIND_INTEGER:
+    case KIND_STRING:
+    case KIND_NIL:
+        vm_recover(vm, vm->singletons._UNCALLABLE_EXCEPTION);
+        break;
+    }
 }
 
 // Node -> Bool
@@ -102,7 +123,7 @@ bool vm_cast_to_bool(VM *vm) {
         result = INTEGER(vm_peek(vm)) != 0;
         break;
     case KIND_STRING:
-        result = strlen(STRING(vm_peek(vm))) != 0;
+        result = STRING_SIZE(vm_peek(vm)) != 0;
         break;
     case KIND_LIST:
         result = LIST_SIZE(vm_peek(vm)) != 0;
@@ -179,7 +200,7 @@ static void vm_eval_list(VM *vm) {
         vm_push(vm, LIST_AT(call, i));
     vm_pack_list(vm, size - 1);
 
-    if (OFTYPE(head, TY_SYMBOL) && try_dispatch_special_form(vm, SYMBOL(head))) {
+    if (OFTYPE(head, TY_SYMBOL) && vm->try_special && vm->try_special(vm, SYMBOL(head))) {
         vm_pop_prev(vm);
         return;
     }
@@ -189,25 +210,10 @@ static void vm_eval_list(VM *vm) {
     vm_rot(vm);
     vm_pop(vm);
 
-    switch (vm_peek(vm)->kind) {
-    case KIND_LAMBDA:
-        eval_lambda_call(vm);
-        break;
-
-    case KIND_BUILTIN:
-        eval_builtin_call(vm);
-        break;
-
-    case KIND_LIST:
-    case KIND_BOOL:
-    case KIND_FLOAT:
-    case KIND_SYMBOL:
-    case KIND_INTEGER:
-    case KIND_STRING:
-    case KIND_NIL:
-        vm_recover(vm, vm->singletons._UNCALLABLE_EXCEPTION);
-        break;
-    }
+    vm_swap(vm);
+    eval_args(vm);
+    vm_swap(vm);
+    vm_call(vm);
 }
 
 // Symbol -> Node

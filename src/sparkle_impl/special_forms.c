@@ -3,11 +3,12 @@
 #include "object.h"
 #include "string_interner.h"
 #include "vm.h"
-#include <stdio.h>
 
-void special_forms_init(StringInterner *si) {
+void special_forms_attach(VM *vm) {
     for (size_t i = 0; i < SPECIAL_FORMS_COUNT; i++)
-        SPECIAL_FORMS[i].keyword = si_get(si, SPECIAL_FORMS[i].keyword);
+        SPECIAL_FORMS[i].keyword = si_get(vm->si, SPECIAL_FORMS[i].keyword);
+
+    vm->try_special = try_dispatch_special_form;
 }
 
 bool try_dispatch_special_form(VM *vm, StringName name) {
@@ -121,6 +122,13 @@ void rkl_while_form(VM *vm) {
     vm_build_nil(vm);
 }
 
+static bool lambda_has_arg(Object *lambda, StringName name) {
+    for (size_t i = 0; i < LAMBDA_ARGS(lambda).size; i++)
+        if (da_at(LAMBDA_ARGS(lambda), i) == name)
+            return true;
+    return false;
+}
+
 void rkl_lambda_form(VM *vm) {
     Object *args = vm_peek(vm);
     VM_RECOVER_IF(vm, LIST_SIZE(args) != 2, vm->singletons._VALUE_EXCEPTION);
@@ -151,12 +159,16 @@ void rkl_lambda_form(VM *vm) {
 
                 Object *rest = LIST_AT(params, np - 1);
                 VM_RECOVER_IF(vm, !OFTYPE(rest, TY_SYMBOL), vm->singletons._VALUE_EXCEPTION);
+                VM_RECOVER_IF(vm, lambda_has_arg(lambda, SYMBOL(rest)),
+                              vm->singletons._VALUE_EXCEPTION);
 
                 is_variadic = true;
                 da_push(LAMBDA_ARGS(lambda), SYMBOL(rest));
                 break;
             }
 
+            VM_RECOVER_IF(vm, lambda_has_arg(lambda, SYMBOL(param)),
+                          vm->singletons._VALUE_EXCEPTION);
             da_push(LAMBDA_ARGS(lambda), SYMBOL(param));
         }
     }

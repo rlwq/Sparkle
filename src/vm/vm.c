@@ -15,6 +15,7 @@ VM *vm_alloc(GC *gc, StringInterner *si) {
 
     vm->gc = gc;
     vm->si = si;
+    vm->try_special = NULL;
 
     da_init(vm->scope_stack);
     da_init(vm->value_stack);
@@ -24,14 +25,13 @@ VM *vm_alloc(GC *gc, StringInterner *si) {
     vm->exception = NULL;
 
 #define X(name_, kind_, init_)                                                                     \
-    vm->singletons._##name_ = gc_alloc_node(vm->gc, kind_);                                        \
+    vm->singletons._##name_ = gc_alloc_object(vm->gc, kind_);                                      \
     vm->singletons._##name_->as = (ObjectUnion)init_;
     X_RUNTIME_SINGLETONS
 #undef X
 
 #define X(name_, msg_)                                                                             \
-    vm->singletons._##name_ = gc_alloc_node(vm->gc, KIND_SYMBOL);                                  \
-    SYMBOL(vm->singletons._##name_) = si_get(vm->si, #name_);
+    vm->singletons._##name_ = gc_alloc_symbol(vm->gc, si_get(vm->si, #name_));
     X_RUNTIME_EXCEPTIONS
 #undef X
 
@@ -77,9 +77,8 @@ void vm_mark(VM *vm) {
 #undef X
 }
 
-void vm_register_builtin(VM *vm, StringName name, BuiltinObject func_ptr) {
+void vm_register_builtin(VM *vm, const char *name, BuiltinObject func_ptr) {
     vm_build_builtin(vm, func_ptr);
-    // TODO: maybe move si lookup somewhere
     vm_scope_define(vm, si_get(vm->si, name));
     vm_pop(vm);
 }

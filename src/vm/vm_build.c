@@ -12,24 +12,36 @@ void vm_maybe_collect(VM *vm) {
     }
 }
 
-void vm_build_value(VM *vm, ObjectKind kind) {
-    vm_maybe_collect(vm);
-    vm_push(vm, gc_alloc_node(vm->gc, kind));
-}
-
+// Every vm_build_ constructor is collect-then-alloc-then-push: the sweep runs
+// while everything live is rooted and the new object does not exist yet, so a
+// fresh object can never be collected before it is reachable.
 void vm_build_integer(VM *vm, Integer value) {
-    vm_build_value(vm, KIND_INTEGER);
-    INTEGER(vm_peek(vm)) = value;
+    vm_maybe_collect(vm);
+    vm_push(vm, gc_alloc_integer(vm->gc, value));
 }
 
 void vm_build_symbol(VM *vm, StringName value) {
-    vm_build_value(vm, KIND_SYMBOL);
-    SYMBOL(vm_peek(vm)) = value;
+    vm_maybe_collect(vm);
+    vm_push(vm, gc_alloc_symbol(vm->gc, value));
+}
+
+// data may point into another string's buffer as long as that string is rooted:
+// the collection happens before the copy, while the source is still alive.
+void vm_build_string(VM *vm, const char *data, size_t size) {
+    vm_maybe_collect(vm);
+    vm_push(vm, gc_alloc_string(vm->gc, data, size));
+}
+
+// Adopts data (see gc_alloc_string_own). The buffer is plain malloc'd memory,
+// not yet owned by the GC, so it safely survives the collection.
+void vm_build_string_own(VM *vm, char *data, size_t size) {
+    vm_maybe_collect(vm);
+    vm_push(vm, gc_alloc_string_own(vm->gc, data, size));
 }
 
 void vm_build_list(VM *vm) {
-    vm_build_value(vm, KIND_LIST);
-    da_init(LIST_ITEMS(vm_peek(vm)));
+    vm_maybe_collect(vm);
+    vm_push(vm, gc_alloc_list(vm->gc));
 }
 
 void vm_build_bool(VM *vm, bool value) {
@@ -40,13 +52,13 @@ void vm_build_bool(VM *vm, bool value) {
 }
 
 void vm_build_float(VM *vm, double value) {
-    vm_build_value(vm, KIND_FLOAT);
-    FLOAT(vm_peek(vm)) = value;
+    vm_maybe_collect(vm);
+    vm_push(vm, gc_alloc_float(vm->gc, value));
 }
 
 void vm_build_builtin(VM *vm, BuiltinObject value) {
-    vm_build_value(vm, KIND_BUILTIN);
-    BUILTIN(vm_peek(vm)) = value;
+    vm_maybe_collect(vm);
+    vm_push(vm, gc_alloc_builtin(vm->gc, value));
 }
 
 void vm_build_nil(VM *vm) {
@@ -54,9 +66,6 @@ void vm_build_nil(VM *vm) {
 }
 
 void vm_build_lambda(VM *vm, bool is_variadic, Object *expr, Scope *scope) {
-    vm_build_value(vm, KIND_LAMBDA);
-    da_init(LAMBDA(vm_peek(vm)).args);
-    LAMBDA(vm_peek(vm)).is_variadic = is_variadic;
-    LAMBDA(vm_peek(vm)).subexpr = expr;
-    LAMBDA(vm_peek(vm)).scope = scope;
+    vm_maybe_collect(vm);
+    vm_push(vm, gc_alloc_lambda(vm->gc, is_variadic, expr, scope));
 }

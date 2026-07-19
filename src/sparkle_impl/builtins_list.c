@@ -35,7 +35,7 @@ void rkl_get(VM *vm) {
 
 // List, Integer, Value -> List
 void rkl_put(VM *vm) {
-    Object *l = da_at_end(vm->value_stack, 2);
+    Object *l = vm_peek_at(vm, 2);
     Object *iobj = vm_prev(vm);
     Object *x = vm_peek(vm);
 
@@ -79,8 +79,8 @@ void rkl_append(VM *vm) {
     vm_build_list(vm);
 
     Object *new_ = vm_peek(vm);
-    Object *l1 = da_at_end(vm->value_stack, 2);
-    Object *l2 = da_at_end(vm->value_stack, 1);
+    Object *l1 = vm_peek_at(vm, 2);
+    Object *l2 = vm_peek_at(vm, 1);
 
     for (size_t i = 0; i < LIST_SIZE(l1); i++)
         da_push(LIST_ITEMS(new_), LIST_AT(l1, i));
@@ -99,10 +99,10 @@ void rkl_map(VM *vm) {
     size_t n = LIST_SIZE(l);
 
     for (size_t i = 0; i < n; i++) {
-        vm_push(vm, func);
         vm_push(vm, LIST_AT(l, i));
-        vm_pack_list(vm, 2);
-        vm_eval_node(vm);
+        vm_pack_list(vm, 1);
+        vm_push(vm, func);
+        vm_call(vm);
     }
 
     vm_pack_list(vm, n);
@@ -119,10 +119,10 @@ void rkl_filter(VM *vm) {
     size_t kept = 0;
 
     for (size_t i = 0; i < n; i++) {
-        vm_push(vm, func);
         vm_push(vm, LIST_AT(l, i));
-        vm_pack_list(vm, 2);
-        vm_eval_node(vm);
+        vm_pack_list(vm, 1);
+        vm_push(vm, func);
+        vm_call(vm);
         vm_cast_to_bool(vm);
         bool keep = BOOL(vm_peek(vm));
         vm_pop(vm);

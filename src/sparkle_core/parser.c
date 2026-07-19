@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <ctype.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -16,9 +17,10 @@
 
 #define CURR(p_) (assert((p_)), da_at(*((p_)->tokens), (p_)->cursor))
 
-// The parser allocates nodes with raw gc_alloc_node and relies on no collection
-// occurring during parsing: parsed nodes are not yet rooted in the VM stacks.
-// gc_alloc_* never collect on their own (see gc.h), so this holds by construction.
+// The parser allocates nodes with the gc_alloc_* constructors and relies on no
+// collection occurring during parsing: parsed nodes are not yet rooted in the VM
+// stacks. gc_alloc_* never collect on their own (see gc.h), so this holds by
+// construction.
 
 Parser *parser_alloc(TokenDA *tokens, ObjectPtrDA *exprs, GC *gc, StringInterner *si) {
     Parser *parser = malloc(sizeof(Parser));
@@ -82,14 +84,61 @@ bool parser_expect(Parser *parser, TokenKind kind) {
 
 Object *parse_expr(Parser *parser);
 
+static unsigned hex_digit(char c) {
+    return isdigit(c) ? (unsigned)(c - '0') : (unsigned)(tolower(c) - 'a' + 10);
+}
+
 Object *parse_string(Parser *parser) {
-    Token token = parser_advance(parser);
-    Object *result = gc_alloc_node(parser->gc, KIND_STRING);
-    char *string = malloc(token.src.size + 1);
-    memcpy(string, token.src.data + 1, token.src.size - 1);
-    string[token.src.size - 2] = '\0';
-    STRING(result) = string;
-    return result;
+    StringView body = sv_drop_end(sv_drop(parser_advance(parser).src, 1), 1);
+
+    char *data = malloc(body.size + 1);
+    assert(data);
+    size_t size = 0;
+
+    for (size_t i = 0; i < body.size; i++) {
+        char c = sv_at(body, i);
+        if (c != '\\') {
+            data[size++] = c;
+            continue;
+        }
+
+        char escape = sv_at(body, ++i);
+        switch (escape) {
+        case '\\':
+        case '"':
+            data[size++] = escape;
+            break;
+        case 'n':
+            data[size++] = '\n';
+            break;
+        case 'r':
+            data[size++] = '\r';
+            break;
+        case 't':
+            data[size++] = '\t';
+            break;
+        case 'x':
+            if (i + 2 >= body.size || !isxdigit(sv_at(body, i + 1)) ||
+                !isxdigit(sv_at(body, i + 2))) {
+                free(data);
+                parser->is_err = true;
+                return NULL;
+            }
+            data[size++] =
+                (char)(hex_digit(sv_at(body, i + 1)) << 4 | hex_digit(sv_at(body, i + 2)));
+            i += 2;
+            break;
+        default:
+            free(data);
+            parser->is_err = true;
+            return NULL;
+        }
+    }
+
+    data = realloc(data, size + 1);
+    assert(data);
+
+    return gc_alloc_string_own(parser->gc, data, size);
 }
 
 Object *parse_quote(Parser *parser) {
@@ -102,11 +151,9 @@ Object *parse_quote(Parser *parser) {
         return NULL;
     }
 
-    Object *symbol = gc_alloc_node(parser->gc, KIND_SYMBOL);
-    symbol->as.symbol = parser->si->prebuilt._quote;
+    Object *symbol = gc_alloc_symbol(parser->gc, parser->si->prebuilt._quote);
 
-    Object *result = gc_alloc_node(parser->gc, KIND_LIST);
-    da_init(LIST_ITEMS(result));
+    Object *result = gc_alloc_list(parser->gc);
     da_push(LIST_ITEMS(result), symbol);
     da_push(LIST_ITEMS(result), subexpr);
     return result;
@@ -116,8 +163,7 @@ Object *parse_list(Parser *parser) {
     if (!parser_eat(parser, TK_L_PAREN))
         return NULL;
 
-    Object *result = gc_alloc_node(parser->gc, KIND_LIST);
-    da_init(LIST_ITEMS(result));
+    Object *result = gc_alloc_list(parser->gc);
 
     while (PARSER_VALID(parser) && !parser_match(parser, TK_R_PAREN))
         da_push(LIST_ITEMS(result), parse_expr(parser));
@@ -129,23 +175,16 @@ Object *parse_list(Parser *parser) {
 }
 
 Object *parse_integer(Parser *parser) {
-    Object *object = gc_alloc_node(parser->gc, KIND_INTEGER);
-    INTEGER(object) = svtolli(parser_advance(parser).src);
-    return object;
+    return gc_alloc_integer(parser->gc, svtolli(parser_advance(parser).src));
 }
 
 Object *parse_float(Parser *parser) {
-    Object *object = gc_alloc_node(parser->gc, KIND_FLOAT);
-    FLOAT(object) = svtod(parser_advance(parser).src);
-    return object;
+    return gc_alloc_float(parser->gc, svtod(parser_advance(parser).src));
 }
 
 Object *parse_symbol(Parser *parser) {
-    Object *object = gc_alloc_node(parser->gc, KIND_SYMBOL);
     StringView symbol = parser_advance(parser).src;
-
-    object->as.symbol = si_getn(parser->si, symbol.data, symbol.size);
-    return object;
+    return gc_alloc_symbol(parser->gc, si_getn(parser->si, symbol.data, symbol.size));
 }
 
 Object *parse_expr(Parser *parser) {

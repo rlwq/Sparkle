@@ -14,9 +14,10 @@ typedef struct {
 extern SpecialFormDef SPECIAL_FORMS[];
 extern size_t SPECIAL_FORMS_COUNT;
 
-// Interns every keyword in SPECIAL_FORMS in place, so dispatch can compare
-// interned StringNames by pointer. Call once, before vm_run.
-void special_forms_init(StringInterner *si);
+// Installs special-form dispatch into the VM: interns every keyword in
+// SPECIAL_FORMS in place (so dispatch compares interned StringNames by
+// pointer) and sets vm->try_special. Call once per VM, before vm_run.
+void special_forms_attach(VM *vm);
 
 bool try_dispatch_special_form(VM *vm, StringName name);
 

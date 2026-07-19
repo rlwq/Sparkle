@@ -1,6 +1,6 @@
 # Sparkle Language Specification
 
-This document defines the semantics of Sparkle as a development & documental reference.
+This document defines the semantics of Sparkle as a development & documentation reference.
 
 ## Program model
 
@@ -89,7 +89,7 @@ Evaluation: self-evaluating - an integer value produces itself.
 
 A floating-point number.
 
-Literal syntax: an optional sign (`+` or `-`), one or more decimal digits, a dot, one or more decimal digits. Examples: `3.14`, `-0.5`, `+1.0`. Examples: `3.14`, `-0.5`.
+Literal syntax: an optional sign (`+` or `-`), one or more decimal digits, a dot, one or more decimal digits. Examples: `3.14`, `-0.5`, `+1.0`.
 
 Evaluation: self-evaluating - a float value produces itself.
 
@@ -159,7 +159,7 @@ Captures the lexical scope in which it was defined (closure).
 
 Special forms look like function calls but are evaluated differently - arguments are not evaluated before being passed and are not bound to any scope - there is no function-like machinery involved.
 Special forms handle flow control and state mutation.
-An incorrect call of a special form raises an `VALUE_EXCEPTION` exception.
+An incorrect call of a special form raises a `VALUE_EXCEPTION` exception.
 
 ### let
 
@@ -172,9 +172,9 @@ Each binding is visible to subsequent expressions in the same `let` form.
 An odd number of arguments raises `VALUE_EXCEPTION`.
 Returns the last bound value.
 
-Each `name` must be a `symbol`.
-Binding a name that is already bound in the current scope raises an `REBINDING_EXCEPTION` exception.
-shadowing a name from a parent scope is allowed.
+Each `name` must be a `Symbol`.
+Binding a name that is already bound in the current scope raises a `REBINDING_EXCEPTION` exception.
+Shadowing a name from a parent scope is allowed.
 
 ```lisp
 (let x 42)              ; 42
@@ -185,7 +185,7 @@ shadowing a name from a parent scope is allowed.
 
 ### set
 
-`set` updates an existing bindings in parallel.
+`set` updates existing bindings in parallel.
 
 Usage: `(set name1 expr1 name2 expr2 ...)`
 
@@ -311,15 +311,15 @@ Usage: `(while condition expr)`
 
 ### try
 
-Catches exceptions, raised when evaluating an expression.
+Catches exceptions raised when evaluating an expression.
 
 Usage: `(try ExceptionSymbol expr1 expr2...)`
 
-Evaluates `expr1 expr2 ...` as a local lexical scope.
+Evaluates `expr1 expr2 ...` in a local lexical scope.
 If an exception matching `ExceptionSymbol` is raised, catches it and returns `ExceptionSymbol`.
 If a different exception is raised, it propagates normally.
 If no exception occurs, returns the value of the last expression.
-`ExceptionSymbol` is evaluated, so it must me an self-evaluating symbol or an expression resulting in a symbol.
+`ExceptionSymbol` is evaluated, so it must be a self-evaluating symbol or an expression resulting in a symbol.
 
 ```lisp
 (try TYPE_EXCEPTION (get Nil 0))  ; TYPE_EXCEPTION — caught
@@ -334,9 +334,9 @@ Short-circuiting logical AND.
 Usage: `(and expr1 expr2...)`
 
 Evaluates its arguments left-to-right and casts the result to `Bool`.
-As soon as any argument evaluates to `False` it stops the arguments evaluation and returns `False`.
-If all arguments evaluated to `True`, returns `True`.
-With no arguments, returns True.
+As soon as any argument evaluates to `False` it stops evaluating the arguments and returns `False`.
+If all arguments evaluate to `True`, returns `True`.
+With no arguments, returns `True`.
 
 ```lisp
 (and 1 2 3)        ; True
@@ -351,8 +351,8 @@ Short-circuiting logical OR.
 Usage: `(or expr1 expr2...)`
 
 Evaluates arguments left-to-right and casts them to `Bool`.
-As soon as any argument evaluates to `True` it stops the arguments evaluation and returns `True`.
-If all arguments are evaluated to `False`, returns `False`.
+As soon as any argument evaluates to `True` it stops evaluating the arguments and returns `True`.
+If all arguments evaluate to `False`, returns `False`.
 With no arguments, returns `False`.
 
 ```lisp

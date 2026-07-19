@@ -1,7 +1,9 @@
 #include <assert.h>
+#include <errno.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "diagnostics.h"
 #include "dynamic_array.h"
@@ -18,7 +20,10 @@
 
 char *read_file(const char *path) {
     FILE *file = fopen(path, "rb");
-    assert(file);
+    if (!file) {
+        fprintf(stderr, "%s: cannot open file: %s\n", path, strerror(errno));
+        exit(1);
+    }
 
     fseek(file, 0, SEEK_END);
     size_t size = ftell(file);
@@ -27,7 +32,10 @@ char *read_file(const char *path) {
     char *src = malloc(size + 1);
     assert(src);
 
-    fread(src, 1, size, file);
+    if (fread(src, 1, size, file) != size) {
+        fprintf(stderr, "%s: cannot read file\n", path);
+        exit(1);
+    }
     src[size] = '\0';
 
     fclose(file);
@@ -59,7 +67,7 @@ int main(int argc, char **argv) {
 
     bool is_err = false;
 
-    special_forms_init(si);
+    special_forms_attach(vm);
 
     lexer_run(lexer);
 

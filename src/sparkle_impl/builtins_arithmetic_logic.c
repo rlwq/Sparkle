@@ -77,7 +77,9 @@ void rkl_eq(VM *vm) {
         is_equal = BOOL(vm_peek(vm)) == BOOL(vm_prev(vm));
         break;
     case KIND_STRING:
-        is_equal = strcmp(STRING(vm_peek(vm)), STRING(vm_prev(vm))) == 0;
+        is_equal = STRING_SIZE(vm_peek(vm)) == STRING_SIZE(vm_prev(vm)) &&
+                   memcmp(STRING_DATA(vm_peek(vm)), STRING_DATA(vm_prev(vm)),
+                          STRING_SIZE(vm_peek(vm))) == 0;
         break;
     case KIND_LIST:
     case KIND_LAMBDA:

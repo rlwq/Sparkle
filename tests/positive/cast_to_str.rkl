@@ -1,0 +1,22 @@
+; str casts any object to its printed representation
+(print (str 42))
+(print (str -7))
+(print (str 3.5))
+(print (str True))
+(print (str False))
+(print (str Nil))
+(print (str Symbol))
+
+; A string is returned unchanged
+(print (str "already a string"))
+(print (str ""))
+
+; Composites mirror print
+(print (str '(1 "two" 3.5)))
+(print (str '()))
+
+; The result is a real string
+(print (?STRING (str 42)))
+(print (str-len (str 1000)))
+(print (str-cat "n = " (str 42)))
+(print (str-sub (str 12345) 1 3))

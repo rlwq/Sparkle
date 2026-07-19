@@ -17,13 +17,9 @@ void diag_lexer(const char *path, Lexer *lexer) {
 }
 
 void diag_parser(const char *path, Parser *parser) {
-    assert(parser->is_err);
-    (void)path;
     (void)parser;
-    // fprintf(stderr, RED "%s:%zu:%zu: [PARSE ERROR] Unexpected token \"" SV_FMT "\".\n" RESET,
-    // path,
-    //         parser->tokens->pos.line + 1, parser->tokens->pos.column + 1,
-    //         SV_ARGS(parser->tokens->src));
+    assert(parser->is_err);
+    fprintf(stderr, RED "%s: [PARSE ERROR] Invalid or incomplete expression.\n" RESET, path);
 }
 
 void diag_vm(const char *path, VM *vm) {

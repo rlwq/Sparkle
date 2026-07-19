@@ -4,7 +4,6 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Syntax & Parser
 
-* [ ] Multiline comments.
 * [ ] More descriptive parsing errors (on expected tokens).
 
 ## Special Forms & Control Flow 
@@ -17,9 +16,6 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Language Semantics
 
-* [ ] Basic `String` manipulation.
-    * [ ] String escaping sequences.
-* [ ] Lambda definitions with duplicated argument names.
 * [ ] `set` replaces all symbol definition simultaneously.
 
 ## Base Library
@@ -36,7 +32,6 @@ This document outlines the features and fixes planned for Sparkle.
 ## Code base, bugs, & fixes
 
 * [ ] Two error handler invocations behave differently: one duplicates the expression before entering the frame, the other does not.
-* [ ] `'x` syntax when printing quoted values.
 
 ## Tooling
 
@@ -48,6 +43,13 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Done
 
+* [x] Multiline comments (`/* ... */`, nesting, between tokens).
+* [x] `vm_build_string` must only copy the provided data.
+* [x] Lambda definitions with duplicated argument names raise `VALUE_EXCEPTION`.
+* [x] `'x` syntax when printing quoted values.
+* [x] `str` builtin - cast any object to its printed representation.
+* [x] Basic `String` manipulation.
+    * [x] String escape sequences.
 * [x] Proper type checking for all built-in functions.
 * [x] Ref equality for compound objects.
 * [x] Functions that accept `List`s MUST check for it.
@@ -76,7 +78,7 @@ This document outlines the features and fixes planned for Sparkle.
 * [x] `while` Loops and loops in general.
 * [x] `begin` Scoped lexical blocks & statement blocks.
 * [x] Logical predicates (`=`, `>`, `<`, ..., `not`).
-* [x] Arithmetic for `Integer` and `Floor`. (`+`, `-`, `*`, `/`).
+* [x] Arithmetic for `Integer` and `Float`. (`+`, `-`, `*`, `/`).
 * [x] `Bool` data type & logical functions.
 * [x] `Float` data type.
 * [x] Write about `(x .)` & `(. x)` syntax.

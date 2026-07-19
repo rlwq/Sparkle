@@ -1,0 +1,33 @@
+; String literals
+(print "hello")
+(print "with spaces here")
+
+; Escape sequences
+(print "line1\nline2")
+(print "say \"hi\"")
+(print "tab\tend")
+(print "back\\slash")
+(print "\x41\x42\x43")
+
+; Equality is by content
+(print (= "abc" "abc"))
+(print (= "abc" "abd"))
+(print (= "abc" "abcd"))
+(print (= "" ""))
+(print (= "abc" 42))
+
+; Truthiness: empty string is falsy
+(print (if "" 1 2))
+(print (if "x" 1 2))
+(print (not ""))
+
+; Type predicate
+(print (?STRING "s"))
+(print (?STRING 5))
+
+; Strings are first-class values
+(let s "stored")
+(print s)
+(let id (lambda (x) x))
+(print (id "through lambda"))
+(print '("in" "list" 1))

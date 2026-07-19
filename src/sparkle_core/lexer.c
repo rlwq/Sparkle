@@ -16,8 +16,11 @@
 #define issign(c_) ((c_) == '+' || (c_) == '-')
 #define in_range(v_, l_, r_) ((v_) >= (l_) && (v_) <= (r_))
 
+// Mirrors symbol-char in Specification.md: ';' is excluded so a comment
+// terminates the symbol it touches.
 #define issymbolic(c_)                                                                             \
-    (in_range((c_), '!', '~') && (c_) != '"' && (c_) != '(' && (c_) != ')' && (c_) != '\'')
+    (in_range((c_), '!', '~') && (c_) != '"' && (c_) != '(' && (c_) != ')' && (c_) != '\'' &&      \
+     (c_) != ';')
 
 #define lexer_skip_while(lexer_, expr_)                                                            \
     while ((expr_)) {                                                                              \
@@ -91,6 +94,35 @@ void lexer_skip_line_comment(Lexer *lexer) {
     lexer_skip_while(lexer, CURR(lexer) != '\n' && CURR(lexer) != '\0');
 }
 
+// Block comments /* ... */ are recognized only between tokens (a '/' inside a
+// symbol stays symbolic, so division and names like /* survive in strings and
+// symbols). Unlike C they nest: every inner /* needs its own */. Hitting EOF
+// before the matching */ is a lexing error.
+void lexer_skip_block_comment(Lexer *lexer) {
+    if (CURR(lexer) != '/' || NEXT(lexer) != '*')
+        return;
+    lexer_advance(lexer);
+    lexer_advance(lexer);
+
+    size_t depth = 1;
+    while (!IS_EOF(lexer) && depth > 0) {
+        if (CURR(lexer) == '/' && NEXT(lexer) == '*') {
+            depth++;
+            lexer_advance(lexer);
+            lexer_advance(lexer);
+        } else if (CURR(lexer) == '*' && NEXT(lexer) == '/') {
+            depth--;
+            lexer_advance(lexer);
+            lexer_advance(lexer);
+        } else {
+            lexer_advance(lexer);
+        }
+    }
+
+    if (depth > 0)
+        lexer->is_err = true;
+}
+
 Token lex_char_token(Lexer *lexer, TokenKind kind) {
     StringView src = sv_take(lexer->src, 1);
     Token result = BUILD_TOKEN(lexer, kind);
@@ -118,6 +150,24 @@ Token lex_numeric_token(Lexer *lexer) {
     return lexer_marker_cut(lexer, is_decimal ? TK_DECIMAL : TK_INTEGER);
 }
 
+Token lex_string_token(Lexer *lexer) {
+    lexer_marker_set(lexer);
+    lexer_advance(lexer);
+
+    while (!IS_EOF(lexer) && CURR(lexer) != '"') {
+        if (lexer_advance(lexer) == '\\')
+            lexer_advance(lexer);
+    }
+
+    if (IS_EOF(lexer)) {
+        lexer->is_err = true;
+        return BUILD_TOKEN(lexer, TK_ERR);
+    }
+
+    lexer_advance(lexer);
+    return lexer_marker_cut(lexer, TK_STRING);
+}
+
 Token lex_symbol_token(Lexer *lexer) {
     lexer_marker_set(lexer);
 
@@ -139,6 +189,9 @@ Token lex_token(Lexer *lexer) {
     if (curr == '\'')
         return lex_char_token(lexer, TK_QUOTE);
 
+    if (curr == '"')
+        return lex_string_token(lexer);
+
     if (isdigit(curr) || (isdigit(next) && issign(curr)))
         return lex_numeric_token(lexer);
 
@@ -155,6 +208,8 @@ void lexer_skip_to_token(Lexer *lexer) {
             lexer_skip_ws(lexer);
         else if (CURR(lexer) == ';')
             lexer_skip_line_comment(lexer);
+        else if (CURR(lexer) == '/' && NEXT(lexer) == '*')
+            lexer_skip_block_comment(lexer);
         else
             break;
     }
