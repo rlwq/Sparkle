@@ -6,10 +6,6 @@
 ![ISO C11](https://img.shields.io/badge/language-ISO_C11-2c7887)
 ![Dependencies](https://img.shields.io/badge/dependencies-none-2c7887)
 
-Sparkle is a [Lisp-1](https://en.wikipedia.org/wiki/Lisp_(programming_language)) dialect designed to be intuitive and extensible.
-The **AST-walking interpreter** is written from scratch in **ISO C11**, no dependencies required.
-For a full language reference, see [Sparkle.md](./Sparkle.md).
-
 > [!WARNING]
 > This project is currently under active development.
 > Bugs, memory leaks, and undefined behavior are to be expected.
@@ -19,19 +15,28 @@ For a full language reference, see [Sparkle.md](./Sparkle.md).
 > Not all features described in [Sparkle.md](./Sparkle.md) are yet implemented.
 > The language specification is under active development - some described behavior may differ from the actual interpreter.
 
+## Philosophy
+
+Sparkle is a [Lisp-1](https://en.wikipedia.org/wiki/Lisp_(programming_language))
+dialect: Lisp rethought as a modern scripting language. It keeps what makes
+Lisp different - code as data, one syntax for everything - and takes the rest
+from modern scripting languages: their paradigms, patterns, and conventions.
+
+For the full language reference, see [Sparkle.md](./Sparkle.md).
+
 ## Main features
 
 * [**Homoiconicity**](https://en.wikipedia.org/wiki/Homoiconicity) - code is represented as data, allowing the program to manipulate and modify its own structure at runtime
 * [**First-class functions**](https://en.wikipedia.org/wiki/First-class_function) - anonymous functions and functions as objects
 * [**Lexical closures**](https://en.wikipedia.org/wiki/Closure_(computer_programming)) - functions capture their lexical environment
 * [**Mark-and-sweep GC**](https://en.wikipedia.org/wiki/Tracing_garbage_collection) - automatic memory management
-* **Exception handling** - the ability to catch and handle runtime errors.
+* **Exception handling** - the ability to catch and handle runtime errors
 
 ### To be done
 
 * **REPL** - interactive read-eval-print loop for live code interaction
 * **Standard library** - a rich set of general-purpose functions and modules 
-* **Modular system** - organize code into reusable, importable modules
+* **Module system** - organize code into reusable, importable modules
 * **Macro system** - code transformation before evaluation (Lisp-style macros)
 
 To see what's currently being worked on or what's coming next, check out the [TODO.md](./TODO.md) file.
@@ -70,16 +75,30 @@ Sparkle supports both imperative and functional programming styles.
 (print (+ 1 passwd))     ; 121214
 ```
 
-Functions are defined using the `lambda` keyword. Sparkle supports functional logic.
+Loops and mutation work the imperative way:
 
 ```lisp
-(let abs (lambda (x) (if (< x 0) (neg x) x)))
+(let i 0)
+(let sum 0)
+
+(while (< i 5)
+  (begin
+    (set sum (+ sum i))
+    (set i (+ i 1))))
+
+(print sum)  ; 10
+```
+
+Functions are values, defined with `lambda`:
+
+```lisp
+(let abs (lambda (x) (if (< x 0) (- 0 x) x)))
 
 (print (abs 15))  ; 15
 (print (abs -3))  ; 3
 ```
 
-Sparkle supports lexical closures, allowing functions to capture their defining environment.
+And closures capture their defining environment:
 
 ```lisp
 (let adder_factory (lambda (x) (lambda (y) (+ x y))))
@@ -92,43 +111,94 @@ Sparkle supports lexical closures, allowing functions to capture their defining 
 
 ## Language Design
 
+The language is built to meet the expectations of a modern scripting language:
+dynamic typing, automatic memory management, lexical scoping with closures.
+What stays Lisp is the syntax and code as data; the rest works the way you
+would expect coming from Python or Lua.
+
+### Values and Types
+
+Dynamically typed: types belong to values, not variables. The types are `Nil`,
+`Bool`, `Integer`, `Float`, `String`, `Symbol`, `List`, `Lambda`, and
+`Builtin`. Strings are immutable; the list is the one mutable container. A
+type error is not a crash - it is a `TYPE_EXCEPTION` you can catch.
+
+### Symbols
+
+A concept Lisp had long before everyone else: a symbol is a label that exists
+as a value of its own - an enum member without declaring the enum. `Red`,
+`Ok`, `NotFound` are themselves, not strings or variables. At the same time
+symbols are what values get bound to, just like in any other language: a
+variable name is simply a symbol with a value behind it.
+
 ### Scoping and Closures
 
-Sparkle uses lexical scoping with chained environments.
-Each scope stores symbol–value bindings and may reference a parent scope. 
-Variable resolution traverses the scope chain outward until a matching binding is found.
+Lexical scoping with chained environments: resolution walks the scope chain
+outward until it finds the binding. `let` defines in the current scope, `set`
+mutates an existing binding. A lambda captures the scope it was defined in and
+carries it along - closures fall out of that for free.
 
-Lambda functions capture the scope in which they are defined, allowing them to access variables from their enclosing environment.
+### Special Forms
 
-### Type System
+Special forms look like function calls but are not: they receive their
+arguments unevaluated. Ordinary functions can't do that, and that is exactly
+the logic control flow and state mutation are made of - `if` must not
+evaluate both branches, `let` must not evaluate the name it binds. Everything
+that doesn't need this is just a function.
 
-Sparkle is dynamically typed. Types are associated with values, not variables. Type errors are detected and reported at runtime as `TYPE_EXCEPTION`.
+### Exceptions and Exception Handling
 
-### Automatic Memory Management
-
-Memory is managed automatically. The interpreter frees objects when they are no longer referenced.
+Runtime errors are exceptions, like in any modern scripting language: a type
+error or a wrong arity raises, the stack unwinds to the nearest handler, and
+`try` catches the exception and hands it to you as a value to inspect.
 
 ## Interpreter Design
 
+The interpreter is an **AST-walker** written from scratch in **ISO C11** with
+zero dependencies.
+
 ### Pipeline
 
-Source code passes through three stages:
-1. A **lexer** tokenizes the input into a sequence of tokens.
-1. A **recursive-descent** parser builds a sequence of expressions.
-1. The **VM** evaluates the expressions by walking them recursively.
+Three stages, no bytecode: a **lexer** turns the source into tokens, a
+**recursive-descent parser** turns tokens into expression trees, and the
+**VM** walks those trees directly.
 
-### Stack-Based VM
+### Stacks and Roots
 
-The VM maintains a value stack for intermediate results. This approach gives the garbage collector the set of currently alive objects.
+Every intermediate value lives on an explicit value stack, every live scope on
+a scope stack. This is more than bookkeeping: together with the not-yet-run
+top-level expressions, the stacks form the GC's root set - if a value
+matters, it is rooted, so the collector always knows what is alive.
 
-### Error Recovery
+### Builtins and Special Forms
 
-Runtime exceptions use `setjmp`/`longjmp` to unwind to the nearest recovery point.
+The machine knows nothing about the language running on it. Builtin functions
+are registered into the global scope from declarative tables; special-form
+dispatch is injected into the VM as a hook. Extending the language means
+adding a table entry, not touching the core.
 
 ### Memory Management
 
-Sparkle uses a **mark-and-sweep** garbage collector that automatically frees unused objects.
-When triggered, the GC traverses all reachable objects, marks them, and then frees everything that remains unmarked.
+A **mark-and-sweep** garbage collector owns every object from the moment it is
+allocated. Collection happens only at safe points inside allocation, where
+everything alive is guaranteed to be rooted on the stacks: mark what is
+reachable, sweep the rest.
+
+### Error Recovery
+
+Exceptions unwind with `setjmp`/`longjmp`: raising an error jumps to the
+nearest recovery point and truncates the stacks back to the depth recorded
+there - no error codes threaded through the interpreter.
+
+## Use of AI
+
+AI took no part in making decisions - the architecture, the code conventions,
+the specification, and the philosophy of the language are all human work.
+
+AI was used strictly to generate code on top of the already-designed core,
+architecture, and conventions: implementing the many small pieces over the
+ready base, following the [spec](./Specification.md). Beyond that - only
+refactoring and finding bugs, which a human then worked through.
 
 ## License
 
