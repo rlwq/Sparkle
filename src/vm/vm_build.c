@@ -1,11 +1,19 @@
 #include "gc.h"
 #include "vm.h"
 
-void vm_build_value(VM *vm, ObjectKind kind) {
+// The single VM-driven collection point. Raw gc_alloc_* never collect on their
+// own (see gc.h); every VM-level allocation path must funnel through here so the
+// capacity check is applied consistently to both nodes and scopes, and only at a
+// point where the value/scope stacks are fully rooted.
+void vm_maybe_collect(VM *vm) {
     if (gc_grow_if_needed(vm->gc)) {
         vm_mark(vm);
         gc_sweep(vm->gc);
     }
+}
+
+void vm_build_value(VM *vm, ObjectKind kind) {
+    vm_maybe_collect(vm);
     vm_push(vm, gc_alloc_node(vm->gc, kind));
 }
 

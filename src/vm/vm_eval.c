@@ -8,7 +8,7 @@
 #include <string.h>
 
 // List (args, unevaluated), Lambda -> Node (result)
-void eval_lambda_call(VM *vm) {
+static void eval_lambda_call(VM *vm) {
     assert(OFTYPE(vm_peek(vm), TY_LAMBDA));
     assert(OFTYPE(vm_prev(vm), TY_LIST));
 
@@ -59,7 +59,7 @@ void eval_lambda_call(VM *vm) {
 }
 
 // List (args, unevaluated), Builtin -> Node (result)
-void eval_builtin_call(VM *vm) {
+static void eval_builtin_call(VM *vm) {
     assert(OFTYPE(vm_peek(vm), TY_BUILTIN));
     assert(OFTYPE(vm_prev(vm), TY_LIST));
 
@@ -123,7 +123,7 @@ bool vm_cast_to_bool(VM *vm) {
 }
 
 // (Bool | Integer | Float), (Bool | Integer | Float) -> Node, Node
-ObjectKind vm_common_numeric(VM *vm) {
+static ObjectKind vm_common_numeric(VM *vm) {
     assert(OFTYPE(vm_peek(vm), TY_NUMERIC));
     assert(OFTYPE(vm_prev(vm), TY_NUMERIC));
 
@@ -134,7 +134,7 @@ ObjectKind vm_common_numeric(VM *vm) {
 }
 
 // (Bool | Integer | Float) -> Node
-void vm_cast_numeric(VM *vm, ObjectKind kind) {
+static void vm_cast_numeric(VM *vm, ObjectKind kind) {
     assert(OFTYPE(vm_peek(vm), TY_NUMERIC));
 
     if (OFTYPE(vm_peek(vm), TY_BOOL) && kind != KIND_BOOL) {
@@ -164,7 +164,7 @@ ObjectKind vm_to_common_numeric(VM *vm) {
 }
 
 // List -> Node
-void vm_eval_list(VM *vm) {
+static void vm_eval_list(VM *vm) {
     ASSERT_KIND(vm, KIND_LIST);
 
     Object *call = vm_peek(vm);
@@ -211,7 +211,7 @@ void vm_eval_list(VM *vm) {
 }
 
 // Symbol -> Node
-void vm_eval_symbol(VM *vm) {
+static void vm_eval_symbol(VM *vm) {
     ASSERT_KIND(vm, KIND_SYMBOL);
 
     StringName name = SYMBOL(vm_peek(vm));

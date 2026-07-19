@@ -5,6 +5,11 @@
 #include "vm.h"
 #include <stdio.h>
 
+void special_forms_init(StringInterner *si) {
+    for (size_t i = 0; i < SPECIAL_FORMS_COUNT; i++)
+        SPECIAL_FORMS[i].keyword = si_get(si, SPECIAL_FORMS[i].keyword);
+}
+
 bool try_dispatch_special_form(VM *vm, StringName name) {
     for (size_t i = 0; i < SPECIAL_FORMS_COUNT; i++) {
         if (name == SPECIAL_FORMS[i].keyword) {

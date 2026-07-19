@@ -3,6 +3,10 @@
 #include "vm.h"
 
 void vm_build_scope(VM *vm) {
+    // Collect before allocating so scope creation participates in the capacity
+    // check like node creation. The parent (VM_CURR_SCOPE) is already on the
+    // scope stack and thus stays rooted across the collection.
+    vm_maybe_collect(vm);
     vm_push_scope(vm, gc_alloc_scope(vm->gc, VM_CURR_SCOPE(vm)));
 }
 

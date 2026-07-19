@@ -1,5 +1,5 @@
 CC := gcc
-CFLAGS := -std=c11 -I./include -Wall -Wextra -Wswitch-enum -Wpedantic
+CFLAGS := -std=c11 -I./include -Wall -Wextra -Wswitch-enum -Wpedantic -Werror
 
 DEBUG_FLAGS := -fsanitize=undefined,address -O1 -g
 BUILD_FLAGS := -O3 -flto -funroll-loops -DNDEBUG

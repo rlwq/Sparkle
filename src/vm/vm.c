@@ -29,7 +29,7 @@ VM *vm_alloc(GC *gc, StringInterner *si) {
     X_RUNTIME_SINGLETONS
 #undef X
 
-#define X(name_)                                                                                   \
+#define X(name_, msg_)                                                                             \
     vm->singletons._##name_ = gc_alloc_node(vm->gc, KIND_SYMBOL);                                  \
     SYMBOL(vm->singletons._##name_) = si_get(vm->si, #name_);
     X_RUNTIME_EXCEPTIONS
@@ -72,7 +72,7 @@ void vm_mark(VM *vm) {
 #undef X
 
 // Marking exception symbols
-#define X(name_) gc_mark_node(vm->singletons._##name_);
+#define X(name_, msg_) gc_mark_node(vm->singletons._##name_);
     X_RUNTIME_EXCEPTIONS
 #undef X
 }

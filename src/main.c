@@ -59,9 +59,7 @@ int main(int argc, char **argv) {
 
     bool is_err = false;
 
-    // TODO: Refactor this. Needs some kind of special form registry
-    for (size_t i = 0; i < SPECIAL_FORMS_COUNT; i++)
-        SPECIAL_FORMS[i].keyword = si_get(si, SPECIAL_FORMS[i].keyword);
+    special_forms_init(si);
 
     lexer_run(lexer);
 

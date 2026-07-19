@@ -8,12 +8,7 @@
     X(True)                                                                                        \
     X(False)                                                                                       \
     X(Nil)                                                                                         \
-    X(while)                                                                                       \
-    X(let)                                                                                         \
-    X(if)                                                                                          \
-    X(set)                                                                                         \
     X(quote)                                                                                       \
-    X(lambda)                                                                                      \
     X(Var)
 
 typedef const char *StringName;

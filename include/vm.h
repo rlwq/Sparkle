@@ -21,12 +21,12 @@
     X(False, KIND_BOOL, {.bool_ = false})
 
 #define X_RUNTIME_EXCEPTIONS                                                                       \
-    X(TYPE_EXCEPTION)                                                                              \
-    X(ARITY_EXCEPTION)                                                                             \
-    X(UNDEFINED_EXCEPTION)                                                                         \
-    X(REBINDING_EXCEPTION)                                                                         \
-    X(UNCALLABLE_EXCEPTION)                                                                        \
-    X(VALUE_EXCEPTION)
+    X(TYPE_EXCEPTION, "Function expected some other object type.")                                 \
+    X(ARITY_EXCEPTION, "Wrong arity for a function call.")                                         \
+    X(UNDEFINED_EXCEPTION, "Symbol has no definition.")                                            \
+    X(REBINDING_EXCEPTION, "Symbol is already bound.")                                             \
+    X(UNCALLABLE_EXCEPTION, "Can't use this kind of object as a function.")                        \
+    X(VALUE_EXCEPTION, "Function expected some other value.")
 
 typedef struct {
     jmp_buf *jmp;
@@ -50,7 +50,7 @@ struct VM {
         X_RUNTIME_SINGLETONS
 #undef X
 
-#define X(name_) Object *_##name_;
+#define X(name_, msg_) Object *_##name_;
         X_RUNTIME_EXCEPTIONS
 #undef X
     } singletons;
@@ -83,6 +83,7 @@ void vm_scope_get(VM *vm, StringName name);
 void vm_scope_set(VM *vm, StringName name);
 
 // vm_build.c
+void vm_maybe_collect(VM *vm);
 void vm_build_value(VM *vm, ObjectKind kind);
 void vm_build_integer(VM *vm, Integer value);
 void vm_build_bool(VM *vm, bool value);
@@ -114,9 +115,6 @@ size_t vm_unpack_list(VM *vm);
 
 // vm_eval.c
 void vm_eval_node(VM *vm);
-void vm_eval_cons(VM *vm);
-void vm_eval_symbol(VM *vm);
-size_t vm_map_eval(VM *vm);
 bool vm_cast_to_bool(VM *vm);
 ObjectKind vm_to_common_numeric(VM *vm);
 

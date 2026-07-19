@@ -16,6 +16,10 @@
 
 #define CURR(p_) (assert((p_)), da_at(*((p_)->tokens), (p_)->cursor))
 
+// The parser allocates nodes with raw gc_alloc_node and relies on no collection
+// occurring during parsing: parsed nodes are not yet rooted in the VM stacks.
+// gc_alloc_* never collect on their own (see gc.h), so this holds by construction.
+
 Parser *parser_alloc(TokenDA *tokens, ObjectPtrDA *exprs, GC *gc, StringInterner *si) {
     Parser *parser = malloc(sizeof(Parser));
     assert(parser);

@@ -18,6 +18,9 @@ struct GC {
 GC *gc_alloc(void);
 void gc_free(GC *gc);
 
+// gc_alloc_* never trigger a collection themselves. Collection is driven by the
+// VM at safe points only (see vm_maybe_collect); this keeps the parser's
+// pre-VM, not-yet-rooted allocations correct by construction.
 Object *gc_alloc_node(GC *gc, ObjectKind kind);
 
 Scope *gc_alloc_scope(GC *gc, Scope *parent);
