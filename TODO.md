@@ -19,8 +19,6 @@ This document outlines the features and fixes planned for Sparkle.
 ## Base Library
 
 * [ ] Structure equality. 
-* [ ] I/O
-    * [ ] Input
 
 ## Documentation & Presentation
 
@@ -37,6 +35,7 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Done
 
+* [x] `input` reads a line from standard input; tests feed it through `.in` files.
 * [x] `try` implements its specified form: `(try ExceptionSymbol expr1 expr2 ...)`.
 * [x] Two error handler invocations behave differently: one duplicates the expression before entering the frame, the other does not.
 * [x] Formatted printing function (`print` with `$N` placeholders).

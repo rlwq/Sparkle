@@ -29,12 +29,26 @@ def format_output(s: str) -> list[str]:
     return re.sub(r'\033\[[0-9;]*m', '', s).split()
 
 
+def read_stdin(rkl_path: str) -> str:
+    """Contents of the test's .in file, fed to the interpreter on stdin.
+
+    Absent one the test still gets an empty stdin rather than the terminal's,
+    so a test that reads input ends at end-of-file instead of hanging.
+    """
+    in_path = rkl_path[:-4] + '.in'
+    if not os.path.exists(in_path):
+        return ''
+    with open(in_path) as f:
+        return f.read()
+
+
 def run_test(binary: str, rkl_path: str) -> tuple[list[str], list[str], int, float]:
     begin = time.perf_counter()
     result = subprocess.run(
         [binary, rkl_path],
         capture_output=True,
-        text=True
+        text=True,
+        input=read_stdin(rkl_path)
     )
     end = time.perf_counter()
     return (format_output(result.stdout),

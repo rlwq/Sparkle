@@ -121,5 +121,28 @@ void rkl_print(VM *vm) {
     vm_build_nil(vm);
 }
 
-DEFINE_MODULE(IO) = {{"print", rkl_print, 1, true}};
+// -> String or Nil
+void rkl_input(VM *vm) {
+    CharDA line;
+    da_init(line);
+
+    int c;
+    while ((c = fgetc(stdin)) != EOF && c != '\n')
+        da_push(line, (char)c);
+
+    // Running out of input with nothing read is the absence of a line, so it
+    // reads as Nil. An empty line is still a line and reads as "", and a last
+    // line that no newline terminates is returned like any other.
+    if (c == EOF && line.size == 0) {
+        da_free(line);
+        vm_build_nil(vm);
+        return;
+    }
+
+    // Strings are a data/size pair rather than a C string, so the buffer can go
+    // over as it is instead of being copied.
+    vm_build_string_own(vm, line.data, line.size);
+}
+
+DEFINE_MODULE(IO) = {{"print", rkl_print, 1, true}, {"input", rkl_input, 0, false}};
 DEFINE_MODULE_SIZE(IO);

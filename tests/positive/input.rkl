@@ -1,0 +1,13 @@
+; Lines come from the matching .in file, one per call, newline stripped.
+(print "first=$0" (input))       ; first=hello
+(print "second=$0" (input))      ; second=world with spaces
+
+; An empty line is still a line: it reads as "", not as Nil.
+(print "empty-len=$0" (str-len (input)))   ; empty-len=0
+
+; A last line that no newline terminates comes back like any other.
+(print "tail=$0" (input))        ; tail=tail-no-newline
+
+; Once the input runs out there is no line to return, so Nil, repeatedly.
+(print "eof=$0" (input))         ; eof=Nil
+(print "eof-again=$0" (input))   ; eof-again=Nil

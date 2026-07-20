@@ -393,6 +393,8 @@ A `${` not closed by `}` around a non-empty run of digits raises `VALUE_EXCEPTIO
 
 `$$` produces a literal `$`. A `$` followed by none of `$`, `{` or a digit stands for itself.
 
+* `(input)` - reads one line from standard input and returns it as a `String` with the terminating newline removed. An empty line yields an empty `String`. A final line that no newline terminates is returned like any other. When there is no line left to read, returns `Nil`.
+
 ## Standard Library
 
 ## Exception Model

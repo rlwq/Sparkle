@@ -414,6 +414,19 @@ A non-`String` `fmt` raises `TYPE_EXCEPTION`. A placeholder index with no matchi
 (print "costs 100$")              ; costs 100$
 (print "$0")                      ; VALUE_EXCEPTION
 ```
+
+* **`(input)`** - reads one line from standard input and returns it as a `String`, without the terminating newline. An empty line gives an empty `String`; a final line that no newline terminates comes back like any other. Once the input is exhausted there is no line to return, so `input` gives `Nil` - which is what separates "read an empty line" from "there was nothing left to read".
+
+```lisp
+(let name (input))                     ; reads a line
+(print "Hello, $0!" name)
+
+(let line (input))                     ; loop until the input runs out
+(while (!= line Nil) (begin
+  (print "$0" line)
+  (set line (input))
+))
+```
  
 ### Evaluation
  

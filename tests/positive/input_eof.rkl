@@ -1,0 +1,2 @@
+; No .in file for this test, so the interpreter starts at end of input.
+(print "$0" (input))   ; Nil
