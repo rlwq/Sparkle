@@ -1,0 +1,1 @@
+neg -5 5 -2.500000 -1 abs 5 5 2.500000 0 kinds True True min 1 1 1.500000 max 3 1 2 keep True True pow 1024.000000 0.500000 3.000000 sqrt 4.000000 0.000000 float True True round 2 3 2 half 3 -3 neg -3 -2 int True domain VALUE_EXCEPTION

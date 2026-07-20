@@ -81,7 +81,7 @@ x                         ; 42
 
 A signed integer value.
 
-Literal syntax: an optional sign (`+` or `-`) followed by one or more decimal digits. Examples: `42`, `-7`, `+3`.
+Literal syntax: an optional sign (`+` or `-`) followed by decimal digits, or by a `0b`, `0o` or `0x` prefix and digits of that base. Examples: `42`, `-7`, `+3`, `0b1010`, `0o17`, `0xFF`.
 
 Evaluation: self-evaluating - an integer value produces itself.
 
@@ -89,7 +89,9 @@ Evaluation: self-evaluating - an integer value produces itself.
 
 A floating-point number.
 
-Literal syntax: an optional sign (`+` or `-`), one or more decimal digits, a dot, one or more decimal digits. Examples: `3.14`, `-0.5`, `+1.0`.
+Literal syntax: an optional sign, then digits with a dot on either side of them, and an optional `e`/`E` exponent. Digits are needed on one side of the dot, not both, and a plain integer with an exponent is a `Float` too. Examples: `3.14`, `-0.5`, `.25`, `1.`, `1e10`, `1.5e-3`, `.5E+2`.
+
+A lone `.` is not a number and remains an ordinary symbol.
 
 Evaluation: self-evaluating - a float value produces itself.
 
@@ -486,6 +488,13 @@ Integer division and modulo by zero are runtime exceptions.
 * `(? x)` - casts `x` to `Bool`.
 * `(int x)` - converts `x` to an `Integer`. A `Float` is truncated toward zero, a `Bool` becomes `1` or `0`, and a `String` is read as a numeric literal.
 * `(float x)` - converts `x` to a `Float`, reading a `String` the same way.
+* `(neg x)` - negation of numeric `x`, keeping its kind. A `Bool` negates through `Integer`.
+* `(abs x)` - absolute value of numeric `x`, keeping its kind.
+* `(min x1 x2 ...)` / `(max x1 x2 ...)` - the smallest or largest argument, returned as it was given, so `(min 1 2)` is an `Integer` and `(min 1.0 2)` a `Float`. With no arguments, `ARITY_EXCEPTION`.
+* `(pow base exponent)` - `base` raised to `exponent`, always a `Float`.
+* `(sqrt x)` - square root as a `Float`. A negative `x` raises `VALUE_EXCEPTION` rather than yielding NaN.
+* `(floor x)` / `(ceil x)` / `(round x)` - `x` rounded down, up, or to nearest, returned as an `Integer`. `round` breaks ties away from zero.
+* `(apply f args)` - calls `f` with the elements of the `List` `args` as its arguments. A non-callable `f` raises `UNCALLABLE_EXCEPTION`, and `f`'s own arity still applies.
 
 Together with `?` and `str` these cover conversion between the four scalar kinds.
 A `String` converts only if it spells a number the way source code would, and every literal form is accepted: `"0xFF"`, `".25"` and `"1.5e-3"` all convert, because `0xFF`, `.25` and `1.5e-3` are all literals. The same scanner reads both, so the two can never drift apart.

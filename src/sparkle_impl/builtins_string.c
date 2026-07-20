@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -94,23 +95,35 @@ void rkl_str_cat(VM *vm) {
     vm_build_string_own(vm, data, total);
 }
 
+// Finds the first occurrence of needle in haystack at or after `from`, writing
+// its index to *at. Reports success separately rather than through a sentinel
+// index: an empty needle matches at the end of the string too, so no in-range
+// value is free to mean "no match".
+//
+// str-find, str-split and str-replace all search the same way and share this.
+static bool find_from(Object *haystack, Object *needle, size_t from, size_t *at) {
+    size_t size = STRING_SIZE(haystack);
+    size_t needle_size = STRING_SIZE(needle);
+
+    for (size_t i = from; i + needle_size <= size; i++) {
+        if (memcmp(STRING_DATA(haystack) + i, STRING_DATA(needle), needle_size) == 0) {
+            *at = i;
+            return true;
+        }
+    }
+
+    return false;
+}
+
 // String (haystack), String (needle) -> Integer (index of first occurrence, or -1)
 void rkl_str_find(VM *vm) {
     vm_expect2(vm, TY_STRING, TY_STRING);
 
-    Object *haystack = vm_prev(vm);
-    Object *needle = vm_peek(vm);
-
-    Integer found = -1;
-    for (size_t i = 0; i + STRING_SIZE(needle) <= STRING_SIZE(haystack); i++) {
-        if (memcmp(STRING_DATA(haystack) + i, STRING_DATA(needle), STRING_SIZE(needle)) == 0) {
-            found = (Integer)i;
-            break;
-        }
-    }
+    size_t at = 0;
+    bool found = find_from(vm_prev(vm), vm_peek(vm), 0, &at);
 
     vm_pop_n(vm, 2);
-    vm_build_integer(vm, found);
+    vm_build_integer(vm, found ? (Integer)at : -1);
 }
 
 // String -> Integer
@@ -137,11 +150,166 @@ void rkl_str_chr(VM *vm) {
     vm_build_string(vm, &c, 1);
 }
 
+// String, String (separator) -> List of String. An empty separator has no
+// meaning here - every position would match it - so it is refused rather than
+// given some invented reading.
+void rkl_str_split(VM *vm) {
+    vm_expect2(vm, TY_STRING, TY_STRING);
+    VM_RECOVER_IF(vm, STRING_SIZE(vm_peek(vm)) == 0, vm->singletons._VALUE_EXCEPTION);
+
+    Object *s = vm_prev(vm);
+    Object *sep = vm_peek(vm);
+
+    // s and sep stay below the pieces on the stack, so they are rooted while
+    // building each one collects.
+    size_t pieces = 0;
+    size_t from = 0;
+    size_t at = 0;
+
+    while (find_from(s, sep, from, &at)) {
+        vm_build_string(vm, STRING_DATA(s) + from, at - from);
+        pieces++;
+        from = at + STRING_SIZE(sep);
+    }
+
+    vm_build_string(vm, STRING_DATA(s) + from, STRING_SIZE(s) - from);
+    pieces++;
+
+    vm_pack_list(vm, pieces);
+    vm_pop_prev_n(vm, 2);
+}
+
+// List of String, String (separator) -> String
+void rkl_str_join(VM *vm) {
+    vm_expect2(vm, TY_LIST, TY_STRING);
+
+    Object *parts = vm_prev(vm);
+    Object *sep = vm_peek(vm);
+    size_t n = LIST_SIZE(parts);
+
+    size_t total = 0;
+    LIST_FOREACH(part, parts)
+        VM_RECOVER_IF(vm, !OFTYPE(part, TY_STRING), vm->singletons._TYPE_EXCEPTION);
+        total += STRING_SIZE(part);
+    END_LIST_FOREACH
+
+    if (n > 1)
+        total += (n - 1) * STRING_SIZE(sep);
+
+    char *data = malloc(total + 1);
+    assert(data);
+
+    size_t offset = 0;
+    for (size_t i = 0; i < n; i++) {
+        if (i > 0) {
+            memcpy(data + offset, STRING_DATA(sep), STRING_SIZE(sep));
+            offset += STRING_SIZE(sep);
+        }
+        Object *part = LIST_AT(parts, i);
+        memcpy(data + offset, STRING_DATA(part), STRING_SIZE(part));
+        offset += STRING_SIZE(part);
+    }
+
+    vm_pop_n(vm, 2);
+    vm_build_string_own(vm, data, total);
+}
+
+// String, String (target), String (replacement) -> String, every occurrence.
+void rkl_str_replace(VM *vm) {
+    Object *s = vm_peek_at(vm, 2);
+    Object *target = vm_prev(vm);
+    Object *replacement = vm_peek(vm);
+
+    VM_RECOVER_IF(vm, !OFTYPE(s, TY_STRING), vm->singletons._TYPE_EXCEPTION);
+    VM_RECOVER_IF(vm, !OFTYPE(target, TY_STRING), vm->singletons._TYPE_EXCEPTION);
+    VM_RECOVER_IF(vm, !OFTYPE(replacement, TY_STRING), vm->singletons._TYPE_EXCEPTION);
+    VM_RECOVER_IF(vm, STRING_SIZE(target) == 0, vm->singletons._VALUE_EXCEPTION);
+
+    // Counted first so the buffer is sized exactly, since the replacement may
+    // be longer or shorter than what it stands in for.
+    size_t hits = 0;
+    size_t from = 0;
+    size_t at = 0;
+    while (find_from(s, target, from, &at)) {
+        hits++;
+        from = at + STRING_SIZE(target);
+    }
+
+    size_t total = STRING_SIZE(s) + hits * STRING_SIZE(replacement) - hits * STRING_SIZE(target);
+    char *data = malloc(total + 1);
+    assert(data);
+
+    size_t offset = 0;
+    from = 0;
+    while (find_from(s, target, from, &at)) {
+        memcpy(data + offset, STRING_DATA(s) + from, at - from);
+        offset += at - from;
+        memcpy(data + offset, STRING_DATA(replacement), STRING_SIZE(replacement));
+        offset += STRING_SIZE(replacement);
+        from = at + STRING_SIZE(target);
+    }
+    memcpy(data + offset, STRING_DATA(s) + from, STRING_SIZE(s) - from);
+    offset += STRING_SIZE(s) - from;
+
+    vm_pop_n(vm, 3);
+    vm_build_string_own(vm, data, offset);
+}
+
+// String -> String, without leading or trailing whitespace.
+void rkl_str_trim(VM *vm) {
+    vm_expect(vm, TY_STRING);
+
+    Object *s = vm_peek(vm);
+    const char *data = STRING_DATA(s);
+    size_t size = STRING_SIZE(s);
+
+    size_t start = 0;
+    while (start < size && isspace((unsigned char)data[start]))
+        start++;
+
+    size_t end = size;
+    while (end > start && isspace((unsigned char)data[end - 1]))
+        end--;
+
+    vm_build_string(vm, data + start, end - start);
+    vm_pop_prev(vm);
+}
+
+// String -> String. ASCII only, matching str-chr and str-ord.
+#define STRING_CASE_BUILTIN(func_name_, convert_)                                                  \
+    void func_name_(VM *vm) {                                                                      \
+        vm_expect(vm, TY_STRING);                                                                  \
+                                                                                                   \
+        Object *s = vm_peek(vm);                                                                   \
+        size_t size = STRING_SIZE(s);                                                              \
+                                                                                                   \
+        char *data = malloc(size + 1);                                                             \
+        assert(data);                                                                              \
+        for (size_t i = 0; i < size; i++)                                                          \
+            data[i] = (char)convert_((unsigned char)STRING_DATA(s)[i]);                            \
+                                                                                                   \
+        vm_pop(vm);                                                                                \
+        vm_build_string_own(vm, data, size);                                                       \
+    }
+
+STRING_CASE_BUILTIN(rkl_str_upper, toupper)
+STRING_CASE_BUILTIN(rkl_str_lower, tolower)
+
 DEFINE_MODULE(STRING) = {
-    {"str", rkl_str, 1, false},         {"str-len", rkl_str_len, 1, false},
-    {"str-get", rkl_str_get, 2, false}, {"str-sub", rkl_str_sub, 3, false},
-    {"str-cat", rkl_str_cat, 0, true},  {"str-find", rkl_str_find, 2, false},
-    {"str-ord", rkl_str_ord, 1, false}, {"str-chr", rkl_str_chr, 1, false},
+    {"str", rkl_str, 1, false},
+    {"str-len", rkl_str_len, 1, false},
+    {"str-get", rkl_str_get, 2, false},
+    {"str-sub", rkl_str_sub, 3, false},
+    {"str-cat", rkl_str_cat, 0, true},
+    {"str-find", rkl_str_find, 2, false},
+    {"str-ord", rkl_str_ord, 1, false},
+    {"str-split", rkl_str_split, 2, false},
+    {"str-join", rkl_str_join, 2, false},
+    {"str-replace", rkl_str_replace, 3, false},
+    {"str-trim", rkl_str_trim, 1, false},
+    {"str-upper", rkl_str_upper, 1, false},
+    {"str-lower", rkl_str_lower, 1, false},
+    {"str-chr", rkl_str_chr, 1, false},
 };
 
 DEFINE_MODULE_SIZE(STRING);

@@ -1,0 +1,32 @@
+; split and join are inverses when the separator does not occur in the pieces.
+(print "split  $0 $1" (str-split "a,b,c" ",") (str-split "abc" ","))   ; (a b c) (abc)
+(print "multi  $0" (str-split "a--b" "--"))                            ; (a b)
+(print "counts $0 $1" (len (str-split "a,,b" ",")) (len (str-split "" ",")))  ; 3 1
+(print "join   $0 $1" (str-join '("a" "b" "c") "-") (str-join '("solo") "-")) ; a-b-c solo
+(print "join-e $0 $1" (str-len (str-join '() "-")) (str-join '("a" "b") ""))  ; 0 ab
+(print "round  $0" (str-join (str-split "x,y,z" ",") ","))             ; x,y,z
+
+; replace rewrites every occurrence, and the result may grow or shrink.
+(print "same   $0" (str-replace "a-b-c" "-" "+"))                      ; a+b+c
+(print "grow   $0" (str-replace "aaa" "a" "xy"))                       ; xyxyxy
+(print "shrink $0" (str-replace "xyxyxy" "xy" "z"))                    ; zzz
+(print "none   $0" (str-replace "abc" "q" "!"))                        ; abc
+(print "drop   $0" (str-replace "a-b" "-" ""))                         ; ab
+
+; trim takes whitespace off both ends only.
+(print "trim   [$0] [$1] [$2]" (str-trim "  pad  ") (str-trim "none") (str-trim "   "))  ; [pad] [none] []
+(print "inner  [$0]" (str-trim "  a b  "))                             ; [a b]
+
+; Case conversion is ASCII, leaving everything else alone.
+(print "case   $0 $1" (str-upper "MiXed 123") (str-lower "MiXed 123")) ; MIXED 123 mixed 123
+
+; A separator or target with no length has no sensible reading, so it is refused.
+(print "empty-sep    $0" (try VALUE_EXCEPTION (str-split "abc" "")))   ; VALUE_EXCEPTION
+(print "empty-target $0" (try VALUE_EXCEPTION (str-replace "abc" "" "x")))  ; VALUE_EXCEPTION
+
+; Strings are immutable, so none of these touch what they were given.
+(let base "  a,b  ")
+(str-trim base)
+(str-split base ",")
+(str-upper base)
+(print "intact [$0]" base)                                             ; [  a,b  ]

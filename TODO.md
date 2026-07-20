@@ -42,18 +42,11 @@ assumed - the reproduction is written next to them.
 ## Base Library
 
 * [ ] Structure equality. 
-* [ ] `neg` is documented in `Sparkle.md` but not implemented.
-      *(verified: `(neg 5)` raises UNDEFINED_EXCEPTION)*
-* [ ] `apply` - call a callable with an argument list. `vm_call` already exists
-      as the primitive and `vm.h` names this as its future use.
 * [ ] `reduce` / `fold`.
 * [ ] `sort` with a comparator - `tests/positive` hand-rolls merge and
       insertion sort because there is none.
 * [ ] A keyed collection: there is no map, dictionary or set, so an association
       list walked by hand is the only lookup structure.
-* [ ] Math: `abs`, `min`, `max`, `pow`, `sqrt`, `floor`, `ceil`, `round`.
-* [ ] More string operations: `str-split`, `str-join`, `str-replace`, trimming,
-      case conversion.
 * [ ] File I/O. Standard input and output are the only streams.
 * [ ] Access to command-line arguments and environment variables.
 * [ ] Exit with a chosen status code.
@@ -105,6 +98,9 @@ assumed - the reproduction is written next to them.
 
 ## Done
 
+* [x] `neg`, `abs`, `min`, `max`, `pow`, `sqrt`, `floor`, `ceil`, `round`.
+* [x] `apply` - call a callable with an argument list.
+* [x] `str-split`, `str-join`, `str-replace`, `str-trim`, `str-upper`, `str-lower`.
 * [x] Numeric literals match the specified grammar: leading point, exponent, and the 0b/0o/0x radix forms.
 * [x] `int` and `float` convert numbers and numeric strings.
 * [x] `for` iterates a `List`: `(for value In list ...)` and `(for key value In list ...)`.

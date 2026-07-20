@@ -391,6 +391,13 @@ The following built-ins operate on `String` values. Passing a non-`String` value
 * `(str x)` - returns the printed representation of `x` (any type, as `print` would show it) as a `String`. A `String` argument is returned unchanged.
 * `(int x)` - returns `x` as an `Integer`. A `Float` is truncated toward zero, a `Bool` yields `1` or `0`, and an `Integer` is returned unchanged.
 * `(float x)` - returns `x` as a `Float`. An `Integer` and a `Bool` widen, and a `Float` is returned unchanged.
+* `(neg x)` - negation of numeric `x`, keeping its kind. A `Bool` negates through `Integer`.
+* `(abs x)` - absolute value of numeric `x`, keeping its kind.
+* `(min x1 x2 ...)` / `(max x1 x2 ...)` - the smallest or largest argument, returned as it was given, so `(min 1 2)` is an `Integer` and `(min 1.0 2)` a `Float`. With no arguments, `ARITY_EXCEPTION`.
+* `(pow base exponent)` - `base` raised to `exponent`, always a `Float`.
+* `(sqrt x)` - square root as a `Float`. A negative `x` raises `VALUE_EXCEPTION` rather than yielding NaN.
+* `(floor x)` / `(ceil x)` / `(round x)` - `x` rounded down, up, or to nearest, returned as an `Integer`. `round` breaks ties away from zero.
+* `(apply f args)` - calls `f` with the elements of the `List` `args` as its arguments. A non-callable `f` raises `UNCALLABLE_EXCEPTION`, and `f`'s own arity still applies.
 
 `int` and `float` also accept a `String`, which must hold a numeric literal as defined under Syntax, and nothing besides it. Every literal form qualifies, including the radix and exponent forms: `"0xFF"`, `".25"` and `"1.5e-3"` all convert.
 A `String` that is empty, padded with whitespace, or carries characters past the end of the literal raises `VALUE_EXCEPTION`.
@@ -403,6 +410,11 @@ An argument that is neither numeric nor a `String` raises `TYPE_EXCEPTION`.
 * `(str-find s sub)` - returns the 0-based index of the first occurrence of `sub` in `s` as an `Integer`, or `-1` if there is none. An empty `sub` is found at index `0`.
 * `(str-ord s)` - returns the character code of the first character of `s` as an `Integer`. An empty `s` raises `VALUE_EXCEPTION`.
 * `(str-chr code)` - returns a `String` of length 1 containing the character with code `code`. A `code` outside the ASCII range (`0`-`127`) raises `VALUE_EXCEPTION`.
+* `(str-split s sep)` - splits `s` on each occurrence of `sep`, returning a `List` of `String`. Adjacent separators yield empty pieces, and a `s` with no separator in it yields a one-element list. An empty `sep` raises `VALUE_EXCEPTION`.
+* `(str-join l sep)` - joins the `String`s of `List` `l` with `sep` between them. An empty list yields an empty `String`. A non-`String` element raises `TYPE_EXCEPTION`.
+* `(str-replace s target replacement)` - returns `s` with every occurrence of `target` replaced. An empty `target` raises `VALUE_EXCEPTION`.
+* `(str-trim s)` - returns `s` without leading or trailing whitespace.
+* `(str-upper s)` / `(str-lower s)` - returns `s` with ASCII letters converted; other bytes are left as they are.
 
 ### I/O
 

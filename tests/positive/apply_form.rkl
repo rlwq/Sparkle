@@ -1,0 +1,17 @@
+; apply calls a callable with a list of arguments already collected.
+(print "builtin $0 $1" (apply + '(1 2 3)) (apply str-cat '("a" "b")))  ; 6 ab
+(let sub (lambda (a b) (- a b)))
+(print "lambda  $0" (apply sub '(10 3)))                               ; 7
+
+; It composes with the list functions, which is the point of it.
+(print "from-map $0" (apply + (map (lambda (x) (* x x)) '(1 2 3))))    ; 14
+(let nums (list 5 3 9))
+(print "max-of  $0" (apply max nums))                                  ; 9
+
+; A variadic callable takes whatever the list holds.
+(let count (lambda (Var xs) (len xs)))
+(print "variadic $0 $1" (apply count '(1 2 3)) (apply count '()))      ; 3 0
+
+; Arity is still checked, and a non-callable is refused.
+(print "arity   $0" (try ARITY_EXCEPTION (apply sub '(1))))            ; ARITY_EXCEPTION
+(print "callable $0" (try UNCALLABLE_EXCEPTION (apply 42 '(1))))       ; UNCALLABLE_EXCEPTION

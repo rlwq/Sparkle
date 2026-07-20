@@ -1,0 +1,26 @@
+; neg and abs keep the kind they were handed; Bool goes through Integer, since
+; there is no negative Bool to land on.
+(print "neg   $0 $1 $2 $3" (neg 5) (neg -5) (neg 2.5) (neg True))       ; -5 5 -2.500000 -1
+(print "abs   $0 $1 $2 $3" (abs -5) (abs 5) (abs -2.5) (abs False))     ; 5 5 2.500000 0
+(print "kinds $0 $1" (?INTEGER (neg 5)) (?FLOAT (neg 2.5)))            ; True True
+
+; min and max are variadic and hand back the winning argument itself, so the
+; kind survives rather than everything widening to Float.
+(print "min   $0 $1 $2" (min 3 1 2) (min 1) (min 2 1.5))               ; 1 1 1.500000
+(print "max   $0 $1 $2" (max 3 1 2) (max 1) (max 2 1.5))               ; 3 1 2
+(print "keep  $0 $1" (?INTEGER (min 1 2)) (?FLOAT (min 1.0 2)))        ; True True
+
+; pow and sqrt answer in Float always, the same choice / makes.
+(print "pow   $0 $1 $2" (pow 2 10) (pow 2 -1) (pow 9 0.5))             ; 1024.000000 0.500000 3.000000
+(print "sqrt  $0 $1" (sqrt 16) (sqrt 0))                               ; 4.000000 0.000000
+(print "float $0 $1" (?FLOAT (pow 2 2)) (?FLOAT (sqrt 4)))             ; True True
+
+; Rounding lands on an Integer, which is what the answer is wanted for.
+(print "round $0 $1 $2" (floor 2.7) (ceil 2.1) (round 2.4))            ; 2 3 2
+(print "half  $0 $1" (round 2.5) (round -2.5))                         ; 3 -3
+(print "neg   $0 $1" (floor -2.5) (ceil -2.5))                         ; -3 -2
+(print "int   $0" (?INTEGER (floor 2.7)))                              ; True
+
+; A negative square root has no real answer, so it is refused rather than
+; quietly handing back NaN.
+(print "domain $0" (try VALUE_EXCEPTION (sqrt -1)))                    ; VALUE_EXCEPTION
