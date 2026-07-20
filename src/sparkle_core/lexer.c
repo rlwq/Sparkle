@@ -132,22 +132,15 @@ Token lex_char_token(Lexer *lexer, TokenKind kind) {
     return result;
 }
 
-Token lex_numeric_token(Lexer *lexer) {
+// The shape has already been decided by sv_scan_number, so this only has to
+// walk over what the scan measured, keeping line and column tracking intact.
+Token lex_numeric_token(Lexer *lexer, SvNumber kind, size_t length) {
     lexer_marker_set(lexer);
 
-    if (issign(CURR(lexer)))
+    for (size_t i = 0; i < length; i++)
         lexer_advance(lexer);
 
-    lexer_skip_while(lexer, isdigit(CURR(lexer)));
-
-    bool is_decimal = false;
-    if (CURR(lexer) == '.') {
-        is_decimal = true;
-        lexer_advance(lexer);
-        lexer_skip_while(lexer, isdigit(CURR(lexer)));
-    }
-
-    return lexer_marker_cut(lexer, is_decimal ? TK_DECIMAL : TK_INTEGER);
+    return lexer_marker_cut(lexer, kind == SV_NUMBER_FLOAT ? TK_DECIMAL : TK_INTEGER);
 }
 
 Token lex_string_token(Lexer *lexer) {
@@ -178,7 +171,6 @@ Token lex_symbol_token(Lexer *lexer) {
 
 Token lex_token(Lexer *lexer) {
     char curr = CURR(lexer);
-    char next = NEXT(lexer);
 
     if (curr == '(')
         return lex_char_token(lexer, TK_L_PAREN);
@@ -192,8 +184,13 @@ Token lex_token(Lexer *lexer) {
     if (curr == '"')
         return lex_string_token(lexer);
 
-    if (isdigit(curr) || (isdigit(next) && issign(curr)))
-        return lex_numeric_token(lexer);
+    // Numbers are recognised by the shared scanner rather than by peeking at a
+    // character or two: with a leading point and an exponent in the grammar,
+    // how far ahead a number reaches is no longer decidable from the front.
+    size_t number_length = 0;
+    SvNumber number = sv_scan_number(lexer->src, &number_length);
+    if (number != SV_NUMBER_NONE)
+        return lex_numeric_token(lexer, number, number_length);
 
     if (issymbolic(curr))
         return lex_symbol_token(lexer);

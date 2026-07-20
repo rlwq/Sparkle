@@ -1,0 +1,1 @@
+dec 42 -7 3 bin 10 -5 oct 15 hex 255 255 int? True True point 3.140000 -0.500000 lead 0.250000 -0.500000 trail 1.000000 exp 10000000000.000000 0.001500 50.000000 float? True True expkind True cast-radix 10 15 255 cast-lead 0.250000 -0.500000 cast-exp 0.001500 50.000000 agree True True dot-symbol True name-dot True reject VALUE_EXCEPTION VALUE_EXCEPTION VALUE_EXCEPTION

@@ -83,9 +83,6 @@ assumed - the reproduction is written next to them.
       no call stack, no offending expression. Lexer errors already carry
       `line:column`, so the machinery exists. *(verified: `diag_vm` prints only
       `path: [RUNTIME ERROR] message`)*
-* [ ] `svtod` scans for a `.` with no bound on the view, so a view without one
-      reads past its end. Only the lexer calls it today, and only for a token
-      that already contains a point, but nothing in its signature says so.
 * [ ] `cast_to_string` says the DA buffer is always at least `size + 1` bytes;
       when the size lands exactly on the capacity there is no spare byte.
       Harmless today, since strings are a data/size pair and are never treated
@@ -108,6 +105,7 @@ assumed - the reproduction is written next to them.
 
 ## Done
 
+* [x] Numeric literals match the specified grammar: leading point, exponent, and the 0b/0o/0x radix forms.
 * [x] `int` and `float` convert numbers and numeric strings.
 * [x] `for` iterates a `List`: `(for value In list ...)` and `(for key value In list ...)`.
 * [x] `input` reads a line from standard input; tests feed it through `.in` files.

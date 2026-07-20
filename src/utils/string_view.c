@@ -1,7 +1,10 @@
 #include "string_view.h"
 #include "ctype.h"
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
+
+#define issign_sv(c_) ((c_) == '+' || (c_) == '-')
 
 // Wrapped in do/while so it is a single statement: a bare `if` here would let a
 // trailing `else` at the call site bind to the macro's `if`.
@@ -81,12 +84,22 @@ StringView sv_drop_ws(StringView sv) {
     return sv_drop(sv, size);
 }
 
+static int digit_value(char c) {
+    if (c >= '0' && c <= '9')
+        return c - '0';
+    if (c >= 'a' && c <= 'f')
+        return c - 'a' + 10;
+    return c - 'A' + 10;
+}
+
+// Expects a view sv_scan_number classified as SV_NUMBER_INTEGER, including a
+// 0b/0o/0x prefix.
 long long int svtolli(StringView sv) {
     assert(sv.size > 0);
-    assert(sv_head(sv) == '+' || sv_head(sv) == '-' || isdigit(sv_head(sv)));
 
     long long int result = 0;
     int sign = 1;
+    int base = 10;
 
     if (sv_head(sv) == '+')
         sv = sv_drop(sv, 1);
@@ -95,38 +108,143 @@ long long int svtolli(StringView sv) {
         sign = -1;
     }
 
-    for (size_t i = 0; i < sv.size; i++) {
-        assert(isdigit(sv_at(sv, i)));
-        result = 10 * result + sv_at(sv, i) - '0';
+    if (sv.size > 2 && sv_head(sv) == '0') {
+        switch (sv_next(sv)) {
+        case 'b':
+            base = 2;
+            break;
+        case 'o':
+            base = 8;
+            break;
+        case 'x':
+            base = 16;
+            break;
+        default:
+            break;
+        }
+        if (base != 10)
+            sv = sv_drop(sv, 2);
     }
+
+    for (size_t i = 0; i < sv.size; i++)
+        result = base * result + digit_value(sv_at(sv, i));
 
     return sign * result;
 }
 
-double svtod(StringView sv) {
-    long long int digits = 0;
-    int sign = 1;
+// Counts the digits at offset i, leaving i past them.
+static size_t take_digits(StringView sv, size_t *i) {
+    size_t start = *i;
+    while (*i < sv.size && isdigit((unsigned char)sv_at(sv, *i)))
+        (*i)++;
+    return *i - start;
+}
 
-    double decimals = 0;
-    double p = 0.1;
+static bool is_binary(char c) {
+    return c == '0' || c == '1';
+}
 
-    if (sv_head(sv) == '+')
-        sv = sv_drop(sv, 1);
-    else if (sv_head(sv) == '-') {
-        sv = sv_drop(sv, 1);
-        sign = -1;
+static bool is_octal(char c) {
+    return c >= '0' && c <= '7';
+}
+
+static bool is_hex(char c) {
+    return isdigit((unsigned char)c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+}
+
+// Returns the digit test for a 0b/0o/0x prefix at offset i, or NULL when there
+// is none.
+static bool (*radix_digits(StringView sv, size_t i))(char) {
+    if (i + 1 >= sv.size || sv_at(sv, i) != '0')
+        return NULL;
+
+    switch (sv_at(sv, i + 1)) {
+    case 'b':
+        return is_binary;
+    case 'o':
+        return is_octal;
+    case 'x':
+        return is_hex;
+    default:
+        return NULL;
     }
+}
 
+SvNumber sv_scan_number(StringView sv, size_t *length) {
     size_t i = 0;
-    for (; sv_at(sv, i) != '.'; i++)
-        digits = 10 * digits + sv_at(sv, i) - '0';
 
-    sv = sv_drop(sv, i + 1);
+    if (i < sv.size && issign_sv(sv_at(sv, i)))
+        i++;
 
-    for (size_t j = 0; j < sv.size; j++) {
-        decimals += p * (sv_at(sv, j) - '0');
-        p /= 10;
+    // A radix literal is decided before the decimal path, since 0b1010 starts
+    // with a digit the decimal scan would happily take on its own. A prefix
+    // with no digits after it is not one: 0b reads as 0 and the symbol b.
+    bool (*is_radix_digit)(char) = radix_digits(sv, i);
+    if (is_radix_digit) {
+        size_t after = i + 2;
+        size_t start = after;
+        while (after < sv.size && is_radix_digit(sv_at(sv, after)))
+            after++;
+
+        if (after > start) {
+            *length = after;
+            return SV_NUMBER_INTEGER;
+        }
     }
 
-    return sign * (digits + decimals);
+    size_t whole = take_digits(sv, &i);
+    bool is_float = false;
+
+    // A point belongs to the number only if a digit sits on one side of it, so
+    // a lone '.' stays the symbol it has always been.
+    if (i < sv.size && sv_at(sv, i) == '.') {
+        size_t after = i + 1;
+        size_t fraction = take_digits(sv, &after);
+        if (whole > 0 || fraction > 0) {
+            is_float = true;
+            i = after;
+        }
+    }
+
+    if (whole == 0 && !is_float)
+        return SV_NUMBER_NONE;
+
+    // An exponent with no digits is not part of the number: "1e" reads as the
+    // integer 1 followed by the symbol e, rather than failing to lex.
+    if (i < sv.size && (sv_at(sv, i) == 'e' || sv_at(sv, i) == 'E')) {
+        size_t after = i + 1;
+        if (after < sv.size && issign_sv(sv_at(sv, after)))
+            after++;
+        if (take_digits(sv, &after) > 0) {
+            is_float = true;
+            i = after;
+        }
+    }
+
+    *length = i;
+    return is_float ? SV_NUMBER_FLOAT : SV_NUMBER_INTEGER;
+}
+
+// The view is not NUL-terminated, so it is copied before strtod sees it. The
+// program never calls setlocale, so the decimal point stays '.' as the grammar
+// expects. sv_scan_number has already established the shape; strtod is here to
+// round correctly, which hand-rolled exponent arithmetic does not.
+double svtod(StringView sv) {
+    char inline_buffer[64];
+    char *buffer = inline_buffer;
+
+    if (sv.size + 1 > sizeof(inline_buffer)) {
+        buffer = malloc(sv.size + 1);
+        assert(buffer);
+    }
+
+    memcpy(buffer, sv.data, sv.size);
+    buffer[sv.size] = '\0';
+
+    double result = strtod(buffer, NULL);
+
+    if (buffer != inline_buffer)
+        free(buffer);
+
+    return result;
 }

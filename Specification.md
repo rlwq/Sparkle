@@ -392,9 +392,9 @@ The following built-ins operate on `String` values. Passing a non-`String` value
 * `(int x)` - returns `x` as an `Integer`. A `Float` is truncated toward zero, a `Bool` yields `1` or `0`, and an `Integer` is returned unchanged.
 * `(float x)` - returns `x` as a `Float`. An `Integer` and a `Bool` widen, and a `Float` is returned unchanged.
 
-`int` and `float` also accept a `String`, which must spell a number exactly as the reader would accept it: an optional sign, one or more digits, then optionally a `.` followed by further digits.
-A `String` in any other form - empty, padded with whitespace, beginning with `.`, or holding trailing characters - raises `VALUE_EXCEPTION`.
-Whether the text contains a `.` selects how it is read, not the kind it is read into: `(float "7")` is `7.0` and `(int "3.9")` is `3`.
+`int` and `float` also accept a `String`, which must hold a numeric literal as defined under Syntax, and nothing besides it. Every literal form qualifies, including the radix and exponent forms: `"0xFF"`, `".25"` and `"1.5e-3"` all convert.
+A `String` that is empty, padded with whitespace, or carries characters past the end of the literal raises `VALUE_EXCEPTION`.
+The written form selects how the text is read, not the kind it is read into: `(float "7")` is `7.0` and `(int "3.9")` is `3`.
 An argument that is neither numeric nor a `String` raises `TYPE_EXCEPTION`.
 * `(str-len s)` - returns the length of `String` `s` as an `Integer`.
 * `(str-get s i)` - returns the character of `s` at 0-based index `i` as a `String` of length 1. An out-of-range index raises `VALUE_EXCEPTION`.

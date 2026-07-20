@@ -488,7 +488,8 @@ Integer division and modulo by zero are runtime exceptions.
 * `(float x)` - converts `x` to a `Float`, reading a `String` the same way.
 
 Together with `?` and `str` these cover conversion between the four scalar kinds.
-A `String` converts only if it spells a number the way source code would - an optional sign, then digits, then optionally a `.` and more digits. Anything else, including an empty string, surrounding spaces or a leading `.`, raises `VALUE_EXCEPTION`. The decimal point decides how the text is read rather than what it is read into, so `(float "7")` and `(int "3.9")` both work.
+A `String` converts only if it spells a number the way source code would, and every literal form is accepted: `"0xFF"`, `".25"` and `"1.5e-3"` all convert, because `0xFF`, `.25` and `1.5e-3` are all literals. The same scanner reads both, so the two can never drift apart.
+Anything the reader would not accept whole - an empty string, surrounding spaces, or trailing characters as in `"12x"` - raises `VALUE_EXCEPTION`. The written form decides how the text is read rather than what it is read into, so `(float "7")` and `(int "3.9")` both work.
 Values that are neither numbers nor `String`s raise `TYPE_EXCEPTION`.
 
 ```lisp

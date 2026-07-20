@@ -1,4 +1,3 @@
-#include <ctype.h>
 #include <stdbool.h>
 #include <string.h>
 
@@ -162,34 +161,16 @@ void rkl_cast_to_bool(VM *vm) {
     vm_cast_to_bool(vm);
 }
 
-// Recognises exactly the numeric literal the reader does - [+-]? digit+ with an
-// optional '.' and more digits - so (int "12") accepts what the source 12
-// accepts and nothing else. svtolli and svtod assert well-formed input rather
-// than validating, and those asserts are gone in a release build, so nothing
-// may reach them unscanned.
+// A string converts exactly when the same text would have read as a numeric
+// literal, which is why the lexer's scanner is the one asked. Requiring it to
+// consume the whole string is what rejects trailing characters: the scanner
+// stops at the end of the number, as a lexer should.
 static bool scan_number(Object *s, bool *is_decimal) {
-    const char *data = STRING_DATA(s);
-    size_t size = STRING_SIZE(s);
-    size_t i = 0;
+    size_t length = 0;
+    SvNumber kind = sv_scan_number(sv(STRING_DATA(s), STRING_SIZE(s)), &length);
 
-    if (i < size && (data[i] == '+' || data[i] == '-'))
-        i++;
-
-    size_t digits = i;
-    while (i < size && isdigit((unsigned char)data[i]))
-        i++;
-    if (i == digits)
-        return false;
-
-    *is_decimal = false;
-    if (i < size && data[i] == '.') {
-        *is_decimal = true;
-        i++;
-        while (i < size && isdigit((unsigned char)data[i]))
-            i++;
-    }
-
-    return i == size;
+    *is_decimal = kind == SV_NUMBER_FLOAT;
+    return kind != SV_NUMBER_NONE && length == STRING_SIZE(s);
 }
 
 // Node -> Integer or Float, per want. A String is read as a numeric literal, a

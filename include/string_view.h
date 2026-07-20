@@ -45,4 +45,18 @@ StringView sv_drop_ws(StringView sv);
 long long int svtolli(StringView sv);
 double svtod(StringView sv);
 
+typedef enum {
+    SV_NUMBER_NONE,
+    SV_NUMBER_INTEGER,
+    SV_NUMBER_FLOAT,
+} SvNumber;
+
+// Classifies the numeric literal at the head of sv and reports its length,
+// following the grammar in Specification.md. The lexer and the int/float
+// builtins share it so that a string converts exactly when the same text would
+// have read as a literal. Nothing may reach svtolli or svtod without passing
+// through here first: both assume a well-formed view and assert rather than
+// check, and asserts are compiled out of a release build.
+SvNumber sv_scan_number(StringView sv, size_t *length);
+
 #endif
