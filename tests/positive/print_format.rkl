@@ -8,11 +8,19 @@
 ; Indices are read as a whole number, so $10 is the eleventh argument.
 (print "$10 $1" 0 "ONE" 2 3 4 5 6 7 8 9 "TEN")   ; TEN ONE
 
+; ${N} delimits the index, the only way to write a digit right after a
+; placeholder: the bare form would swallow it into the index.
+(print "${0}0" 10)                     ; 100
+(print "${1}0" "a" "b")                ; b0
+(print "${0}${1}" "x" "y")             ; xy
+(print "${007}" 0 1 2 3 4 5 6 "SEVEN") ; SEVEN
+
 ; Arguments render exactly as str would render them.
 (print "$0 $1 $2 $3" Nil True '(1 2) 3.5)        ; Nil True (1 2) 3.500000
 
 ; "$$" escapes a literal '$'; a '$' before anything else stands for itself.
 (print "$$0 stays put")                ; $0 stays put
+(print "$${0} stays put too" 1)        ; ${0} stays put too
 (print "costs 100$")                   ; costs 100$
 (print "$ alone and $x too")           ; $ alone and $x too
 

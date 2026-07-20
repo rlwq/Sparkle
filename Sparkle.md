@@ -394,17 +394,21 @@ All of these operate on `List` values and raise `TYPE_EXCEPTION` if given a non-
  
 * **`(print fmt arg1 arg2 ...)`** - prints a formatted string followed by a newline. Placeholders `$0`, `$1`, ... are replaced with the corresponding arguments, each rendered as `str` renders it. Returns `Nil`.
 
-A placeholder index is read as a whole number, so `$10` refers to the eleventh argument rather than to `$1` followed by a `0`. The same placeholder may appear any number of times and in any order; arguments no placeholder refers to are ignored.
+A placeholder is written `$N` or `${N}`. The index is read as a whole number, so `$10` refers to the eleventh argument rather than to `$1` followed by a `0`. The same placeholder may appear any number of times and in any order; arguments no placeholder refers to are ignored.
 
-`$$` produces a literal `$`, and a `$` followed by neither `$` nor a digit stands for itself.
+Because the bare form reads the whole run of digits as one index, `${N}` is the way to put a digit straight after a placeholder: `${0}0` is argument `0` followed by a literal `0`, while `$00` asks for argument `0` twice over.
 
-A non-`String` `fmt` raises `TYPE_EXCEPTION`, and a placeholder index with no matching argument raises `VALUE_EXCEPTION`.
+`$$` produces a literal `$`, and a `$` followed by none of `$`, `{` or a digit stands for itself.
+
+A non-`String` `fmt` raises `TYPE_EXCEPTION`. A placeholder index with no matching argument raises `VALUE_EXCEPTION`, as does a `${` that is not closed by `}` around a run of digits.
 
 ```lisp
 (print "Hello $0!" "World")       ; Hello World!
 (print "$0 + $0 = $1" 5 10)       ; 5 + 5 = 10
 (print "x = $0, y = $1" 1 2)      ; x = 1, y = 2
 (print "$1 then $0" "a" "b")      ; b then a
+(print "${0}0" 10)                ; 100
+(print "$00" 10)                  ; 10 - one index, not $0 then a literal 0
 (print "$$0 stays put")           ; $0 stays put
 (print "costs 100$")              ; costs 100$
 (print "$0")                      ; VALUE_EXCEPTION

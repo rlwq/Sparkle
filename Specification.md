@@ -382,12 +382,15 @@ The following built-ins operate on `String` values. Passing a non-`String` value
 
 * `(print fmt arg1 arg2 ...)` - writes `fmt` to standard output followed by a newline and returns `Nil`. A non-`String` `fmt` raises `TYPE_EXCEPTION`.
 
-Each placeholder `$N` in `fmt` is replaced by the argument at 0-based position `N` among the arguments following `fmt`, rendered as `str` renders it.
+A placeholder is written `$N` or `${N}`. Each is replaced by the argument at 0-based position `N` among the arguments following `fmt`, rendered as `str` renders it.
 `N` is read as a whole decimal number, so `$10` denotes position `10` rather than `$1` followed by a `0`.
 A placeholder may occur any number of times and in any order, and arguments no placeholder refers to are ignored.
 A placeholder whose index is not less than the number of arguments following `fmt` raises `VALUE_EXCEPTION`.
 
-`$$` produces a literal `$`. A `$` followed by neither `$` nor a digit stands for itself.
+The braced form delimits the index explicitly, which is the only way to write a digit immediately after a placeholder: `${0}0` denotes position `0` followed by a literal `0`, whereas `$00` denotes position `0` alone.
+A `${` not closed by `}` around a non-empty run of digits raises `VALUE_EXCEPTION`.
+
+`$$` produces a literal `$`. A `$` followed by none of `$`, `{` or a digit stands for itself.
 
 ## Standard Library
 
