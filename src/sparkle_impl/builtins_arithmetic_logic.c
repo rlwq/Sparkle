@@ -11,8 +11,8 @@
     void func_name_(VM *vm) {                                                                      \
         vm_swap(vm);                                                                               \
                                                                                                    \
-        Object *args_ = vm_prev(vm);                                                                \
-        LIST_FOREACH(curr, args_) vm_push(vm, curr);                                                \
+        Object *args_ = vm_prev(vm);                                                               \
+        LIST_FOREACH(curr, args_) vm_push(vm, curr);                                               \
         vm_expect2(vm, TY_NUMERIC, TY_NUMERIC);                                                    \
         vm_to_common_numeric(vm);                                                                  \
                                                                                                    \
@@ -165,10 +165,10 @@ void rkl_logical_and(VM *vm) {
 
     Object *args_ = vm_peek(vm);
     LIST_FOREACH(curr, args_)
-        vm_push(vm, curr);
-        vm_cast_to_bool(vm);
-        result = result && BOOL(vm_peek(vm));
-        vm_pop(vm);
+    vm_push(vm, curr);
+    vm_cast_to_bool(vm);
+    result = result && BOOL(vm_peek(vm));
+    vm_pop(vm);
     END_LIST_FOREACH
 
     vm_pop(vm);
@@ -180,10 +180,10 @@ void rkl_logical_or(VM *vm) {
 
     Object *args_ = vm_peek(vm);
     LIST_FOREACH(curr, args_)
-        vm_push(vm, curr);
-        vm_cast_to_bool(vm);
-        result = result || BOOL(vm_peek(vm));
-        vm_pop(vm);
+    vm_push(vm, curr);
+    vm_cast_to_bool(vm);
+    result = result || BOOL(vm_peek(vm));
+    vm_pop(vm);
     END_LIST_FOREACH
 
     vm_pop(vm);

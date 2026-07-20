@@ -29,8 +29,8 @@ static void call_lambda(VM *vm) {
     Object *evargs = vm_prev(vm);
     size_t pos_args = LAMBDA_POS_ARGS_N(lambda);
 
-    bool bad_arity = LAMBDA_IS_VARIADIC(lambda) ? LIST_SIZE(evargs) < pos_args
-                                                : LIST_SIZE(evargs) != pos_args;
+    bool bad_arity =
+        LAMBDA_IS_VARIADIC(lambda) ? LIST_SIZE(evargs) < pos_args : LIST_SIZE(evargs) != pos_args;
     VM_RECOVER_IF(vm, bad_arity, vm->singletons._ARITY_EXCEPTION);
 
     vm_push_scope(vm, LAMBDA_SCOPE(lambda));

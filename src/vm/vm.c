@@ -30,8 +30,7 @@ VM *vm_alloc(GC *gc, StringInterner *si) {
     X_RUNTIME_SINGLETONS
 #undef X
 
-#define X(name_, msg_)                                                                             \
-    vm->singletons._##name_ = gc_alloc_symbol(vm->gc, si_get(vm->si, #name_));
+#define X(name_, msg_) vm->singletons._##name_ = gc_alloc_symbol(vm->gc, si_get(vm->si, #name_));
     X_RUNTIME_EXCEPTIONS
 #undef X
 

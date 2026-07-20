@@ -138,10 +138,10 @@ void rkl_str_chr(VM *vm) {
 }
 
 DEFINE_MODULE(STRING) = {
-    {"str", rkl_str, 1, false},           {"str-len", rkl_str_len, 1, false},
-    {"str-get", rkl_str_get, 2, false},   {"str-sub", rkl_str_sub, 3, false},
-    {"str-cat", rkl_str_cat, 0, true},    {"str-find", rkl_str_find, 2, false},
-    {"str-ord", rkl_str_ord, 1, false},   {"str-chr", rkl_str_chr, 1, false},
+    {"str", rkl_str, 1, false},         {"str-len", rkl_str_len, 1, false},
+    {"str-get", rkl_str_get, 2, false}, {"str-sub", rkl_str_sub, 3, false},
+    {"str-cat", rkl_str_cat, 0, true},  {"str-find", rkl_str_find, 2, false},
+    {"str-ord", rkl_str_ord, 1, false}, {"str-chr", rkl_str_chr, 1, false},
 };
 
 DEFINE_MODULE_SIZE(STRING);

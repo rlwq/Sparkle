@@ -29,7 +29,7 @@ typedef struct {
 #define X_MODULES                                                                                  \
     X(TYPE_PREDICATES)                                                                             \
     X(ARITHMETIC_LOGIC)                                                                            \
-    X(LIST)                                                                                       \
+    X(LIST)                                                                                        \
     X(STRING)                                                                                      \
     X(IO)
 
