@@ -23,25 +23,29 @@ bool try_dispatch_special_form(VM *vm, StringName name) {
     return false;
 }
 
+// A running result sits on the stack from the start: Nil stands in until the
+// first binding, and each one drops the previous value and leaves its own, so
+// whatever remains at the end is the last bound value.
 void rkl_let_form(VM *vm) {
     Object *args = vm_peek(vm);
     size_t n = LIST_SIZE(args);
 
     VM_RECOVER_IF(vm, n % 2 != 0, vm->singletons._VALUE_EXCEPTION);
 
+    vm_build_nil(vm);
+
     for (size_t i = 0; i + 1 < n; i += 2) {
         Object *name = LIST_AT(args, i);
         VM_RECOVER_IF(vm, !OFTYPE(name, TY_SYMBOL), vm->singletons._VALUE_EXCEPTION);
 
+        vm_pop(vm);
         vm_push(vm, LIST_AT(args, i + 1));
         vm_eval_node(vm);
 
         vm_scope_define(vm, SYMBOL(name));
-        vm_pop(vm);
     }
 
-    vm_pop(vm);
-    vm_build_nil(vm);
+    vm_pop_prev(vm);
 }
 
 // All exprs are evaluated first (left to right), then all assignments are
@@ -116,25 +120,28 @@ void rkl_while_form(VM *vm) {
     Object *condition = LIST_AT(args, 0);
     Object *body = LIST_AT(args, 1);
 
+    // Nil stands in as the result until the body runs once, so a loop whose
+    // condition is false from the start still leaves something behind.
+    vm_build_nil(vm);
+
     vm_push(vm, condition);
     vm_eval_node(vm);
-    bool result = vm_cast_to_bool(vm);
+    bool truthy = vm_cast_to_bool(vm);
 
-    while (result) {
+    while (truthy) {
+        vm_pop(vm);
         vm_pop(vm);
 
         vm_push(vm, body);
         vm_eval_node(vm);
-        vm_pop(vm);
 
         vm_push(vm, condition);
         vm_eval_node(vm);
-        result = vm_cast_to_bool(vm);
+        truthy = vm_cast_to_bool(vm);
     }
 
     vm_pop(vm);
-    vm_pop(vm);
-    vm_build_nil(vm);
+    vm_pop_prev(vm);
 }
 
 // (for value In list body...) or (for key value In list body...). The marker
@@ -173,6 +180,10 @@ void rkl_for_form(VM *vm) {
 
     Object *items = vm_peek(vm);
 
+    // Nil stands in as the result until the body runs, so an empty list still
+    // leaves something behind.
+    vm_build_nil(vm);
+
     // The size is re-read every step rather than cached, so a body that shrinks
     // the list stops the loop instead of indexing past the end.
     for (size_t i = 0; i < LIST_SIZE(items); i++) {
@@ -191,16 +202,15 @@ void rkl_for_form(VM *vm) {
         vm_pop(vm);
 
         for (size_t b = list_at + 1; b < n; b++) {
+            vm_pop(vm);
             vm_push(vm, LIST_AT(args, b));
             vm_eval_node(vm);
-            vm_pop(vm);
         }
 
         vm_pop_scope(vm);
     }
 
-    vm_pop_n(vm, 2);
-    vm_build_nil(vm);
+    vm_pop_prev_n(vm, 2);
 }
 
 static bool lambda_has_arg(Object *lambda, StringName name) {

@@ -297,7 +297,8 @@ Usage: `(begin expr1 expr2 ...)`
 
 ### while
 
-Conditional loop. Evaluates `condition` and casts the result to `Bool`. While truthy, evaluates `expr` then re-evaluates `condition`. Returns `Nil`.
+Conditional loop. Evaluates `condition` and casts the result to `Bool`. While truthy, evaluates `expr` then re-evaluates `condition`.
+Returns the value of `expr` from the last iteration, or `Nil` if the condition was never truthy and `expr` never ran.
 
 Usage: `(while condition expr)`
 
@@ -317,7 +318,8 @@ Usage:
 * `(for value In list expr1 expr2 ...)`
 * `(for key value In list expr1 expr2 ...)`
 
-Evaluates `list`, which must be a `List`, then evaluates the body once per element with `value` bound to that element. Given two names, `key` is bound to the 0-based index as well. Returns `Nil`.
+Evaluates `list`, which must be a `List`, then evaluates the body once per element with `value` bound to that element. Given two names, `key` is bound to the 0-based index as well.
+Returns the value of the last body expression on the last iteration, or `Nil` when the list is empty or the body is.
 
 The `In` marker is what separates the names from the list. Without it `(for x items expr1 expr2)` would read equally well as one name over `items` or as two names over `expr1`, since a bare symbol is a valid list expression.
 

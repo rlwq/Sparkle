@@ -310,13 +310,15 @@ Usage: `(begin expr1 expr2 ...)`
 
 ### while
 
-Conditional loop. Evaluates `condition` and casts the result to `Bool`. While truthy, evaluates `expr` then re-evaluates `condition`. Returns `Nil`.
+Conditional loop. Evaluates `condition` and casts the result to `Bool`. While truthy, evaluates `expr` then re-evaluates `condition`.
+Returns the value `expr` produced on the last iteration, or `Nil` if the condition was never truthy.
 
 Usage: `(while condition expr)`
 
 ### for
 
-Iterates over the elements of a `List`. Returns `Nil`.
+Iterates over the elements of a `List`.
+Returns the value of the last body expression evaluated on the last iteration, or `Nil` when the list is empty or the body is empty.
 
 Usage:
 * `(for value In list expr1 expr2 ...)`
