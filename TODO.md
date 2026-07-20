@@ -8,17 +8,35 @@ assumed - the reproduction is written next to them.
 ## Syntax & Parser
 
 * [ ] More descriptive parsing errors (on expected tokens).
-* [ ] Quasiquote, unquote and splicing (`` ` ``, `,`, `,@`). Prerequisite for
-      macros: without it a macro body has to build lists by hand.
 * [ ] Escape syntax for symbols that contain delimiters.
+* [ ] Parsed nodes carry no source position, so nothing downstream can name a
+      line. Tokens have `line:column` and lose it at `parse_expr`. Prerequisite
+      for runtime errors that point somewhere.
 
 ## Special Forms & Control Flow 
 
-* [ ] Macros. The one Lisp feature the language is missing outright; needs
-      quasiquote first.
+* [ ] `try` should catch several kinds at once:
+      `(try kind1 kind2 ... In expr1 expr2 ...)`. It catches exactly one today,
+      so guarding against more means nesting one `try` per kind - four deep in
+      `examples/rpn.rkl`, which is the first thing real code runs into.
+      The `In` marker earns its place the same way it does in `for`: kinds are
+      evaluated expressions, so a bare symbol is legal in both positions and
+      `(try A B expr)` is otherwise indistinguishable from `(try A expr1 expr2)`.
+      Note this changes existing syntax - every current `(try KIND expr)` needs
+      `In` inserted, tests and both documents included.
 * [ ] Early exit: no `break`, `continue` or `return`, so a loop cannot stop
       before its condition flips and a function cannot return from a branch.
 * [ ] `cond`-style dispatch on a value rather than on a chain of predicates.
+* [ ] `let` binds one symbol per form, so a block opens with a column of
+      `let`s. Wants several bindings at once, and a decision on whether later
+      ones see earlier ones.
+* [ ] No unwind protection: an exception unwinds past whatever cleanup the
+      program wanted to run. Once file handles exist this stops being academic.
+* [ ] `try` cannot re-raise. A handler that inspects the kind and decides it is
+      not the right one has no way to pass it outward.
+* [ ] Mutual recursion between two lambdas is unspecified - whether the first
+      body sees the second symbol depends on when the scope entry appears.
+      Decide it and write it down.
 
 ## Optimizations
  
@@ -34,6 +52,18 @@ assumed - the reproduction is written next to them.
 ## Language Semantics
 
 * [ ] Decide whether shadowing a builtin is allowed, and say so.
+* [ ] Exceptions carry nothing. `throw` raises a bare Symbol, so a failure
+      cannot report which value or index caused it - the kind is the whole
+      message. Wants a payload, and `try` wants a way to bind it.
+* [ ] Integer overflow is unspecified. `Integer` is a C `long long` and signed
+      overflow is undefined behaviour, so `(* 99999999999 99999999999)` is
+      whatever the optimizer decides. Pick wrapping, saturation, promotion or
+      an exception, then say so in `Specification.md`.
+* [ ] Closure capture is unwritten: a lambda holds a `Scope *`, so it captures
+      by reference and a later `set` is visible inside. That is a real choice
+      and it is documented nowhere.
+* [ ] Float printing does not round-trip - the printed form is not guaranteed
+      to read back as the same double.
 
 ## Base Library
 
@@ -48,9 +78,27 @@ assumed - the reproduction is written next to them.
 * [ ] Exit with a chosen status code.
 * [ ] Clock / time.
 * [ ] Random numbers.
+* [ ] Formatting to a String. `print` understands `$N` placeholders but writes
+      to stdout; there is no way to build the same string in memory.
+* [ ] List basics that are missing and get hand-rolled instead: `reverse`,
+      `range`, `slice`, `find`, `any` / `all`, `zip`.
+* [ ] Math surface stops at `sqrt` and `pow`: no trigonometry, no logarithms,
+      no `Pi` or `E`.
+* [ ] Number parsing and printing in a chosen radix. The lexer reads `0b`,
+      `0o` and `0x` literals, but a program cannot produce or consume them.
 
 ## Documentation & Presentation
 
+* [ ] `Readme.md` does not open with what the language looks like. A reader
+      deciding whether to keep scrolling wants a program in the first screen.
+* [ ] A tutorial: `Sparkle.md` is a reference, so there is no path from zero to
+      a working program that is not reading the whole thing.
+* [ ] `examples/` is thin. Each one should be a program worth reading, not a
+      feature demo.
+* [ ] Nothing keeps `Sparkle.md` and `Specification.md` honest as the language
+      moves. A checklist in the test suite, or a test that reads the documents.
+* [ ] No version number and no changelog, so there is nothing to point at when
+      something changes under a user.
 
 ## Code base, bugs, & fixes
 
@@ -68,6 +116,13 @@ assumed - the reproduction is written next to them.
       when the size lands exactly on the capacity there is no spare byte.
       Harmless today, since strings are a data/size pair and are never treated
       as NUL-terminated, but the comment claims an invariant that does not hold.
+* [ ] Allocation failure is unchecked in release. `da_init` and `da_push` guard
+      `malloc` and `realloc` with `assert`, which `NDEBUG` compiles out, so the
+      release build writes through a null pointer under memory pressure rather
+      than failing. The GC constructors inherit this. *(verified:
+      `dynamic_array.h:22` and `:31` are asserts; release defines `NDEBUG`)*
+* [ ] Nothing bounds interpreter memory. A runaway program takes the machine
+      down with it instead of raising.
 
 ## Tooling
 
@@ -76,16 +131,58 @@ assumed - the reproduction is written next to them.
 * [ ] Benchmark suite - the test runner times each case, but nothing tracks
       whether the interpreter is getting faster or slower.
 * [ ] Editor support: syntax highlighting, at least a `.rkl` grammar.
+* [ ] No CI. `make build && make test` and the sanitizer run are the contract
+      and nothing enforces them on a push.
+* [ ] No install target - the binary only exists at `./build/sparkle`.
+* [ ] A trace mode that prints evaluation steps. The interpreter is a teaching
+      artifact as much as a tool, and it cannot show its own work.
 
 ## UX
 
 * [ ] Proper interpreter interaction.
-* [ ] REPL.
+* [ ] REPL. **Next task.** One line per iteration, no multi-line continuation:
+      an unbalanced line is an ordinary parse error, so `core/` needs no change
+      and `diag_parser` works as is. A line holding several expressions already
+      works - the parser yields several nodes and `vm_run` runs them all.
+      The VM side is ready: load/run repeats on one VM, and the root scope
+      survives both errors and collections.
+      Two things still open.
+      Echo: `vm_run` pops each result, so `(+ 1 2)` would print nothing.
+      `write_expr` (`io.h`) can print it; the question is who calls it. Leaning
+      towards a `vm->echo_results` flag over wrapping input in `(print ...)`
+      textually, which breaks on `(let x 1)` and on multi-expression lines, and
+      over a second run loop, which would duplicate the `setjmp` recovery.
+      Undecided whether `(print "hi")` should then also echo its `Nil`.
+      Input: `rkl_input` reads the same `stdin` the REPL reads commands from,
+      so `(input)` will eat the next command.
+      *(verified: `rkl_input` calls `fgetc(stdin)`, `builtins_io.c:130`)*
 * [ ] Run a program from standard input, and evaluate an expression given on the
       command line (`-e`).
+* [ ] The CLI takes one argument and nothing else: no `--help`, no `--version`,
+      and the usage line is the only thing resembling documentation.
+* [ ] Exit statuses are undocumented. Today everything that fails exits 1, so a
+      script cannot tell a syntax error from a runtime one.
 
 ## Done
 
+* [x] The VM survives repeated load/run cycles, which a REPL needs: the root
+      scope and its globals outlive both errors and collections.
+      `vm_load_instructions` copies the caller's array instead of aliasing it -
+      aliasing left `vm_mark` walking a freed buffer after an aborted run
+      *(verified: heap-use-after-free under ASan with the aliasing version)*.
+      `vm_alloc` initialises `instructions`, and `vm_run` clears `is_err` and
+      `exception` on entry so they describe one run rather than the VM.
+* [x] Object fields are reached through `OBJ_*` accessors. The bare `BOOL`,
+      `STRING`, `LIST` and friends were the most collision-prone names possible
+      in a public header.
+* [x] Layers match their description: `sparkle_core` -> `core`, `sparkle_impl`
+      -> `lang`, and `register_builtins` left `core` for `lang`, which it broke
+      by taking a `VM *`. Nothing under `core/` includes `vm.h` now.
+* [x] `read_file` checks `fseek`, `ftell` and `malloc` for real. The allocation
+      was guarded by an `assert`, which `NDEBUG` drops in release builds.
+      Usage errors go to stderr.
+* [x] The `UNREACHABLE` macro and `utils.h` are gone, replaced at each site by
+      `assert(false && "UNREACHABLE")`. It is a debug aid and stays one.
 * [x] `Specification.md` covers the whole builtin surface, and its Evaluation, Exception and Standard Library sections are written.
 * [x] `throw` raises any Symbol as an exception, including kinds the program defines.
 * [x] `neg`, `abs`, `min`, `max`, `pow`, `sqrt`, `floor`, `ceil`, `round`.
