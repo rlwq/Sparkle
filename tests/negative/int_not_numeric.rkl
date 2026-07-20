@@ -1,0 +1,2 @@
+; A String that is not a numeric literal cannot be converted.
+(int "abc")

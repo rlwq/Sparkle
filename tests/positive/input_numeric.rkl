@@ -1,0 +1,11 @@
+; The reason int exists: input hands back a String, and arithmetic needs a
+; number. Lines come from the matching .in file.
+(let a (int (input)))
+(let b (int (input)))
+(print "sum=$0 product=$1" (+ a b) (* a b))     ; sum=30 product=200
+
+(let x (float (input)))
+(print "half=$0" (/ x 2))                       ; half=1.250000
+
+; A line that is not a number is a catchable error rather than a crash.
+(print "bad=$0" (try VALUE_EXCEPTION (int (input))))   ; bad=VALUE_EXCEPTION

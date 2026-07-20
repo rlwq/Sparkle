@@ -1,0 +1,1 @@
+parse-int 12 -7 5 parse-float 1.500000 -0.250000 cross 7.000000 3 dot 12.000000 trunc 3 -3 3 0 bool 1 0 1.000000 ident 42 1.500000 kinds True True arith 42 3.000000 round 42 True

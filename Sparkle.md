@@ -484,6 +484,20 @@ Integer division and modulo by zero are runtime exceptions.
 ### Logic
 
 * `(? x)` - casts `x` to `Bool`.
+* `(int x)` - converts `x` to an `Integer`. A `Float` is truncated toward zero, a `Bool` becomes `1` or `0`, and a `String` is read as a numeric literal.
+* `(float x)` - converts `x` to a `Float`, reading a `String` the same way.
+
+Together with `?` and `str` these cover conversion between the four scalar kinds.
+A `String` converts only if it spells a number the way source code would - an optional sign, then digits, then optionally a `.` and more digits. Anything else, including an empty string, surrounding spaces or a leading `.`, raises `VALUE_EXCEPTION`. The decimal point decides how the text is read rather than what it is read into, so `(float "7")` and `(int "3.9")` both work.
+Values that are neither numbers nor `String`s raise `TYPE_EXCEPTION`.
+
+```lisp
+(int "12")        ; 12
+(int 3.9)         ; 3      - truncated, not rounded
+(float "7")       ; 7.000000
+(+ 1 (int "41"))  ; 42
+(int "abc")       ; VALUE_EXCEPTION
+```
 * `(not x)` - logical negation of `x`.
 * `(|| x1 x2 x3...)` - returns `True` if at least one argument is truthy, otherwise `False`.
 * `(&& x1 x2 x3...)` - returns `True` if all arguments are truthy, otherwise `False`.

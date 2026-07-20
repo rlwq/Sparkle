@@ -1,0 +1,27 @@
+; int and float convert any number-like value, and complete the set alongside
+; ? for Bool and str for String.
+
+; A String is read as a numeric literal.
+(print "parse-int   $0 $1 $2" (int "12") (int "-7") (int "+5"))     ; 12 -7 5
+(print "parse-float $0 $1" (float "1.5") (float "-0.25"))           ; 1.500000 -0.250000
+
+; Either target accepts either spelling: the decimal point decides how the text
+; is read, not what it is read into.
+(print "cross $0 $1" (float "7") (int "3.9"))                       ; 7.000000 3
+(print "dot   $0" (float "12."))                                    ; 12.000000
+
+; Float to Integer truncates toward zero rather than rounding.
+(print "trunc $0 $1 $2 $3" (int 3.9) (int -3.9) (int 3.1) (int -0.5))  ; 3 -3 3 0
+
+; Bool counts as 1 and 0, matching how arithmetic already treats it.
+(print "bool  $0 $1 $2" (int True) (int False) (float True))        ; 1 0 1.000000
+
+; Converting to the kind a value already has returns it unchanged.
+(print "ident $0 $1" (int 42) (float 1.5))                          ; 42 1.500000
+(print "kinds $0 $1" (?INTEGER (int "1")) (?FLOAT (float "1")))     ; True True
+
+; The result is an ordinary number and takes part in arithmetic.
+(print "arith $0 $1" (+ 1 (int "41")) (* 2 (float "1.5")))          ; 42 3.000000
+
+; Round trip through str.
+(print "round $0 $1" (int (str 42)) (= (str (int "42")) "42"))      ; 42 True

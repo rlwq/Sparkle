@@ -389,6 +389,13 @@ The following built-ins operate on `String` values. Passing a non-`String` value
 `String` values are immutable: these functions never modify their arguments and always return new values.
 
 * `(str x)` - returns the printed representation of `x` (any type, as `print` would show it) as a `String`. A `String` argument is returned unchanged.
+* `(int x)` - returns `x` as an `Integer`. A `Float` is truncated toward zero, a `Bool` yields `1` or `0`, and an `Integer` is returned unchanged.
+* `(float x)` - returns `x` as a `Float`. An `Integer` and a `Bool` widen, and a `Float` is returned unchanged.
+
+`int` and `float` also accept a `String`, which must spell a number exactly as the reader would accept it: an optional sign, one or more digits, then optionally a `.` followed by further digits.
+A `String` in any other form - empty, padded with whitespace, beginning with `.`, or holding trailing characters - raises `VALUE_EXCEPTION`.
+Whether the text contains a `.` selects how it is read, not the kind it is read into: `(float "7")` is `7.0` and `(int "3.9")` is `3`.
+An argument that is neither numeric nor a `String` raises `TYPE_EXCEPTION`.
 * `(str-len s)` - returns the length of `String` `s` as an `Integer`.
 * `(str-get s i)` - returns the character of `s` at 0-based index `i` as a `String` of length 1. An out-of-range index raises `VALUE_EXCEPTION`.
 * `(str-sub s start len)` - returns the substring of `s` of length `len` starting at 0-based index `start`. A negative or out-of-range `start` or `len` raises `VALUE_EXCEPTION`.

@@ -1,0 +1,2 @@
+; Only numbers and numeric strings convert.
+(float (list 1 2))
