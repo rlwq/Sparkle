@@ -1,0 +1,28 @@
+; throw raises the kind it is handed. It is a function, not a special form:
+; the kind has to be evaluated anyway, so there is nothing to control.
+
+; A kind the language never defined works as well as a built-in one.
+(print "custom  $0" (try MY_ERROR (throw MY_ERROR)))          ; MY_ERROR
+(print "builtin $0" (try TYPE_EXCEPTION (throw TYPE_EXCEPTION)))  ; TYPE_EXCEPTION
+
+; Since the argument is evaluated, the kind can be computed.
+(let pick (lambda () DYNAMIC_ERROR))
+(print "computed $0" (try DYNAMIC_ERROR (throw (pick))))      ; DYNAMIC_ERROR
+(let held NAMED_ERROR)
+(print "bound    $0" (try NAMED_ERROR (throw held)))          ; NAMED_ERROR
+
+; A kind that does not match travels outward like any other.
+(print "escapes $0" (try OUTER (try INNER (throw OUTER))))    ; OUTER
+
+; Nothing after a throw runs.
+(let reached 0)
+(try E (begin (throw E) (set reached 1)))
+(print "stopped $0" reached)                                  ; 0
+
+; Raised from inside a lambda, caught by the caller.
+(let checked (lambda (n) (if (< n 0) (throw NEGATIVE) n)))
+(print "guard   $0 $1" (checked 5) (try NEGATIVE (checked -1)))  ; 5 NEGATIVE
+
+; The kind must be a Symbol - an exception is a symbol in this language.
+(print "type    $0" (try TYPE_EXCEPTION (throw 42)))          ; TYPE_EXCEPTION
+(print "type2   $0" (try TYPE_EXCEPTION (throw "MY_ERROR")))  ; TYPE_EXCEPTION

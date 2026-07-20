@@ -33,10 +33,6 @@ assumed - the reproduction is written next to them.
 
 ## Language Semantics
 
-* [ ] No way to raise an exception from user code. `try` can catch, but nothing
-      can throw: a program cannot signal its own errors, only the six built-in
-      kinds ever occur. *(verified: no `throw`/`raise`/`error` is registered)*
-* [ ] User-defined exception kinds, once throwing exists.
 * [ ] Decide whether shadowing a builtin is allowed, and say so.
 
 ## Base Library
@@ -98,6 +94,7 @@ assumed - the reproduction is written next to them.
 
 ## Done
 
+* [x] `throw` raises any Symbol as an exception, including kinds the program defines.
 * [x] `neg`, `abs`, `min`, `max`, `pow`, `sqrt`, `floor`, `ceil`, `round`.
 * [x] `apply` - call a callable with an argument list.
 * [x] `str-split`, `str-join`, `str-replace`, `str-trim`, `str-upper`, `str-lower`.

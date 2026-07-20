@@ -1,0 +1,2 @@
+; A kind the language does not define still reports by name when uncaught.
+(throw MY_ERROR)

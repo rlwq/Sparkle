@@ -152,6 +152,17 @@ void rkl_eval(VM *vm) {
     vm_eval_node(vm);
 }
 
+// Symbol -> does not return. A plain function rather than a special form: the
+// kind has to be evaluated anyway, and a builtin is handed its arguments
+// already evaluated, so there is nothing for a form to control here.
+//
+// The kind is a Symbol because that is what an exception is in this language -
+// try matches on it and the reporter prints it.
+void rkl_throw(VM *vm) {
+    vm_expect(vm, TY_SYMBOL);
+    vm_recover(vm, vm_peek(vm));
+}
+
 void rkl_is_nil(VM *vm) {
     bool is_nil = vm_peek(vm)->kind == KIND_NIL;
     vm_pop(vm);
@@ -432,6 +443,7 @@ DEFINE_MODULE(ARITHMETIC_LOGIC) = {
     {"div", rkl_div, 2, false},
     {"mod", rkl_mod, 2, false},
     {"eval", rkl_eval, 1, false},
+    {"throw", rkl_throw, 1, false},
     {"nil?", rkl_is_nil, 1, false},
     {"?", rkl_cast_to_bool, 1, false},
     {"not", rkl_logical_not, 1, false},

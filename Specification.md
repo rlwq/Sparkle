@@ -389,6 +389,7 @@ The following built-ins operate on `String` values. Passing a non-`String` value
 `String` values are immutable: these functions never modify their arguments and always return new values.
 
 * `(str x)` - returns the printed representation of `x` (any type, as `print` would show it) as a `String`. A `String` argument is returned unchanged.
+* `(throw kind)` - raises `kind` as an exception. `kind` is evaluated and must be a `Symbol`, so any name works, not only the six the language defines. A non-`Symbol` raises `TYPE_EXCEPTION`. `throw` never returns: nothing after it in the same expression runs, and control passes to the nearest enclosing `try` that names the same kind, or out of the program if there is none.
 * `(int x)` - returns `x` as an `Integer`. A `Float` is truncated toward zero, a `Bool` yields `1` or `0`, and an `Integer` is returned unchanged.
 * `(float x)` - returns `x` as a `Float`. An `Integer` and a `Bool` widen, and a `Float` is returned unchanged.
 * `(neg x)` - negation of numeric `x`, keeping its kind. A `Bool` negates through `Integer`.

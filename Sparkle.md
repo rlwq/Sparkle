@@ -486,6 +486,7 @@ Integer division and modulo by zero are runtime exceptions.
 ### Logic
 
 * `(? x)` - casts `x` to `Bool`.
+* `(throw kind)` - raises `kind` as an exception. `kind` is evaluated and must be a `Symbol`, so any name works, not only the six the language defines. A non-`Symbol` raises `TYPE_EXCEPTION`. `throw` never returns: nothing after it in the same expression runs, and control passes to the nearest enclosing `try` that names the same kind, or out of the program if there is none.
 * `(int x)` - converts `x` to an `Integer`. A `Float` is truncated toward zero, a `Bool` becomes `1` or `0`, and a `String` is read as a numeric literal.
 * `(float x)` - converts `x` to a `Float`, reading a `String` the same way.
 * `(neg x)` - negation of numeric `x`, keeping its kind. A `Bool` negates through `Integer`.

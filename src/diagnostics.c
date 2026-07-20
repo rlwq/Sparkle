@@ -27,17 +27,22 @@ void diag_vm(const char *path, VM *vm) {
 
     fprintf(stderr, RED "%s: [RUNTIME ERROR] ", path);
 
+    // Compared by interned name rather than by object: a kind that reached here
+    // through throw is a fresh symbol, since capitalized symbols self-evaluate
+    // into one, and would match no singleton by identity.
     const char *message = NULL;
 #define X(name_, msg_)                                                                             \
-    if (vm->exception == vm->singletons._##name_)                                                  \
+    if (SYMBOL(vm->exception) == SYMBOL(vm->singletons._##name_))                                  \
         message = (msg_);
     X_RUNTIME_EXCEPTIONS
 #undef X
 
+    // A kind the language does not define is one the program invented, so the
+    // name it chose is the whole of what can be said about it.
     if (message)
         fprintf(stderr, "%s", message);
     else
-        UNREACHABLE();
+        fprintf(stderr, "%s raised.", SYMBOL(vm->exception));
 
     fprintf(stderr, "\n" RESET);
 }
