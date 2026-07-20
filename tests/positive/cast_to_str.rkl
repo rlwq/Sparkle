@@ -1,22 +1,22 @@
 ; str casts any object to its printed representation
-(print (str 42))
-(print (str -7))
-(print (str 3.5))
-(print (str True))
-(print (str False))
-(print (str Nil))
-(print (str Symbol))
+(print "$0" (str 42))
+(print "$0" (str -7))
+(print "$0" (str 3.5))
+(print "$0" (str True))
+(print "$0" (str False))
+(print "$0" (str Nil))
+(print "$0" (str Symbol))
 
 ; A string is returned unchanged
-(print (str "already a string"))
-(print (str ""))
+(print "$0" (str "already a string"))
+(print "$0" (str ""))
 
 ; Composites mirror print
-(print (str '(1 "two" 3.5)))
-(print (str '()))
+(print "$0" (str '(1 "two" 3.5)))
+(print "$0" (str '()))
 
 ; The result is a real string
-(print (?STRING (str 42)))
-(print (str-len (str 1000)))
-(print (str-cat "n = " (str 42)))
-(print (str-sub (str 12345) 1 3))
+(print "$0" (?STRING (str 42)))
+(print "$0" (str-len (str 1000)))
+(print "$0" (str-cat "n = " (str 42)))
+(print "$0" (str-sub (str 12345) 1 3))

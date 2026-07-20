@@ -9,5 +9,5 @@
 (let addc (curry add))
 (let addu (uncurry addc))
 
-(print ((addc 3) 6))
-(print (addu 5 -10))
+(print "$0" ((addc 3) 6))
+(print "$0" (addu 5 -10))

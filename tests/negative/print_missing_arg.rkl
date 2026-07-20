@@ -1,0 +1,1 @@
+(print "$0 and $1" "only one")

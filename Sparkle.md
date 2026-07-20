@@ -392,12 +392,22 @@ All of these operate on `List` values and raise `TYPE_EXCEPTION` if given a non-
 
 ### I/O
  
-* **`(print fmt arg1 arg2 ...)`** - prints a formatted string. Placeholders `$0`, `$1`, ... are replaced with the corresponding arguments. If a placeholder index has no matching argument, a runtime exception is raised. Returns `Nil`.
- 
+* **`(print fmt arg1 arg2 ...)`** - prints a formatted string followed by a newline. Placeholders `$0`, `$1`, ... are replaced with the corresponding arguments, each rendered as `str` renders it. Returns `Nil`.
+
+A placeholder index is read as a whole number, so `$10` refers to the eleventh argument rather than to `$1` followed by a `0`. The same placeholder may appear any number of times and in any order; arguments no placeholder refers to are ignored.
+
+`$$` produces a literal `$`, and a `$` followed by neither `$` nor a digit stands for itself.
+
+A non-`String` `fmt` raises `TYPE_EXCEPTION`, and a placeholder index with no matching argument raises `VALUE_EXCEPTION`.
+
 ```lisp
 (print "Hello $0!" "World")       ; Hello World!
 (print "$0 + $0 = $1" 5 10)       ; 5 + 5 = 10
 (print "x = $0, y = $1" 1 2)      ; x = 1, y = 2
+(print "$1 then $0" "a" "b")      ; b then a
+(print "$$0 stays put")           ; $0 stays put
+(print "costs 100$")              ; costs 100$
+(print "$0")                      ; VALUE_EXCEPTION
 ```
  
 ### Evaluation

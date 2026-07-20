@@ -3,4 +3,4 @@
       1
       (* (fac (- x 1)) x))))
 
-(print (fac 10))
+(print "$0" (fac 10))

@@ -378,6 +378,17 @@ The following built-ins operate on `String` values. Passing a non-`String` value
 * `(str-ord s)` - returns the character code of the first character of `s` as an `Integer`. An empty `s` raises `VALUE_EXCEPTION`.
 * `(str-chr code)` - returns a `String` of length 1 containing the character with code `code`. A `code` outside the ASCII range (`0`-`127`) raises `VALUE_EXCEPTION`.
 
+### I/O
+
+* `(print fmt arg1 arg2 ...)` - writes `fmt` to standard output followed by a newline and returns `Nil`. A non-`String` `fmt` raises `TYPE_EXCEPTION`.
+
+Each placeholder `$N` in `fmt` is replaced by the argument at 0-based position `N` among the arguments following `fmt`, rendered as `str` renders it.
+`N` is read as a whole decimal number, so `$10` denotes position `10` rather than `$1` followed by a `0`.
+A placeholder may occur any number of times and in any order, and arguments no placeholder refers to are ignored.
+A placeholder whose index is not less than the number of arguments following `fmt` raises `VALUE_EXCEPTION`.
+
+`$$` produces a literal `$`. A `$` followed by neither `$` nor a digit stands for itself.
+
 ## Standard Library
 
 ## Exception Model

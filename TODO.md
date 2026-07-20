@@ -20,8 +20,6 @@ This document outlines the features and fixes planned for Sparkle.
 
 * [ ] Structure equality. 
 * [ ] I/O
-    * [ ] Formatted printing function 
-    * [ ] Raw printing function for any objects
     * [ ] Input
 
 ## Documentation & Presentation
@@ -41,6 +39,7 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Done
 
+* [x] Formatted printing function (`print` with `$N` placeholders).
 * [x] `set` replaces all symbol definition simultaneously.
 * [x] Multiline comments (`/* ... */`, nesting, between tokens).
 * [x] `vm_build_string` must only copy the provided data.

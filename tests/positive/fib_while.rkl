@@ -15,6 +15,6 @@
       b)))
 
 (while (> 30 i) (begin
-    (print (fib i))
+    (print "$0" (fib i))
     (set i (+ i 1))))
 

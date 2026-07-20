@@ -1,0 +1,1 @@
+./tests/negative/print_fmt_type.rkl: [RUNTIME ERROR] Function expected some other object type.

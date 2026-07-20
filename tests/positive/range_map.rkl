@@ -5,6 +5,6 @@
 
 (let double (lambda (x) (+ x x)))
 (let const (lambda (x) (lambda (n) x)))
-(print (range 7 41))
-(print (map double (range 5 11)))
-(print (map (const 7) (range 101 108)))
+(print "$0" (range 7 41))
+(print "$0" (map double (range 5 11)))
+(print "$0" (map (const 7) (range 101 108)))
