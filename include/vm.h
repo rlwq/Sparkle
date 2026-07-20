@@ -11,9 +11,13 @@
 #define ASSERT_KIND(e_, k_)                                                                        \
     (assert(((e_)->value_stack.size > 0) && (da_at_end((e_)->value_stack, 0)->kind == (k_))))
 
+// Wrapped in do/while so it is a single statement: a bare `if` here would let a
+// trailing `else` at the call site bind to the macro's `if` instead.
 #define VM_RECOVER_IF(vm_, expr_, ex_)                                                             \
-    if ((expr_))                                                                                   \
-        vm_recover(vm_, ex_);
+    do {                                                                                           \
+        if ((expr_))                                                                               \
+            vm_recover((vm_), (ex_));                                                              \
+    } while (0)
 
 // Singletons are allocated once in vm_alloc and never again: vm_build_bool and
 // vm_build_nil push these same objects, so comparing pointers against a

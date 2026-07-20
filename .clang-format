@@ -13,7 +13,9 @@ AllowShortIfStatementsOnASingleLine: Never
 AllowShortFunctionsOnASingleLine: None
 AllowShortBlocksOnASingleLine: Never
 
+# LIST_FOREACH opens a for-loop brace that END_LIST_FOREACH closes, so the pair
+# has to be described here or clang-format reads the body as unindented
+# statements following a call. Keep in sync with object.h.
 Macros:
-  - LIST_ITER(vm, curr, peek)=_FOR {
-  - END_LIST_ITER_RECOVER(vm, curr)=}
-  - END_LIST_ITER(vm, curr)=}
+  - LIST_FOREACH(name_, list_)=_FOR {
+  - END_LIST_FOREACH=}

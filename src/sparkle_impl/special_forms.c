@@ -232,9 +232,9 @@ void rkl_begin_form(VM *vm) {
     vm_build_nil(vm);
 
     LIST_FOREACH(curr, args)
-    vm_pop(vm);
-    vm_push(vm, curr);
-    vm_eval_node(vm);
+        vm_pop(vm);
+        vm_push(vm, curr);
+        vm_eval_node(vm);
     END_LIST_FOREACH
 
     vm_pop_prev(vm);
@@ -246,13 +246,13 @@ void rkl_and_form(VM *vm) {
 
     bool result = true;
     LIST_FOREACH(curr, args)
-    vm_push(vm, curr);
-    vm_eval_node(vm);
-    vm_cast_to_bool(vm);
-    result = BOOL(vm_peek(vm));
-    vm_pop(vm);
-    if (!result)
-        break;
+        vm_push(vm, curr);
+        vm_eval_node(vm);
+        vm_cast_to_bool(vm);
+        result = BOOL(vm_peek(vm));
+        vm_pop(vm);
+        if (!result)
+            break;
     END_LIST_FOREACH
 
     vm_pop(vm);
@@ -264,13 +264,13 @@ void rkl_or_form(VM *vm) {
 
     bool result = false;
     LIST_FOREACH(curr, args)
-    vm_push(vm, curr);
-    vm_eval_node(vm);
-    vm_cast_to_bool(vm);
-    result = BOOL(vm_peek(vm));
-    vm_pop(vm);
-    if (result)
-        break;
+        vm_push(vm, curr);
+        vm_eval_node(vm);
+        vm_cast_to_bool(vm);
+        result = BOOL(vm_peek(vm));
+        vm_pop(vm);
+        if (result)
+            break;
     END_LIST_FOREACH
 
     vm_pop(vm);

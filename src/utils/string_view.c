@@ -3,9 +3,13 @@
 #include <assert.h>
 #include <string.h>
 
+// Wrapped in do/while so it is a single statement: a bare `if` here would let a
+// trailing `else` at the call site bind to the macro's `if`.
 #define TRUNC(x_, y_)                                                                              \
-    if ((x_) > (y_))                                                                               \
-    (x_) = (y_)
+    do {                                                                                           \
+        if ((x_) > (y_))                                                                           \
+            (x_) = (y_);                                                                           \
+    } while (0)
 
 StringView sv_drop(StringView sv, size_t size) {
     TRUNC(size, sv.size);

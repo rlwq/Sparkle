@@ -78,16 +78,16 @@ void rkl_str_cat(VM *vm) {
     Object *args = vm_peek(vm);
     size_t total = 0;
     LIST_FOREACH(arg, args)
-    VM_RECOVER_IF(vm, !OFTYPE(arg, TY_STRING), vm->singletons._TYPE_EXCEPTION);
-    total += STRING_SIZE(arg);
+        VM_RECOVER_IF(vm, !OFTYPE(arg, TY_STRING), vm->singletons._TYPE_EXCEPTION);
+        total += STRING_SIZE(arg);
     END_LIST_FOREACH
 
     char *data = malloc(total + 1);
     assert(data);
     size_t offset = 0;
     LIST_FOREACH(arg, args)
-    memcpy(data + offset, STRING_DATA(arg), STRING_SIZE(arg));
-    offset += STRING_SIZE(arg);
+        memcpy(data + offset, STRING_DATA(arg), STRING_SIZE(arg));
+        offset += STRING_SIZE(arg);
     END_LIST_FOREACH
 
     vm_pop(vm);

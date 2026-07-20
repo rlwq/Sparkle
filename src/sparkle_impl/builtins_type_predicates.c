@@ -16,5 +16,6 @@ X_KINDS
 DEFINE_MODULE(TYPE_PREDICATES) = {
 #define X(t_) {"?" #t_, rkl_is_##t_, 1, false},
     X_KINDS};
+#undef X
 
 DEFINE_MODULE_SIZE(TYPE_PREDICATES);
