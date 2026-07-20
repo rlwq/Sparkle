@@ -154,8 +154,8 @@ Object *parse_quote(Parser *parser) {
     Object *symbol = gc_alloc_symbol(parser->gc, parser->si->prebuilt._quote);
 
     Object *result = gc_alloc_list(parser->gc);
-    da_push(LIST_ITEMS(result), symbol);
-    da_push(LIST_ITEMS(result), subexpr);
+    da_push(OBJ_LIST_ITEMS(result), symbol);
+    da_push(OBJ_LIST_ITEMS(result), subexpr);
     return result;
 }
 
@@ -166,7 +166,7 @@ Object *parse_list(Parser *parser) {
     Object *result = gc_alloc_list(parser->gc);
 
     while (PARSER_VALID(parser) && !parser_match(parser, TK_R_PAREN))
-        da_push(LIST_ITEMS(result), parse_expr(parser));
+        da_push(OBJ_LIST_ITEMS(result), parse_expr(parser));
 
     if (!parser_expect(parser, TK_R_PAREN))
         return NULL;

@@ -2,7 +2,6 @@
 #include <assert.h>
 #include <stdio.h>
 
-#include "utils.h"
 #include "vm.h"
 
 #define RED "\033[31m"
@@ -32,7 +31,7 @@ void diag_vm(const char *path, VM *vm) {
     // into one, and would match no singleton by identity.
     const char *message = NULL;
 #define X(name_, msg_)                                                                             \
-    if (SYMBOL(vm->exception) == SYMBOL(vm->singletons._##name_))                                  \
+    if (OBJ_SYMBOL(vm->exception) == OBJ_SYMBOL(vm->singletons._##name_))                          \
         message = (msg_);
     X_RUNTIME_EXCEPTIONS
 #undef X
@@ -42,7 +41,7 @@ void diag_vm(const char *path, VM *vm) {
     if (message)
         fprintf(stderr, "%s", message);
     else
-        fprintf(stderr, "%s raised.", SYMBOL(vm->exception));
+        fprintf(stderr, "%s raised.", OBJ_SYMBOL(vm->exception));
 
     fprintf(stderr, "\n" RESET);
 }

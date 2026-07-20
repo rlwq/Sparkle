@@ -63,40 +63,40 @@ Object *gc_alloc_object(GC *gc, ObjectKind kind) {
 
 Object *gc_alloc_integer(GC *gc, Integer value) {
     Object *object = gc_alloc_object(gc, KIND_INTEGER);
-    INTEGER(object) = value;
+    OBJ_INTEGER(object) = value;
     return object;
 }
 
 Object *gc_alloc_float(GC *gc, double value) {
     Object *object = gc_alloc_object(gc, KIND_FLOAT);
-    FLOAT(object) = value;
+    OBJ_FLOAT(object) = value;
     return object;
 }
 
 Object *gc_alloc_symbol(GC *gc, StringName value) {
     Object *object = gc_alloc_object(gc, KIND_SYMBOL);
-    SYMBOL(object) = value;
+    OBJ_SYMBOL(object) = value;
     return object;
 }
 
 Object *gc_alloc_builtin(GC *gc, BuiltinObject value) {
     Object *object = gc_alloc_object(gc, KIND_BUILTIN);
-    BUILTIN(object) = value;
+    OBJ_BUILTIN(object) = value;
     return object;
 }
 
 Object *gc_alloc_list(GC *gc) {
     Object *object = gc_alloc_object(gc, KIND_LIST);
-    da_init(LIST_ITEMS(object));
+    da_init(OBJ_LIST_ITEMS(object));
     return object;
 }
 
 Object *gc_alloc_lambda(GC *gc, bool is_variadic, Object *expr, Scope *scope) {
     Object *object = gc_alloc_object(gc, KIND_LAMBDA);
-    da_init(LAMBDA(object).args);
-    LAMBDA(object).is_variadic = is_variadic;
-    LAMBDA(object).subexpr = expr;
-    LAMBDA(object).scope = scope;
+    da_init(OBJ_LAMBDA(object).args);
+    OBJ_LAMBDA(object).is_variadic = is_variadic;
+    OBJ_LAMBDA(object).subexpr = expr;
+    OBJ_LAMBDA(object).scope = scope;
     return object;
 }
 
@@ -104,8 +104,8 @@ Object *gc_alloc_lambda(GC *gc, bool is_variadic, Object *expr, Scope *scope) {
 // zero-sized) that the GC will free with the object.
 Object *gc_alloc_string_own(GC *gc, char *data, size_t size) {
     Object *object = gc_alloc_object(gc, KIND_STRING);
-    STRING_DATA(object) = data;
-    STRING_SIZE(object) = size;
+    OBJ_STRING_DATA(object) = data;
+    OBJ_STRING_SIZE(object) = size;
     return object;
 }
 
@@ -132,12 +132,12 @@ void gc_free_node(GC *gc, Object *expr) {
         break;
 
     case KIND_LIST:
-        da_free(LIST_ITEMS(expr));
+        da_free(OBJ_LIST_ITEMS(expr));
         free(expr);
         break;
 
     case KIND_STRING:
-        free(STRING_DATA(expr));
+        free(OBJ_STRING_DATA(expr));
         free(expr);
         break;
 
@@ -227,13 +227,13 @@ void gc_mark_node(Object *expr) {
             break;
 
         case KIND_LAMBDA:
-            da_push(to_mark, LAMBDA_SUBEXPR(curr));
-            gc_mark_scope(LAMBDA_SCOPE(curr));
+            da_push(to_mark, OBJ_LAMBDA_SUBEXPR(curr));
+            gc_mark_scope(OBJ_LAMBDA_SCOPE(curr));
             break;
 
         case KIND_LIST:
-            for (size_t i = 0; i < LIST_SIZE(curr); i++)
-                da_push(to_mark, LIST_AT(curr, i));
+            for (size_t i = 0; i < OBJ_LIST_SIZE(curr); i++)
+                da_push(to_mark, OBJ_LIST_AT(curr, i));
             break;
         }
     }

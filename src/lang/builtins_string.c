@@ -33,7 +33,7 @@ void rkl_str(VM *vm) {
 void rkl_str_len(VM *vm) {
     vm_expect(vm, TY_STRING);
 
-    Integer n = (Integer)STRING_SIZE(vm_peek(vm));
+    Integer n = (Integer)OBJ_STRING_SIZE(vm_peek(vm));
     vm_pop(vm);
     vm_build_integer(vm, n);
 }
@@ -43,10 +43,11 @@ void rkl_str_get(VM *vm) {
     vm_expect2(vm, TY_STRING, TY_INTEGER);
 
     Object *s = vm_prev(vm);
-    Integer idx = INTEGER(vm_peek(vm));
-    VM_RECOVER_IF(vm, idx < 0 || (size_t)idx >= STRING_SIZE(s), vm->singletons._VALUE_EXCEPTION);
+    Integer idx = OBJ_INTEGER(vm_peek(vm));
+    VM_RECOVER_IF(vm, idx < 0 || (size_t)idx >= OBJ_STRING_SIZE(s),
+                  vm->singletons._VALUE_EXCEPTION);
 
-    vm_build_string(vm, STRING_DATA(s) + idx, 1);
+    vm_build_string(vm, OBJ_STRING_DATA(s) + idx, 1);
     vm_pop_prev_n(vm, 2);
 }
 
@@ -56,40 +57,40 @@ void rkl_str_sub(VM *vm) {
     Object *start_obj = vm_prev(vm);
     Object *len_obj = vm_peek(vm);
 
-    VM_RECOVER_IF(vm, !OFTYPE(s, TY_STRING), vm->singletons._TYPE_EXCEPTION);
-    VM_RECOVER_IF(vm, !OFTYPE(start_obj, TY_INTEGER), vm->singletons._TYPE_EXCEPTION);
-    VM_RECOVER_IF(vm, !OFTYPE(len_obj, TY_INTEGER), vm->singletons._TYPE_EXCEPTION);
+    VM_RECOVER_IF(vm, !OBJ_OFTYPE(s, TY_STRING), vm->singletons._TYPE_EXCEPTION);
+    VM_RECOVER_IF(vm, !OBJ_OFTYPE(start_obj, TY_INTEGER), vm->singletons._TYPE_EXCEPTION);
+    VM_RECOVER_IF(vm, !OBJ_OFTYPE(len_obj, TY_INTEGER), vm->singletons._TYPE_EXCEPTION);
 
-    Integer start = INTEGER(start_obj);
-    Integer len = INTEGER(len_obj);
+    Integer start = OBJ_INTEGER(start_obj);
+    Integer len = OBJ_INTEGER(len_obj);
     VM_RECOVER_IF(vm,
-                  start < 0 || len < 0 || (size_t)start > STRING_SIZE(s) ||
-                      (size_t)len > STRING_SIZE(s) - (size_t)start,
+                  start < 0 || len < 0 || (size_t)start > OBJ_STRING_SIZE(s) ||
+                      (size_t)len > OBJ_STRING_SIZE(s) - (size_t)start,
                   vm->singletons._VALUE_EXCEPTION);
 
-    vm_build_string(vm, STRING_DATA(s) + start, (size_t)len);
+    vm_build_string(vm, OBJ_STRING_DATA(s) + start, (size_t)len);
     vm_pop_prev_n(vm, 3);
 }
 
 // List of String -> String
 void rkl_str_cat(VM *vm) {
     // Variadic: the args always arrive packed in a list.
-    assert(OFTYPE(vm_peek(vm), TY_LIST));
+    assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
 
     Object *args = vm_peek(vm);
     size_t total = 0;
-    LIST_FOREACH(arg, args)
-        VM_RECOVER_IF(vm, !OFTYPE(arg, TY_STRING), vm->singletons._TYPE_EXCEPTION);
-        total += STRING_SIZE(arg);
-    END_LIST_FOREACH
+    OBJ_LIST_FOREACH(arg, args)
+    VM_RECOVER_IF(vm, !OBJ_OFTYPE(arg, TY_STRING), vm->singletons._TYPE_EXCEPTION);
+    total += OBJ_STRING_SIZE(arg);
+    OBJ_END_LIST_FOREACH
 
     char *data = malloc(total + 1);
     assert(data);
     size_t offset = 0;
-    LIST_FOREACH(arg, args)
-        memcpy(data + offset, STRING_DATA(arg), STRING_SIZE(arg));
-        offset += STRING_SIZE(arg);
-    END_LIST_FOREACH
+    OBJ_LIST_FOREACH(arg, args)
+    memcpy(data + offset, OBJ_STRING_DATA(arg), OBJ_STRING_SIZE(arg));
+    offset += OBJ_STRING_SIZE(arg);
+    OBJ_END_LIST_FOREACH
 
     vm_pop(vm);
     vm_build_string_own(vm, data, total);
@@ -102,11 +103,11 @@ void rkl_str_cat(VM *vm) {
 //
 // str-find, str-split and str-replace all search the same way and share this.
 static bool find_from(Object *haystack, Object *needle, size_t from, size_t *at) {
-    size_t size = STRING_SIZE(haystack);
-    size_t needle_size = STRING_SIZE(needle);
+    size_t size = OBJ_STRING_SIZE(haystack);
+    size_t needle_size = OBJ_STRING_SIZE(needle);
 
     for (size_t i = from; i + needle_size <= size; i++) {
-        if (memcmp(STRING_DATA(haystack) + i, STRING_DATA(needle), needle_size) == 0) {
+        if (memcmp(OBJ_STRING_DATA(haystack) + i, OBJ_STRING_DATA(needle), needle_size) == 0) {
             *at = i;
             return true;
         }
@@ -131,9 +132,9 @@ void rkl_str_ord(VM *vm) {
     vm_expect(vm, TY_STRING);
 
     Object *s = vm_peek(vm);
-    VM_RECOVER_IF(vm, STRING_SIZE(s) == 0, vm->singletons._VALUE_EXCEPTION);
+    VM_RECOVER_IF(vm, OBJ_STRING_SIZE(s) == 0, vm->singletons._VALUE_EXCEPTION);
 
-    Integer code = (Integer)(unsigned char)STRING_DATA(s)[0];
+    Integer code = (Integer)(unsigned char)OBJ_STRING_DATA(s)[0];
     vm_pop(vm);
     vm_build_integer(vm, code);
 }
@@ -142,7 +143,7 @@ void rkl_str_ord(VM *vm) {
 void rkl_str_chr(VM *vm) {
     vm_expect(vm, TY_INTEGER);
 
-    Integer code = INTEGER(vm_peek(vm));
+    Integer code = OBJ_INTEGER(vm_peek(vm));
     VM_RECOVER_IF(vm, code < 0 || code > 127, vm->singletons._VALUE_EXCEPTION);
 
     char c = (char)code;
@@ -155,7 +156,7 @@ void rkl_str_chr(VM *vm) {
 // given some invented reading.
 void rkl_str_split(VM *vm) {
     vm_expect2(vm, TY_STRING, TY_STRING);
-    VM_RECOVER_IF(vm, STRING_SIZE(vm_peek(vm)) == 0, vm->singletons._VALUE_EXCEPTION);
+    VM_RECOVER_IF(vm, OBJ_STRING_SIZE(vm_peek(vm)) == 0, vm->singletons._VALUE_EXCEPTION);
 
     Object *s = vm_prev(vm);
     Object *sep = vm_peek(vm);
@@ -167,12 +168,12 @@ void rkl_str_split(VM *vm) {
     size_t at = 0;
 
     while (find_from(s, sep, from, &at)) {
-        vm_build_string(vm, STRING_DATA(s) + from, at - from);
+        vm_build_string(vm, OBJ_STRING_DATA(s) + from, at - from);
         pieces++;
-        from = at + STRING_SIZE(sep);
+        from = at + OBJ_STRING_SIZE(sep);
     }
 
-    vm_build_string(vm, STRING_DATA(s) + from, STRING_SIZE(s) - from);
+    vm_build_string(vm, OBJ_STRING_DATA(s) + from, OBJ_STRING_SIZE(s) - from);
     pieces++;
 
     vm_pack_list(vm, pieces);
@@ -185,16 +186,16 @@ void rkl_str_join(VM *vm) {
 
     Object *parts = vm_prev(vm);
     Object *sep = vm_peek(vm);
-    size_t n = LIST_SIZE(parts);
+    size_t n = OBJ_LIST_SIZE(parts);
 
     size_t total = 0;
-    LIST_FOREACH(part, parts)
-        VM_RECOVER_IF(vm, !OFTYPE(part, TY_STRING), vm->singletons._TYPE_EXCEPTION);
-        total += STRING_SIZE(part);
-    END_LIST_FOREACH
+    OBJ_LIST_FOREACH(part, parts)
+    VM_RECOVER_IF(vm, !OBJ_OFTYPE(part, TY_STRING), vm->singletons._TYPE_EXCEPTION);
+    total += OBJ_STRING_SIZE(part);
+    OBJ_END_LIST_FOREACH
 
     if (n > 1)
-        total += (n - 1) * STRING_SIZE(sep);
+        total += (n - 1) * OBJ_STRING_SIZE(sep);
 
     char *data = malloc(total + 1);
     assert(data);
@@ -202,12 +203,12 @@ void rkl_str_join(VM *vm) {
     size_t offset = 0;
     for (size_t i = 0; i < n; i++) {
         if (i > 0) {
-            memcpy(data + offset, STRING_DATA(sep), STRING_SIZE(sep));
-            offset += STRING_SIZE(sep);
+            memcpy(data + offset, OBJ_STRING_DATA(sep), OBJ_STRING_SIZE(sep));
+            offset += OBJ_STRING_SIZE(sep);
         }
-        Object *part = LIST_AT(parts, i);
-        memcpy(data + offset, STRING_DATA(part), STRING_SIZE(part));
-        offset += STRING_SIZE(part);
+        Object *part = OBJ_LIST_AT(parts, i);
+        memcpy(data + offset, OBJ_STRING_DATA(part), OBJ_STRING_SIZE(part));
+        offset += OBJ_STRING_SIZE(part);
     }
 
     vm_pop_n(vm, 2);
@@ -220,10 +221,10 @@ void rkl_str_replace(VM *vm) {
     Object *target = vm_prev(vm);
     Object *replacement = vm_peek(vm);
 
-    VM_RECOVER_IF(vm, !OFTYPE(s, TY_STRING), vm->singletons._TYPE_EXCEPTION);
-    VM_RECOVER_IF(vm, !OFTYPE(target, TY_STRING), vm->singletons._TYPE_EXCEPTION);
-    VM_RECOVER_IF(vm, !OFTYPE(replacement, TY_STRING), vm->singletons._TYPE_EXCEPTION);
-    VM_RECOVER_IF(vm, STRING_SIZE(target) == 0, vm->singletons._VALUE_EXCEPTION);
+    VM_RECOVER_IF(vm, !OBJ_OFTYPE(s, TY_STRING), vm->singletons._TYPE_EXCEPTION);
+    VM_RECOVER_IF(vm, !OBJ_OFTYPE(target, TY_STRING), vm->singletons._TYPE_EXCEPTION);
+    VM_RECOVER_IF(vm, !OBJ_OFTYPE(replacement, TY_STRING), vm->singletons._TYPE_EXCEPTION);
+    VM_RECOVER_IF(vm, OBJ_STRING_SIZE(target) == 0, vm->singletons._VALUE_EXCEPTION);
 
     // Counted first so the buffer is sized exactly, since the replacement may
     // be longer or shorter than what it stands in for.
@@ -232,24 +233,25 @@ void rkl_str_replace(VM *vm) {
     size_t at = 0;
     while (find_from(s, target, from, &at)) {
         hits++;
-        from = at + STRING_SIZE(target);
+        from = at + OBJ_STRING_SIZE(target);
     }
 
-    size_t total = STRING_SIZE(s) + hits * STRING_SIZE(replacement) - hits * STRING_SIZE(target);
+    size_t total =
+        OBJ_STRING_SIZE(s) + hits * OBJ_STRING_SIZE(replacement) - hits * OBJ_STRING_SIZE(target);
     char *data = malloc(total + 1);
     assert(data);
 
     size_t offset = 0;
     from = 0;
     while (find_from(s, target, from, &at)) {
-        memcpy(data + offset, STRING_DATA(s) + from, at - from);
+        memcpy(data + offset, OBJ_STRING_DATA(s) + from, at - from);
         offset += at - from;
-        memcpy(data + offset, STRING_DATA(replacement), STRING_SIZE(replacement));
-        offset += STRING_SIZE(replacement);
-        from = at + STRING_SIZE(target);
+        memcpy(data + offset, OBJ_STRING_DATA(replacement), OBJ_STRING_SIZE(replacement));
+        offset += OBJ_STRING_SIZE(replacement);
+        from = at + OBJ_STRING_SIZE(target);
     }
-    memcpy(data + offset, STRING_DATA(s) + from, STRING_SIZE(s) - from);
-    offset += STRING_SIZE(s) - from;
+    memcpy(data + offset, OBJ_STRING_DATA(s) + from, OBJ_STRING_SIZE(s) - from);
+    offset += OBJ_STRING_SIZE(s) - from;
 
     vm_pop_n(vm, 3);
     vm_build_string_own(vm, data, offset);
@@ -260,8 +262,8 @@ void rkl_str_trim(VM *vm) {
     vm_expect(vm, TY_STRING);
 
     Object *s = vm_peek(vm);
-    const char *data = STRING_DATA(s);
-    size_t size = STRING_SIZE(s);
+    const char *data = OBJ_STRING_DATA(s);
+    size_t size = OBJ_STRING_SIZE(s);
 
     size_t start = 0;
     while (start < size && isspace((unsigned char)data[start]))
@@ -281,12 +283,12 @@ void rkl_str_trim(VM *vm) {
         vm_expect(vm, TY_STRING);                                                                  \
                                                                                                    \
         Object *s = vm_peek(vm);                                                                   \
-        size_t size = STRING_SIZE(s);                                                              \
+        size_t size = OBJ_STRING_SIZE(s);                                                          \
                                                                                                    \
         char *data = malloc(size + 1);                                                             \
         assert(data);                                                                              \
         for (size_t i = 0; i < size; i++)                                                          \
-            data[i] = (char)convert_((unsigned char)STRING_DATA(s)[i]);                            \
+            data[i] = (char)convert_((unsigned char)OBJ_STRING_DATA(s)[i]);                        \
                                                                                                    \
         vm_pop(vm);                                                                                \
         vm_build_string_own(vm, data, size);                                                       \

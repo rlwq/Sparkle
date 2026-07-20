@@ -4,7 +4,7 @@
 
 #define rkl_type_predicate(type_)                                                                  \
     void rkl_is_##type_(VM *vm) {                                                                  \
-        bool result = OFTYPE(vm_peek(vm), TY_##type_);                                             \
+        bool result = OBJ_OFTYPE(vm_peek(vm), TY_##type_);                                         \
         vm_pop(vm);                                                                                \
         vm_build_bool(vm, result);                                                                 \
     }

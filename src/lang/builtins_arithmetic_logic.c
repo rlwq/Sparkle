@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <math.h>
 #include <stdbool.h>
 #include <string.h>
@@ -6,7 +7,6 @@
 #include "forwards.h"
 #include "object.h"
 #include "string_view.h"
-#include "utils.h"
 #include "vm.h"
 
 #define NUMERIC_VARIADIC_BUILTIN(func_name_, operator_)                                            \
@@ -14,38 +14,39 @@
         vm_swap(vm);                                                                               \
                                                                                                    \
         Object *args_ = vm_prev(vm);                                                               \
-        LIST_FOREACH(curr, args_) vm_push(vm, curr);                                               \
+        OBJ_LIST_FOREACH(curr, args_) vm_push(vm, curr);                                           \
         vm_expect2(vm, TY_NUMERIC, TY_NUMERIC);                                                    \
         vm_to_common_numeric(vm);                                                                  \
                                                                                                    \
         if (vm_peek(vm)->kind == KIND_BOOL)                                                        \
-            vm_build_integer(vm, (Integer)BOOL(vm_prev(vm)) operator_(Integer) BOOL(vm_peek(vm))); \
+            vm_build_integer(vm, (Integer)OBJ_BOOL(vm_prev(vm)) operator_(Integer)                 \
+                                     OBJ_BOOL(vm_peek(vm)));                                       \
         else if (vm_peek(vm)->kind == KIND_INTEGER)                                                \
-            vm_build_integer(vm, INTEGER(vm_prev(vm)) operator_ INTEGER(vm_peek(vm)));             \
+            vm_build_integer(vm, OBJ_INTEGER(vm_prev(vm)) operator_ OBJ_INTEGER(vm_peek(vm)));     \
         else if (vm_peek(vm)->kind == KIND_FLOAT)                                                  \
-            vm_build_float(vm, FLOAT(vm_prev(vm)) operator_ FLOAT(vm_peek(vm)));                   \
+            vm_build_float(vm, OBJ_FLOAT(vm_prev(vm)) operator_ OBJ_FLOAT(vm_peek(vm)));           \
                                                                                                    \
         vm_pop_prev_n(vm, 2);                                                                      \
                                                                                                    \
-        END_LIST_FOREACH vm_pop_prev(vm);                                                          \
+        OBJ_END_LIST_FOREACH vm_pop_prev(vm);                                                      \
     }
 
 #define NUMERIC_ORDER_BUILTIN(func_name_, operator_)                                               \
     void func_name_(VM *vm) {                                                                      \
         vm_expect2(vm, TY_NUMERIC, TY_NUMERIC);                                                    \
         vm_to_common_numeric(vm);                                                                  \
-        switch (TYPEOF(vm_peek(vm))) {                                                             \
+        switch (OBJ_TYPEOF(vm_peek(vm))) {                                                         \
         case TY_BOOL:                                                                              \
-            vm_build_bool(vm, BOOL(vm_prev(vm)) operator_ BOOL(vm_peek(vm)));                      \
+            vm_build_bool(vm, OBJ_BOOL(vm_prev(vm)) operator_ OBJ_BOOL(vm_peek(vm)));              \
             break;                                                                                 \
         case TY_INTEGER:                                                                           \
-            vm_build_bool(vm, INTEGER(vm_prev(vm)) operator_ INTEGER(vm_peek(vm)));                \
+            vm_build_bool(vm, OBJ_INTEGER(vm_prev(vm)) operator_ OBJ_INTEGER(vm_peek(vm)));        \
             break;                                                                                 \
         case TY_FLOAT:                                                                             \
-            vm_build_bool(vm, FLOAT(vm_prev(vm)) operator_ FLOAT(vm_peek(vm)));                    \
+            vm_build_bool(vm, OBJ_FLOAT(vm_prev(vm)) operator_ OBJ_FLOAT(vm_peek(vm)));            \
             break;                                                                                 \
         default:                                                                                   \
-            UNREACHABLE();                                                                         \
+            assert(false && "UNREACHABLE");                                                        \
         }                                                                                          \
         vm_pop_prev_n(vm, 2);                                                                      \
     }
@@ -54,7 +55,7 @@
 void rkl_eq(VM *vm) {
     bool is_equal = false;
 
-    if (OFTYPE(vm_peek(vm), TY_NUMERIC) && OFTYPE(vm_prev(vm), TY_NUMERIC))
+    if (OBJ_OFTYPE(vm_peek(vm), TY_NUMERIC) && OBJ_OFTYPE(vm_prev(vm), TY_NUMERIC))
         vm_to_common_numeric(vm);
 
     if (vm_peek(vm)->kind != vm_prev(vm)->kind) {
@@ -67,21 +68,21 @@ void rkl_eq(VM *vm) {
         is_equal = true;
         break;
     case KIND_SYMBOL:
-        is_equal = SYMBOL(vm_peek(vm)) == SYMBOL(vm_prev(vm));
+        is_equal = OBJ_SYMBOL(vm_peek(vm)) == OBJ_SYMBOL(vm_prev(vm));
         break;
     case KIND_INTEGER:
-        is_equal = INTEGER(vm_peek(vm)) == INTEGER(vm_prev(vm));
+        is_equal = OBJ_INTEGER(vm_peek(vm)) == OBJ_INTEGER(vm_prev(vm));
         break;
     case KIND_FLOAT:
-        is_equal = FLOAT(vm_peek(vm)) == FLOAT(vm_prev(vm));
+        is_equal = OBJ_FLOAT(vm_peek(vm)) == OBJ_FLOAT(vm_prev(vm));
         break;
     case KIND_BOOL:
-        is_equal = BOOL(vm_peek(vm)) == BOOL(vm_prev(vm));
+        is_equal = OBJ_BOOL(vm_peek(vm)) == OBJ_BOOL(vm_prev(vm));
         break;
     case KIND_STRING:
-        is_equal = STRING_SIZE(vm_peek(vm)) == STRING_SIZE(vm_prev(vm)) &&
-                   memcmp(STRING_DATA(vm_peek(vm)), STRING_DATA(vm_prev(vm)),
-                          STRING_SIZE(vm_peek(vm))) == 0;
+        is_equal = OBJ_STRING_SIZE(vm_peek(vm)) == OBJ_STRING_SIZE(vm_prev(vm)) &&
+                   memcmp(OBJ_STRING_DATA(vm_peek(vm)), OBJ_STRING_DATA(vm_prev(vm)),
+                          OBJ_STRING_SIZE(vm_peek(vm))) == 0;
         break;
     case KIND_LIST:
     case KIND_LAMBDA:
@@ -97,7 +98,7 @@ end:
 
 void rkl_ne(VM *vm) {
     rkl_eq(vm);
-    vm_build_bool(vm, !BOOL(vm_peek(vm)));
+    vm_build_bool(vm, !OBJ_BOOL(vm_peek(vm)));
     vm_pop_prev(vm);
 }
 
@@ -118,14 +119,14 @@ void rkl_truediv(VM *vm) {
     double v1 = 0;
     double v2 = 0;
 
-    if (OFTYPE(vm_peek(vm), TY_INTEGER)) {
-        v1 = INTEGER(vm_prev(vm));
-        v2 = INTEGER(vm_peek(vm));
+    if (OBJ_OFTYPE(vm_peek(vm), TY_INTEGER)) {
+        v1 = OBJ_INTEGER(vm_prev(vm));
+        v2 = OBJ_INTEGER(vm_peek(vm));
     }
 
-    else if (OFTYPE(vm_peek(vm), TY_FLOAT)) {
-        v1 = FLOAT(vm_prev(vm));
-        v2 = FLOAT(vm_peek(vm));
+    else if (OBJ_OFTYPE(vm_peek(vm), TY_FLOAT)) {
+        v1 = OBJ_FLOAT(vm_prev(vm));
+        v2 = OBJ_FLOAT(vm_peek(vm));
     }
 
     vm_pop_n(vm, 2);
@@ -134,17 +135,17 @@ void rkl_truediv(VM *vm) {
 
 void rkl_div(VM *vm) {
     vm_expect2(vm, TY_INTEGER, TY_INTEGER);
-    VM_RECOVER_IF(vm, INTEGER(vm_peek(vm)) == 0, vm->singletons._VALUE_EXCEPTION);
+    VM_RECOVER_IF(vm, OBJ_INTEGER(vm_peek(vm)) == 0, vm->singletons._VALUE_EXCEPTION);
 
-    vm_build_integer(vm, INTEGER(vm_prev(vm)) / INTEGER(vm_peek(vm)));
+    vm_build_integer(vm, OBJ_INTEGER(vm_prev(vm)) / OBJ_INTEGER(vm_peek(vm)));
     vm_pop_prev_n(vm, 2);
 }
 
 void rkl_mod(VM *vm) {
     vm_expect2(vm, TY_INTEGER, TY_INTEGER);
-    VM_RECOVER_IF(vm, INTEGER(vm_peek(vm)) == 0, vm->singletons._VALUE_EXCEPTION);
+    VM_RECOVER_IF(vm, OBJ_INTEGER(vm_peek(vm)) == 0, vm->singletons._VALUE_EXCEPTION);
 
-    vm_build_integer(vm, INTEGER(vm_prev(vm)) % INTEGER(vm_peek(vm)));
+    vm_build_integer(vm, OBJ_INTEGER(vm_prev(vm)) % OBJ_INTEGER(vm_peek(vm)));
     vm_pop_prev_n(vm, 2);
 }
 
@@ -179,10 +180,10 @@ void rkl_cast_to_bool(VM *vm) {
 // stops at the end of the number, as a lexer should.
 static bool scan_number(Object *s, bool *is_decimal) {
     size_t length = 0;
-    SvNumber kind = sv_scan_number(sv(STRING_DATA(s), STRING_SIZE(s)), &length);
+    SvNumber kind = sv_scan_number(sv(OBJ_STRING_DATA(s), OBJ_STRING_SIZE(s)), &length);
 
     *is_decimal = kind == SV_NUMBER_FLOAT;
-    return kind != SV_NUMBER_NONE && length == STRING_SIZE(s);
+    return kind != SV_NUMBER_NONE && length == OBJ_STRING_SIZE(s);
 }
 
 // Node -> Integer or Float, per want. A String is read as a numeric literal, a
@@ -190,14 +191,14 @@ static bool scan_number(Object *s, bool *is_decimal) {
 static void cast_numeric(VM *vm, ObjectKind want) {
     Object *value = vm_peek(vm);
 
-    if (OFTYPE(value, TY_STRING)) {
+    if (OBJ_OFTYPE(value, TY_STRING)) {
         bool is_decimal = false;
         VM_RECOVER_IF(vm, !scan_number(value, &is_decimal), vm->singletons._VALUE_EXCEPTION);
 
         // Which parser to use follows the decimal point, exactly as the lexer
         // dispatches on TK_DECIMAL against TK_INTEGER: svtod scans for a '.'
         // without a bound and runs off the end of a view that has none.
-        StringView text = sv(STRING_DATA(value), STRING_SIZE(value));
+        StringView text = sv(OBJ_STRING_DATA(value), OBJ_STRING_SIZE(value));
         double number = is_decimal ? svtod(text) : (double)svtolli(text);
 
         if (want == KIND_FLOAT)
@@ -209,7 +210,7 @@ static void cast_numeric(VM *vm, ObjectKind want) {
         return;
     }
 
-    VM_RECOVER_IF(vm, !OFTYPE(value, TY_NUMERIC), vm->singletons._TYPE_EXCEPTION);
+    VM_RECOVER_IF(vm, !OBJ_OFTYPE(value, TY_NUMERIC), vm->singletons._TYPE_EXCEPTION);
 
     if (value->kind == want)
         return;
@@ -217,13 +218,13 @@ static void cast_numeric(VM *vm, ObjectKind want) {
     double number = 0;
     switch (value->kind) {
     case KIND_BOOL:
-        number = BOOL(value);
+        number = OBJ_BOOL(value);
         break;
     case KIND_INTEGER:
-        number = (double)INTEGER(value);
+        number = (double)OBJ_INTEGER(value);
         break;
     case KIND_FLOAT:
-        number = FLOAT(value);
+        number = OBJ_FLOAT(value);
         break;
     case KIND_NIL:
     case KIND_LIST:
@@ -231,7 +232,7 @@ static void cast_numeric(VM *vm, ObjectKind want) {
     case KIND_STRING:
     case KIND_BUILTIN:
     case KIND_LAMBDA:
-        UNREACHABLE();
+        assert(false && "UNREACHABLE");
         break;
     }
 
@@ -248,18 +249,18 @@ static void cast_numeric(VM *vm, ObjectKind want) {
 static double numeric_as_double(Object *value) {
     switch (value->kind) {
     case KIND_BOOL:
-        return BOOL(value);
+        return OBJ_BOOL(value);
     case KIND_INTEGER:
-        return (double)INTEGER(value);
+        return (double)OBJ_INTEGER(value);
     case KIND_FLOAT:
-        return FLOAT(value);
+        return OBJ_FLOAT(value);
     case KIND_NIL:
     case KIND_LIST:
     case KIND_SYMBOL:
     case KIND_STRING:
     case KIND_BUILTIN:
     case KIND_LAMBDA:
-        UNREACHABLE();
+        assert(false && "UNREACHABLE");
     }
     return 0;
 }
@@ -270,12 +271,12 @@ void rkl_neg(VM *vm) {
     vm_expect(vm, TY_NUMERIC);
 
     Object *value = vm_peek(vm);
-    if (OFTYPE(value, TY_FLOAT))
-        vm_build_float(vm, -FLOAT(value));
-    else if (OFTYPE(value, TY_INTEGER))
-        vm_build_integer(vm, -INTEGER(value));
+    if (OBJ_OFTYPE(value, TY_FLOAT))
+        vm_build_float(vm, -OBJ_FLOAT(value));
+    else if (OBJ_OFTYPE(value, TY_INTEGER))
+        vm_build_integer(vm, -OBJ_INTEGER(value));
     else
-        vm_build_integer(vm, -(Integer)BOOL(value));
+        vm_build_integer(vm, -(Integer)OBJ_BOOL(value));
 
     vm_pop_prev(vm);
 }
@@ -285,39 +286,39 @@ void rkl_abs(VM *vm) {
     vm_expect(vm, TY_NUMERIC);
 
     Object *value = vm_peek(vm);
-    if (OFTYPE(value, TY_FLOAT))
-        vm_build_float(vm, fabs(FLOAT(value)));
-    else if (OFTYPE(value, TY_INTEGER))
-        vm_build_integer(vm, INTEGER(value) < 0 ? -INTEGER(value) : INTEGER(value));
+    if (OBJ_OFTYPE(value, TY_FLOAT))
+        vm_build_float(vm, fabs(OBJ_FLOAT(value)));
+    else if (OBJ_OFTYPE(value, TY_INTEGER))
+        vm_build_integer(vm, OBJ_INTEGER(value) < 0 ? -OBJ_INTEGER(value) : OBJ_INTEGER(value));
     else
-        vm_build_integer(vm, BOOL(value));
+        vm_build_integer(vm, OBJ_BOOL(value));
 
     vm_pop_prev(vm);
 }
 
 // List of Numeric -> Numeric. Variadic, so the arguments arrive packed.
 static void extremum(VM *vm, bool want_greater) {
-    assert(OFTYPE(vm_peek(vm), TY_LIST));
+    assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
 
     Object *args = vm_peek(vm);
-    size_t n = LIST_SIZE(args);
+    size_t n = OBJ_LIST_SIZE(args);
     VM_RECOVER_IF(vm, n == 0, vm->singletons._ARITY_EXCEPTION);
 
-    LIST_FOREACH(arg, args)
-        VM_RECOVER_IF(vm, !OFTYPE(arg, TY_NUMERIC), vm->singletons._TYPE_EXCEPTION);
-    END_LIST_FOREACH
+    OBJ_LIST_FOREACH(arg, args)
+    VM_RECOVER_IF(vm, !OBJ_OFTYPE(arg, TY_NUMERIC), vm->singletons._TYPE_EXCEPTION);
+    OBJ_END_LIST_FOREACH
 
     // The winner is carried as the original object, so (min 1 2) stays an
     // Integer and (min 1.0 2) stays a Float rather than everything widening.
     size_t best = 0;
     for (size_t i = 1; i < n; i++) {
-        double candidate = numeric_as_double(LIST_AT(args, i));
-        double current = numeric_as_double(LIST_AT(args, best));
+        double candidate = numeric_as_double(OBJ_LIST_AT(args, i));
+        double current = numeric_as_double(OBJ_LIST_AT(args, best));
         if (want_greater ? candidate > current : candidate < current)
             best = i;
     }
 
-    vm_push(vm, LIST_AT(args, best));
+    vm_push(vm, OBJ_LIST_AT(args, best));
     vm_pop_prev(vm);
 }
 
@@ -377,7 +378,7 @@ ROUNDING_BUILTIN(rkl_round, round)
 // is exactly what apply needs.
 void rkl_apply(VM *vm) {
     vm_expect(vm, TY_LIST);
-    VM_RECOVER_IF(vm, !OFTYPE(vm_prev(vm), TY_CALLABLE), vm->singletons._UNCALLABLE_EXCEPTION);
+    VM_RECOVER_IF(vm, !OBJ_OFTYPE(vm_prev(vm), TY_CALLABLE), vm->singletons._UNCALLABLE_EXCEPTION);
 
     vm_swap(vm);
     vm_call(vm);
@@ -397,12 +398,12 @@ void rkl_logical_and(VM *vm) {
     bool result = true;
 
     Object *args_ = vm_peek(vm);
-    LIST_FOREACH(curr, args_)
-        vm_push(vm, curr);
-        vm_cast_to_bool(vm);
-        result = result && BOOL(vm_peek(vm));
-        vm_pop(vm);
-    END_LIST_FOREACH
+    OBJ_LIST_FOREACH(curr, args_)
+    vm_push(vm, curr);
+    vm_cast_to_bool(vm);
+    result = result && OBJ_BOOL(vm_peek(vm));
+    vm_pop(vm);
+    OBJ_END_LIST_FOREACH
 
     vm_pop(vm);
     vm_build_bool(vm, result);
@@ -412,12 +413,12 @@ void rkl_logical_or(VM *vm) {
     bool result = false;
 
     Object *args_ = vm_peek(vm);
-    LIST_FOREACH(curr, args_)
-        vm_push(vm, curr);
-        vm_cast_to_bool(vm);
-        result = result || BOOL(vm_peek(vm));
-        vm_pop(vm);
-    END_LIST_FOREACH
+    OBJ_LIST_FOREACH(curr, args_)
+    vm_push(vm, curr);
+    vm_cast_to_bool(vm);
+    result = result || OBJ_BOOL(vm_peek(vm));
+    vm_pop(vm);
+    OBJ_END_LIST_FOREACH
 
     vm_pop(vm);
     vm_build_bool(vm, result);
@@ -425,7 +426,7 @@ void rkl_logical_or(VM *vm) {
 
 void rkl_logical_not(VM *vm) {
     vm_cast_to_bool(vm);
-    vm_build_bool(vm, !BOOL(vm_peek(vm)));
+    vm_build_bool(vm, !OBJ_BOOL(vm_peek(vm)));
     vm_pop_prev(vm);
 }
 

@@ -14,7 +14,7 @@ void rkl_list(VM *vm) {
 void rkl_len(VM *vm) {
     vm_expect(vm, TY_LIST);
 
-    Integer n = (Integer)LIST_SIZE(vm_peek(vm));
+    Integer n = (Integer)OBJ_LIST_SIZE(vm_peek(vm));
     vm_pop(vm);
     vm_build_integer(vm, n);
 }
@@ -24,11 +24,11 @@ void rkl_get(VM *vm) {
     vm_expect2(vm, TY_LIST, TY_INTEGER);
 
     Object *l = vm_prev(vm);
-    Integer idx = INTEGER(vm_peek(vm));
+    Integer idx = OBJ_INTEGER(vm_peek(vm));
 
-    VM_RECOVER_IF(vm, idx < 0 || (size_t)idx >= LIST_SIZE(l), vm->singletons._VALUE_EXCEPTION);
+    VM_RECOVER_IF(vm, idx < 0 || (size_t)idx >= OBJ_LIST_SIZE(l), vm->singletons._VALUE_EXCEPTION);
 
-    Object *e = LIST_AT(l, idx);
+    Object *e = OBJ_LIST_AT(l, idx);
     vm_pop_n(vm, 2);
     vm_push(vm, e);
 }
@@ -39,13 +39,13 @@ void rkl_put(VM *vm) {
     Object *iobj = vm_prev(vm);
     Object *x = vm_peek(vm);
 
-    VM_RECOVER_IF(vm, !OFTYPE(l, TY_LIST), vm->singletons._TYPE_EXCEPTION);
-    VM_RECOVER_IF(vm, !OFTYPE(iobj, TY_INTEGER), vm->singletons._TYPE_EXCEPTION);
+    VM_RECOVER_IF(vm, !OBJ_OFTYPE(l, TY_LIST), vm->singletons._TYPE_EXCEPTION);
+    VM_RECOVER_IF(vm, !OBJ_OFTYPE(iobj, TY_INTEGER), vm->singletons._TYPE_EXCEPTION);
 
-    Integer idx = INTEGER(iobj);
-    VM_RECOVER_IF(vm, idx < 0 || (size_t)idx >= LIST_SIZE(l), vm->singletons._VALUE_EXCEPTION);
+    Integer idx = OBJ_INTEGER(iobj);
+    VM_RECOVER_IF(vm, idx < 0 || (size_t)idx >= OBJ_LIST_SIZE(l), vm->singletons._VALUE_EXCEPTION);
 
-    LIST_AT(l, idx) = x;
+    OBJ_LIST_AT(l, idx) = x;
     vm_pop_n(vm, 2);
 }
 
@@ -55,7 +55,7 @@ void rkl_push(VM *vm) {
 
     Object *x = vm_peek(vm);
     Object *l = vm_prev(vm);
-    da_push(LIST_ITEMS(l), x);
+    da_push(OBJ_LIST_ITEMS(l), x);
     vm_pop(vm);
 }
 
@@ -64,10 +64,10 @@ void rkl_pop(VM *vm) {
     vm_expect(vm, TY_LIST);
 
     Object *l = vm_peek(vm);
-    VM_RECOVER_IF(vm, LIST_SIZE(l) == 0, vm->singletons._VALUE_EXCEPTION);
+    VM_RECOVER_IF(vm, OBJ_LIST_SIZE(l) == 0, vm->singletons._VALUE_EXCEPTION);
 
-    Object *e = LIST_AT(l, LIST_SIZE(l) - 1);
-    da_pop(LIST_ITEMS(l));
+    Object *e = OBJ_LIST_AT(l, OBJ_LIST_SIZE(l) - 1);
+    da_pop(OBJ_LIST_ITEMS(l));
     vm_pop(vm);
     vm_push(vm, e);
 }
@@ -82,10 +82,10 @@ void rkl_append(VM *vm) {
     Object *l1 = vm_peek_at(vm, 2);
     Object *l2 = vm_peek_at(vm, 1);
 
-    for (size_t i = 0; i < LIST_SIZE(l1); i++)
-        da_push(LIST_ITEMS(new_), LIST_AT(l1, i));
-    for (size_t i = 0; i < LIST_SIZE(l2); i++)
-        da_push(LIST_ITEMS(new_), LIST_AT(l2, i));
+    for (size_t i = 0; i < OBJ_LIST_SIZE(l1); i++)
+        da_push(OBJ_LIST_ITEMS(new_), OBJ_LIST_AT(l1, i));
+    for (size_t i = 0; i < OBJ_LIST_SIZE(l2); i++)
+        da_push(OBJ_LIST_ITEMS(new_), OBJ_LIST_AT(l2, i));
 
     vm_pop_prev_n(vm, 2);
 }
@@ -96,10 +96,10 @@ void rkl_map(VM *vm) {
 
     Object *func = vm_prev(vm);
     Object *l = vm_peek(vm);
-    size_t n = LIST_SIZE(l);
+    size_t n = OBJ_LIST_SIZE(l);
 
     for (size_t i = 0; i < n; i++) {
-        vm_push(vm, LIST_AT(l, i));
+        vm_push(vm, OBJ_LIST_AT(l, i));
         vm_pack_list(vm, 1);
         vm_push(vm, func);
         vm_call(vm);
@@ -115,19 +115,19 @@ void rkl_filter(VM *vm) {
 
     Object *func = vm_prev(vm);
     Object *l = vm_peek(vm);
-    size_t n = LIST_SIZE(l);
+    size_t n = OBJ_LIST_SIZE(l);
     size_t kept = 0;
 
     for (size_t i = 0; i < n; i++) {
-        vm_push(vm, LIST_AT(l, i));
+        vm_push(vm, OBJ_LIST_AT(l, i));
         vm_pack_list(vm, 1);
         vm_push(vm, func);
         vm_call(vm);
         vm_cast_to_bool(vm);
-        bool keep = BOOL(vm_peek(vm));
+        bool keep = OBJ_BOOL(vm_peek(vm));
         vm_pop(vm);
         if (keep) {
-            vm_push(vm, LIST_AT(l, i));
+            vm_push(vm, OBJ_LIST_AT(l, i));
             kept++;
         }
     }

@@ -46,9 +46,9 @@ static bool read_index(const char *data, size_t size, size_t *cursor, size_t *in
 // "$$" is the escape for a literal '$'; a '$' that is followed by none of '$',
 // '{' or a digit stands for itself, so a format may end in one or read "100$".
 static bool format_walk(CharDA *out, Object *fmt, Object *args) {
-    const char *data = STRING_DATA(fmt);
-    size_t size = STRING_SIZE(fmt);
-    size_t argc = LIST_SIZE(args);
+    const char *data = OBJ_STRING_DATA(fmt);
+    size_t size = OBJ_STRING_SIZE(fmt);
+    size_t argc = OBJ_LIST_SIZE(args);
 
     for (size_t i = 0; i < size; i++) {
         if (data[i] != '$') {
@@ -74,7 +74,7 @@ static bool format_walk(CharDA *out, Object *fmt, Object *args) {
             if (index >= argc)
                 return false;
 
-            write_expr(out, LIST_AT(args, index));
+            write_expr(out, OBJ_LIST_AT(args, index));
             i = cursor;
             continue;
         }
@@ -88,7 +88,7 @@ static bool format_walk(CharDA *out, Object *fmt, Object *args) {
         if (!read_index(data, size, &cursor, &index) || index >= argc)
             return false;
 
-        write_expr(out, LIST_AT(args, index));
+        write_expr(out, OBJ_LIST_AT(args, index));
         i = cursor - 1;
     }
 
@@ -98,10 +98,10 @@ static bool format_walk(CharDA *out, Object *fmt, Object *args) {
 // String (fmt), List (args) -> Nil
 void rkl_print(VM *vm) {
     // Variadic: everything past the format string arrives packed in a list.
-    assert(OFTYPE(vm_peek(vm), TY_LIST));
+    assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
 
     Object *fmt = vm_prev(vm);
-    VM_RECOVER_IF(vm, !OFTYPE(fmt, TY_STRING), vm->singletons._TYPE_EXCEPTION);
+    VM_RECOVER_IF(vm, !OBJ_OFTYPE(fmt, TY_STRING), vm->singletons._TYPE_EXCEPTION);
 
     CharDA out;
     da_init(out);

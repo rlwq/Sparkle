@@ -17,7 +17,7 @@ void vm_pop_recovery(VM *vm) {
 
 void vm_recover(VM *vm, Object *exception_symbol) {
     assert(vm->recovery_stack.size > 0);
-    assert(OFTYPE(exception_symbol, TY_SYMBOL));
+    assert(OBJ_OFTYPE(exception_symbol, TY_SYMBOL));
 
     vm->exception = exception_symbol;
     RecoveryStackEntry recovery = da_at_end(vm->recovery_stack, 0);
@@ -29,10 +29,10 @@ void vm_recover(VM *vm, Object *exception_symbol) {
 }
 
 void vm_expect(VM *vm, ObjectType type) {
-    VM_RECOVER_IF(vm, !(OFTYPE(vm_peek(vm), type)), vm->singletons._TYPE_EXCEPTION);
+    VM_RECOVER_IF(vm, !(OBJ_OFTYPE(vm_peek(vm), type)), vm->singletons._TYPE_EXCEPTION);
 }
 
 void vm_expect2(VM *vm, ObjectType prev, ObjectType peek) {
-    VM_RECOVER_IF(vm, !(OFTYPE(vm_peek(vm), peek)), vm->singletons._TYPE_EXCEPTION);
-    VM_RECOVER_IF(vm, !(OFTYPE(vm_prev(vm), prev)), vm->singletons._TYPE_EXCEPTION);
+    VM_RECOVER_IF(vm, !(OBJ_OFTYPE(vm_peek(vm), peek)), vm->singletons._TYPE_EXCEPTION);
+    VM_RECOVER_IF(vm, !(OBJ_OFTYPE(vm_prev(vm), prev)), vm->singletons._TYPE_EXCEPTION);
 }

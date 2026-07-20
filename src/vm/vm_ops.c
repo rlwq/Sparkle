@@ -8,7 +8,7 @@ void vm_pack_list(VM *vm, size_t length) {
     Object *list = vm_peek(vm);
 
     for (size_t i = length; i >= 1; i--)
-        da_push(LIST_ITEMS(list), da_at_end(vm->value_stack, i));
+        da_push(OBJ_LIST_ITEMS(list), da_at_end(vm->value_stack, i));
 
     vm_pop_prev_n(vm, length);
 }
@@ -18,12 +18,12 @@ size_t vm_unpack_list(VM *vm) {
     ASSERT_KIND(vm, KIND_LIST);
 
     Object *list = vm_peek(vm);
-    size_t size = LIST_SIZE(list);
+    size_t size = OBJ_LIST_SIZE(list);
 
     vm_pop(vm);
 
     for (size_t i = 0; i < size; i++)
-        vm_push(vm, LIST_AT(list, i));
+        vm_push(vm, OBJ_LIST_AT(list, i));
 
     return size;
 }

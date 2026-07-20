@@ -21,18 +21,18 @@ static void write_list(CharDA *out, Object *expr) {
 
     // A (quote x) list prints in its reader form 'x. Compared by name, not by
     // interned pointer, since the printer has no access to the interner.
-    if (LIST_SIZE(expr) == 2 && OFTYPE(LIST_AT(expr, 0), TY_SYMBOL) &&
-        strcmp(SYMBOL(LIST_AT(expr, 0)), "quote") == 0) {
+    if (OBJ_LIST_SIZE(expr) == 2 && OBJ_OFTYPE(OBJ_LIST_AT(expr, 0), TY_SYMBOL) &&
+        strcmp(OBJ_SYMBOL(OBJ_LIST_AT(expr, 0)), "quote") == 0) {
         write_cstr(out, "'");
-        write_expr(out, LIST_AT(expr, 1));
+        write_expr(out, OBJ_LIST_AT(expr, 1));
         return;
     }
 
     write_cstr(out, "(");
-    for (size_t i = 0; i < LIST_SIZE(expr); i++) {
+    for (size_t i = 0; i < OBJ_LIST_SIZE(expr); i++) {
         if (i > 0)
             write_cstr(out, " ");
-        write_expr(out, LIST_AT(expr, i));
+        write_expr(out, OBJ_LIST_AT(expr, i));
     }
     write_cstr(out, ")");
 }
@@ -43,7 +43,7 @@ static void write_lambda(CharDA *out, Object *expr) {
     write_cstr(out, "(lambda (");
     if (expr->as.lambda.args.size > (expr->as.lambda.is_variadic ? 1 : 0))
         write_cstr(out, da_at(expr->as.lambda.args, 0));
-    for (size_t i = 1; i < LAMBDA_POS_ARGS_N(expr); i++) {
+    for (size_t i = 1; i < OBJ_LAMBDA_POS_ARGS_N(expr); i++) {
         write_cstr(out, " ");
         write_cstr(out, da_at(expr->as.lambda.args, i));
     }
@@ -65,21 +65,21 @@ void write_expr(CharDA *out, Object *expr) {
         write_cstr(out, "Nil");
         break;
     case KIND_BOOL:
-        write_cstr(out, BOOL(expr) ? "True" : "False");
+        write_cstr(out, OBJ_BOOL(expr) ? "True" : "False");
         break;
     case KIND_INTEGER:
-        snprintf(buf, sizeof(buf), "%lld", INTEGER(expr));
+        snprintf(buf, sizeof(buf), "%lld", OBJ_INTEGER(expr));
         write_cstr(out, buf);
         break;
     case KIND_FLOAT:
-        snprintf(buf, sizeof(buf), "%f", FLOAT(expr));
+        snprintf(buf, sizeof(buf), "%f", OBJ_FLOAT(expr));
         write_cstr(out, buf);
         break;
     case KIND_STRING:
-        write_bytes(out, STRING_DATA(expr), STRING_SIZE(expr));
+        write_bytes(out, OBJ_STRING_DATA(expr), OBJ_STRING_SIZE(expr));
         break;
     case KIND_SYMBOL:
-        write_cstr(out, SYMBOL(expr));
+        write_cstr(out, OBJ_SYMBOL(expr));
         break;
     case KIND_LIST:
         write_list(out, expr);
