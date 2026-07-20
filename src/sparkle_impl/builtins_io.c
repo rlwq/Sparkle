@@ -13,11 +13,10 @@
 // text are negative, which is outside the domain ctype defines.
 #define IS_DIGIT(c_) (isdigit((unsigned char)(c_)))
 
-// Walks fmt substituting $N placeholders with args[N], rendered exactly as str
-// would render them. With out == NULL nothing is emitted and the walk only
-// reports whether every index resolves: rkl_print validates first so a bad
-// format can raise before the output buffer exists - vm_recover longjmps past
-// any da_free that would otherwise release it.
+// Writes fmt into out, substituting $N placeholders with args[N] rendered
+// exactly as str would render them. Returns false if some placeholder resolves
+// to no argument, leaving out holding the partial output for the caller to
+// release.
 //
 // "$$" is the escape for a literal '$'; a '$' that is followed by neither '$'
 // nor a digit stands for itself, so a format may end in one or read "100$".
@@ -28,21 +27,18 @@ static bool format_walk(CharDA *out, Object *fmt, Object *args) {
 
     for (size_t i = 0; i < size; i++) {
         if (data[i] != '$') {
-            if (out)
-                da_push(*out, data[i]);
+            da_push(*out, data[i]);
             continue;
         }
 
         if (i + 1 < size && data[i + 1] == '$') {
-            if (out)
-                da_push(*out, '$');
+            da_push(*out, '$');
             i++;
             continue;
         }
 
         if (i + 1 >= size || !IS_DIGIT(data[i + 1])) {
-            if (out)
-                da_push(*out, '$');
+            da_push(*out, '$');
             continue;
         }
 
@@ -60,8 +56,7 @@ static bool format_walk(CharDA *out, Object *fmt, Object *args) {
         if (overflows || index >= argc)
             return false;
 
-        if (out)
-            write_expr(out, LIST_AT(args, index));
+        write_expr(out, LIST_AT(args, index));
         i = end - 1;
     }
 
@@ -75,11 +70,17 @@ void rkl_print(VM *vm) {
 
     Object *fmt = vm_prev(vm);
     VM_RECOVER_IF(vm, !OFTYPE(fmt, TY_STRING), vm->singletons._TYPE_EXCEPTION);
-    VM_RECOVER_IF(vm, !format_walk(NULL, fmt, vm_peek(vm)), vm->singletons._VALUE_EXCEPTION);
 
     CharDA out;
     da_init(out);
-    format_walk(&out, fmt, vm_peek(vm));
+
+    // vm_recover longjmps out of this frame and knows nothing about the C heap,
+    // so the buffer has to be released before raising rather than after.
+    if (!format_walk(&out, fmt, vm_peek(vm))) {
+        da_free(out);
+        vm_recover(vm, vm->singletons._VALUE_EXCEPTION);
+    }
+
     fwrite(out.data, 1, out.size, stdout);
     fputc('\n', stdout);
     da_free(out);
