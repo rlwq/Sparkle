@@ -213,8 +213,9 @@ void rkl_try_form(VM *vm) {
     if (setjmp(env)) {
         // Unwound back to List, Symbol. This frame goes first: a kind we do not
         // catch has to reach the enclosing handler, and vm_recover always
-        // raises into the topmost frame. Kinds compare by interned name because
-        // a capitalized symbol evaluates to a fresh object every time.
+        // raises into the topmost frame. Kinds compare by interned name, the
+        // identity test for symbols here - two symbols spelled the same always
+        // share one StringName, while object identity means nothing.
         vm_pop_recovery(vm);
 
         if (SYMBOL(vm_peek(vm)) != SYMBOL(vm->exception))
