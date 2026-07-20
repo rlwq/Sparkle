@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -7,9 +8,10 @@
 #include "object.h"
 #include "vm.h"
 
-static bool is_digit(char c) {
-    return c >= '0' && c <= '9';
-}
+// A format string carries arbitrary bytes, so every char reaching isdigit is
+// cast through unsigned char: on a signed-char build the high bytes of UTF-8
+// text are negative, which is outside the domain ctype defines.
+#define IS_DIGIT(c_) (isdigit((unsigned char)(c_)))
 
 // Walks fmt substituting $N placeholders with args[N], rendered exactly as str
 // would render them. With out == NULL nothing is emitted and the walk only
@@ -38,7 +40,7 @@ static bool format_walk(CharDA *out, Object *fmt, Object *args) {
             continue;
         }
 
-        if (i + 1 >= size || !is_digit(data[i + 1])) {
+        if (i + 1 >= size || !IS_DIGIT(data[i + 1])) {
             if (out)
                 da_push(*out, '$');
             continue;
@@ -47,7 +49,7 @@ static bool format_walk(CharDA *out, Object *fmt, Object *args) {
         size_t index = 0;
         bool overflows = false;
         size_t end = i + 1;
-        for (; end < size && is_digit(data[end]); end++) {
+        for (; end < size && IS_DIGIT(data[end]); end++) {
             size_t digit = (size_t)(data[end] - '0');
             if (index > (SIZE_MAX - digit) / 10)
                 overflows = true;

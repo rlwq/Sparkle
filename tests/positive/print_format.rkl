@@ -16,6 +16,9 @@
 (print "costs 100$")                   ; costs 100$
 (print "$ alone and $x too")           ; $ alone and $x too
 
+; Bytes outside ASCII pass through untouched.
+(print "$0 non-ascii: \xD0\xB6" 1)     ; 1 non-ascii: ж
+
 ; Arguments with no matching placeholder are ignored.
 (print "$0" "kept" "dropped")          ; kept
 
