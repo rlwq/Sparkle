@@ -27,8 +27,6 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Code base, bugs, & fixes
 
-* [ ] Two error handler invocations behave differently: one duplicates the expression before entering the frame, the other does not.
-
 ## Tooling
 
 
@@ -39,6 +37,8 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Done
 
+* [x] `try` implements its specified form: `(try ExceptionSymbol expr1 expr2 ...)`.
+* [x] Two error handler invocations behave differently: one duplicates the expression before entering the frame, the other does not.
 * [x] Formatted printing function (`print` with `$N` placeholders).
 * [x] `set` replaces all symbol definition simultaneously.
 * [x] Multiline comments (`/* ... */`, nesting, between tokens).

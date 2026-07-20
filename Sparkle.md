@@ -318,8 +318,9 @@ Usage: `(try ExceptionSymbol expr1 expr2...)`
 Evaluates `expr1 expr2 ...` in a local lexical scope.
 If an exception matching `ExceptionSymbol` is raised, catches it and returns `ExceptionSymbol`.
 If a different exception is raised, it propagates normally.
-If no exception occurs, returns the value of the last expression.
+If no exception occurs, returns the value of the last expression, or `Nil` when the body is empty.
 `ExceptionSymbol` is evaluated, so it must be a self-evaluating symbol or an expression resulting in a symbol.
+It is evaluated before the handler is armed, so an exception raised while producing it is not caught here.
 
 ```lisp
 (try TYPE_EXCEPTION (get Nil 0))  ; TYPE_EXCEPTION — caught

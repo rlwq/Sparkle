@@ -192,28 +192,50 @@ void rkl_lambda_form(VM *vm) {
     vm_pop_prev(vm);
 }
 
+// The kind to catch is evaluated before the frame is pushed, so an exception
+// raised while producing it belongs to the enclosing handler - this try is not
+// armed yet. The frame is then pushed with the stack already holding everything
+// the handler reads, which lets the unwind discard the try scope and every
+// intermediate value on its own.
 void rkl_try_form(VM *vm) {
     Object *args = vm_peek(vm);
-    VM_RECOVER_IF(vm, LIST_SIZE(args) != 1, vm->singletons._VALUE_EXCEPTION);
+    size_t n = LIST_SIZE(args);
 
-    Object *expr = LIST_AT(args, 0);
-    vm_pop(vm);
-    vm_push(vm, expr);
+    VM_RECOVER_IF(vm, n == 0, vm->singletons._VALUE_EXCEPTION);
+
+    vm_push(vm, LIST_AT(args, 0));
+    vm_eval_node(vm);
+    VM_RECOVER_IF(vm, !OFTYPE(vm_peek(vm), TY_SYMBOL), vm->singletons._VALUE_EXCEPTION);
 
     jmp_buf env;
     vm_push_recovery(vm, &env);
 
     if (setjmp(env)) {
-        vm_pop(vm);
-        vm_push(vm, vm->exception);
-    } else {
-        vm_dup(vm);
-        vm_eval_node(vm);
-        vm_pop_n(vm, 2);
-        vm_build_nil(vm);
+        // Unwound back to List, Symbol. This frame goes first: a kind we do not
+        // catch has to reach the enclosing handler, and vm_recover always
+        // raises into the topmost frame. Kinds compare by interned name because
+        // a capitalized symbol evaluates to a fresh object every time.
+        vm_pop_recovery(vm);
+
+        if (SYMBOL(vm_peek(vm)) != SYMBOL(vm->exception))
+            vm_recover(vm, vm->exception);
+
+        vm_pop_prev(vm);
+        return;
     }
 
+    vm_build_scope(vm);
+    vm_build_nil(vm);
+
+    for (size_t i = 1; i < n; i++) {
+        vm_pop(vm);
+        vm_push(vm, LIST_AT(args, i));
+        vm_eval_node(vm);
+    }
+
+    vm_pop_scope(vm);
     vm_pop_recovery(vm);
+    vm_pop_prev_n(vm, 2);
 }
 
 void rkl_quote_form(VM *vm) {

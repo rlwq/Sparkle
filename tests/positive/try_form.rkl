@@ -1,0 +1,30 @@
+; A matching exception is caught and the kind is returned.
+(let result (try TYPE_EXCEPTION (get Nil 0)))
+(print "$0" result)                                   ; TYPE_EXCEPTION
+
+; With no exception, the value of the last expression comes back.
+(print "$0" (try TYPE_EXCEPTION (+ 1 2)))             ; 3
+(print "$0" (try TYPE_EXCEPTION 1 2 99))              ; 99
+(print "$0" (try TYPE_EXCEPTION))                     ; Nil
+
+; The body runs in its own lexical scope.
+(try TYPE_EXCEPTION (let scoped 1))
+(print "$0" (try UNDEFINED_EXCEPTION scoped))         ; UNDEFINED_EXCEPTION
+
+; A kind that does not match propagates to the enclosing try.
+(print "$0" (try TYPE_EXCEPTION (try VALUE_EXCEPTION (get Nil 0))))   ; TYPE_EXCEPTION
+
+; A kind that does match leaves nothing for the outer one to catch.
+(print "$0" (try TYPE_EXCEPTION (try TYPE_EXCEPTION (get Nil 0))))    ; TYPE_EXCEPTION
+
+; The kind is evaluated, so any expression yielding a symbol works.
+(let kind TYPE_EXCEPTION)
+(print "$0" (try kind (get Nil 0)))                   ; TYPE_EXCEPTION
+
+; Each of the six kinds is catchable by name.
+(print "$0" (try TYPE_EXCEPTION (get Nil 0)))         ; TYPE_EXCEPTION
+(print "$0" (try VALUE_EXCEPTION (str-get "abc" 99))) ; VALUE_EXCEPTION
+(print "$0" (try UNDEFINED_EXCEPTION nope))           ; UNDEFINED_EXCEPTION
+(print "$0" (try ARITY_EXCEPTION (str-len)))          ; ARITY_EXCEPTION
+(print "$0" (try UNCALLABLE_EXCEPTION (1 2)))         ; UNCALLABLE_EXCEPTION
+(print "$0" (try REBINDING_EXCEPTION (begin (let dup 1) (let dup 2))))  ; REBINDING_EXCEPTION
