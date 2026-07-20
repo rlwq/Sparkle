@@ -1,0 +1,28 @@
+; Construction and reading.
+(print "build $0 $1 $2" (list 1 2 3) (list) '(1 2 3))      ; (1 2 3) () (1 2 3)
+(print "len   $0 $1" (len '(1 2 3)) (len '()))             ; 3 0
+(print "get   $0 $1" (get '(a b c) 0) (get '(a b c) 2))    ; a c
+
+; Nested lists stay nested.
+(print "nest  $0" (list (list 1 2) 3))                     ; ((1 2) 3)
+(print "deep  $0" '((1 (2 3)) 4))                          ; ((1 (2 3)) 4)
+
+; put, push and pop change the list in place and hand back the same list, so
+; another name bound to it observes the change.
+(let xs (list 1 2 3))
+(let alias xs)
+(put xs 0 99)
+(print "put   $0 $1" xs alias)                             ; (99 2 3) (99 2 3)
+(push xs 4)
+(print "push  $0 $1" xs (len xs))                          ; (99 2 3 4) 4
+(print "pop   $0 $1" (pop xs) xs)                          ; 4 (99 2 3)
+
+; append builds a new list and leaves both inputs alone.
+(let a (list 1 2))
+(let b (list 3))
+(print "append $0" (append a b))                           ; (1 2 3)
+(print "intact $0 $1" a b)                                 ; (1 2) (3)
+(print "empty  $0 $1" (append '() '(1)) (append '(1) '()))  ; (1) (1)
+
+; Lists hold values of any kind, mixed freely.
+(print "mixed $0" (list 1 "two" 3.5 True Nil 'sym))        ; (1 two 3.500000 True Nil sym)

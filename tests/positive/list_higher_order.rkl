@@ -1,0 +1,23 @@
+; map and filter take a callable and a list and return a new list.
+(print "map    $0" (map (lambda (x) (* x x)) '(1 2 3)))    ; (1 4 9)
+(print "filter $0" (filter (lambda (x) (> x 1)) '(1 2 3))) ; (2 3)
+(print "empty  $0 $1" (map (lambda (x) x) '()) (filter (lambda (x) True) '()))  ; () ()
+
+; Builtins work as the callable too.
+(print "builtin $0" (map str-len '("a" "bb" "ccc")))       ; (1 2 3)
+
+; Elements may be compound, and are passed through untouched.
+(print "compound $0" (map (lambda (x) x) (list (list 1 2) (list 3 4))))   ; ((1 2) (3 4))
+(print "lens     $0" (map len (list '(1) '(1 2) '())))                    ; (1 2 0)
+(print "bylen    $0" (filter (lambda (x) (> (len x) 1)) (list '(1 2) '(3) '(4 5))))  ; ((1 2) (4 5))
+
+; filter keeps whatever is truthy by the ? rule, not just True.
+(print "truthy $0" (filter (lambda (x) x) (list 0 1 "" "a" '() Nil)))     ; (1 a)
+
+; The source list is not modified.
+(let src (list 1 2 3))
+(map (lambda (x) (* x 10)) src)
+(print "intact $0" src)                                    ; (1 2 3)
+
+; Results compose.
+(print "chain $0" (map (lambda (x) (+ x 1)) (filter (lambda (x) (> x 1)) '(1 2 3))))  ; (3 4)

@@ -1,0 +1,19 @@
+; How each kind renders. print and str share one representation, so these are
+; also the strings str would produce.
+(print "int    $0 $1" 1234321 -7)               ; 1234321 -7
+(print "float  $0" 3.5)                         ; 3.500000
+(print "bool   $0 $1" True False)               ; True False
+(print "nil    $0" Nil)                         ; Nil
+(print "string $0" "as-is")                     ; as-is
+(print "symbol $0" 'sym)                        ; sym
+(print "list   $0 $1" '(1 2 3) '())             ; (1 2 3) ()
+
+; Nesting and mixed contents.
+(print "nested $0" '((1) 2))                    ; ((1) 2)
+(print "pairs  $0" (list (list 1 2) (list 3 4)))  ; ((1 2) (3 4))
+(print "deep   $0" (list (list (list 1 2) (list 3 4)) (list (list 5 6) (list 7 8))))
+(print "empties $0" (list '() '()))             ; (() ())
+
+; A quoted form prints in reader syntax rather than as a two-element list.
+(print "quoted $0" ''x)                         ; 'x
+(print "qlist  $0" '(quote (1 2)))              ; '(1 2)

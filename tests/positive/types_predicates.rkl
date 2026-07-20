@@ -1,0 +1,23 @@
+; One predicate per kind, each checked against a value of its own kind and
+; against a value of another, so a predicate that always answered True would
+; fail here.
+
+(print "nil     $0 $1" (?NIL Nil) (?NIL 0))
+(print "bool    $0 $1" (?BOOL True) (?BOOL 1))
+(print "integer $0 $1" (?INTEGER 1) (?INTEGER 1.5))
+(print "float   $0 $1" (?FLOAT 1.5) (?FLOAT 1))
+(print "string  $0 $1" (?STRING "s") (?STRING 'sym))
+(print "symbol  $0 $1" (?SYMBOL 'sym) (?SYMBOL "s"))
+(print "list    $0 $1" (?LIST '(1)) (?LIST "s"))
+(print "lambda  $0 $1" (?LAMBDA (lambda (x) x)) (?LAMBDA +))
+(print "builtin $0 $1" (?BUILTIN +) (?BUILTIN (lambda (x) x)))
+
+; The empty list is still a List, and Nil is not one.
+(print "empty   $0 $1" (?LIST '()) (?LIST Nil))
+
+; nil? overlaps ?NIL but is a plain function rather than a generated predicate.
+(print "nil?    $0 $1" (nil? Nil) (nil? False))
+
+; Predicates answer about the value, so a quoted list is a List once evaluated.
+(let xs '(1 2))
+(print "bound   $0 $1" (?LIST xs) (?INTEGER (get xs 0)))

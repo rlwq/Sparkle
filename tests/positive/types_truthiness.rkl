@@ -1,0 +1,29 @@
+; (? x) casts any value to Bool. Emptiness is what makes a value falsy: zero,
+; the empty string, the empty list, Nil and False. Everything else is truthy.
+
+(print "nil     $0" (? Nil))            ; False
+(print "false   $0" (? False))          ; False
+(print "true    $0" (? True))           ; True
+
+(print "int0    $0" (? 0))              ; False
+(print "int1    $0" (? 1))              ; True
+(print "intneg  $0" (? -1))             ; True
+
+(print "float0  $0" (? 0.0))            ; False
+(print "float1  $0" (? 1.5))            ; True
+
+(print "str0    $0" (? ""))             ; False
+(print "str1    $0" (? "a"))            ; True
+
+(print "list0   $0" (? '()))            ; False
+(print "list1   $0" (? '(1)))           ; True
+
+; These have no notion of being empty, so they are always truthy.
+(print "symbol  $0" (? 'sym))           ; True
+(print "lambda  $0" (? (lambda (x) x))) ; True
+(print "builtin $0" (? +))              ; True
+
+; The same rule drives every conditional, so if and while agree with ?.
+(print "if-empty-list $0" (if '() "taken" "skipped"))    ; skipped
+(print "if-zero       $0" (if 0 "taken" "skipped"))      ; skipped
+(print "if-string     $0" (if "x" "taken" "skipped"))    ; taken

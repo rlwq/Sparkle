@@ -1,0 +1,31 @@
+; Plain recursion: the name is visible inside its own body.
+(let fac (lambda (n) (if (< n 2) 1 (* n (fac (- n 1))))))
+(print "fac   $0 $1 $2" (fac 0) (fac 1) (fac 10))   ; 1 1 3628800
+
+(let fib (lambda (n) (if (< n 2) n (+ (fib (- n 1)) (fib (- n 2))))))
+(print "fib   $0 $1" (fib 10) (fib 15))             ; 55 610
+
+; The same computed iteratively, to show the two agree.
+(let fib-iter (lambda (n)
+  (begin
+    (let a 0 b 1 i 0)
+    (while (< i n) (begin
+      (let next (+ a b))
+      (set a b b next)
+      (set i (+ i 1))))
+    a)))
+(print "agree $0 $1" (fib-iter 10) (= (fib-iter 15) (fib 15)))  ; 55 True
+
+; Mutual recursion through two bindings.
+(let even? (lambda (n) (if (= n 0) True (odd? (- n 1)))))
+(let odd? (lambda (n) (if (= n 0) False (even? (- n 1)))))
+(print "parity $0 $1" (even? 10) (odd? 7))          ; True True
+
+; Recursion driven by an index rather than by shrinking the list.
+(let sum-from (lambda (xs i)
+  (if (>= i (len xs)) 0 (+ (get xs i) (sum-from xs (+ i 1))))))
+(print "list  $0 $1" (sum-from '(1 2 3 4) 0) (sum-from '() 0))   ; 10 0
+
+; Deep enough to show the recursion is not shallow-limited.
+(let count-down (lambda (n) (if (= n 0) 0 (count-down (- n 1)))))
+(print "deep  $0" (count-down 2000))                             ; 0

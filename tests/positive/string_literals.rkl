@@ -1,0 +1,19 @@
+; Literals and escape sequences. print writes a string's bytes as they are, so
+; these lines show what the escapes decoded to.
+(print "plain")
+(print "with spaces here")
+(print "line1\nline2")
+(print "say \"hi\"")
+(print "tab\tend")
+(print "back\\slash")
+(print "hex \x41\x42\x43")                      ; hex ABC
+
+; Escapes are decoded at read time, so the string holds one byte per escape.
+(print "lens $0 $1 $2" (str-len "\n") (str-len "\\") (str-len "\x41"))   ; 1 1 1
+(print "same $0" (= "\x41" "A"))                ; True
+
+; A string is a value like any other.
+(let s "stored")
+(print "bound  $0" s)
+(print "inlist $0" '("in" "list" 1))            ; (in list 1)
+(print "passed $0" ((lambda (x) x) "through"))  ; through

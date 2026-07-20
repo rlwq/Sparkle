@@ -1,0 +1,23 @@
+; A lambda captures the scope it was created in, so the binding outlives the
+; call that made it.
+(let make-adder (lambda (n) (lambda (x) (+ x n))))
+(let add5 (make-adder 5))
+(let add9 (make-adder 9))
+(print "adders  $0 $1" (add5 3) (add9 3))       ; 8 12
+
+; Each call to the factory captures its own binding, so the two do not share.
+(print "distinct $0 $1" (add5 100) (add9 100))  ; 105 109
+
+; Currying and uncurrying are just nested lambdas.
+(let curried (lambda (a) (lambda (b) (+ a b))))
+(print "curried $0" ((curried 3) 6))            ; 9
+(let uncurry (lambda (f) (lambda (a b) ((f a) b))))
+(print "uncurry $0" ((uncurry curried) 3 6))    ; 9
+
+; A captured binding is mutable through set, giving a counter.
+(let make-counter (lambda (start)
+  (begin
+    (let n start)
+    (lambda () (begin (set n (+ n 1)) n)))))
+(let tick (make-counter 10))
+(print "counter $0 $1 $2" (tick) (tick) (tick)) ; 11 12 13

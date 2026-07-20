@@ -1,0 +1,2 @@
+; A symbol with no binding in any enclosing scope.
+(print "$0" no-such-name)

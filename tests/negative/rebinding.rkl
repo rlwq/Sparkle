@@ -1,0 +1,3 @@
+; Binding a name twice in the same scope.
+(let x 1)
+(let x 2)

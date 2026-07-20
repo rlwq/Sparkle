@@ -1,0 +1,13 @@
+; while repeats until the condition stops being truthy, yielding the body's
+; last value, or Nil if the body never ran.
+(let i 0)
+(print "sum   $0" (while (< i 4) (begin (set i (+ i 1)) (* i 10))))  ; 40
+(print "final $0" i)                            ; 4
+
+(print "never $0" (while False 1))              ; Nil
+
+; The condition is re-evaluated each turn, so mutation in the body ends it.
+(let n 5)
+(let steps 0)
+(while (> n 0) (begin (set n (- n 1)) (set steps (+ steps 1))))
+(print "steps $0 $1" steps n)                   ; 5 0

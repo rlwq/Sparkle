@@ -1,0 +1,1 @@
+map (1 4 9) filter (2 3) empty () () builtin (1 2 3) compound ((1 2) (3 4)) lens (1 2 0) bylen ((1 2) (4 5)) truthy (1 a) intact (1 2 3) chain (3 4)

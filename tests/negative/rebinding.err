@@ -1,0 +1,1 @@
+./tests/negative/rebinding.rkl: [RUNTIME ERROR] Symbol is already bound.

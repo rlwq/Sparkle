@@ -1,0 +1,24 @@
+(print "eq    $0 $1 $2" (= 1 1) (= 1 2) (!= 1 2))          ; True False True
+(print "order $0 $1 $2 $3" (< 2 3) (> 3 2) (<= 3 3) (>= 2 3))  ; True True True False
+
+; Numbers compare across Integer and Float, and Bool counts as 1 or 0.
+(print "cross $0 $1 $2" (= 1 1.0) (= 1 True) (= 0 False))  ; True True True
+(print "mixord $0 $1" (< 1 1.5) (>= 2.0 2))                ; True True
+
+; Strings compare by content.
+(print "str   $0 $1 $2" (= "abc" "abc") (= "abc" "abd") (= "abc" "abcd"))  ; True False False
+(print "empty $0" (= "" ""))                               ; True
+
+; Nil equals only Nil.
+(print "nil   $0 $1" (= Nil Nil) (= Nil 0))                ; True False
+
+; Comparing across unrelated kinds is False rather than an error.
+(print "kinds $0 $1" (= "abc" 42) (= 'sym "sym"))          ; False False
+
+; Compound values compare by identity, not by structure - two lists with equal
+; contents are still two lists. Structure equality is not implemented yet.
+(let xs '(1 2))
+(print "ident $0 $1" (= xs xs) (= '(1 2) '(1 2)))          ; True False
+
+; Symbols compare by name, so equal spelling is equal value.
+(print "sym   $0 $1" (= 'a 'a) (= 'a 'b))                  ; True False

@@ -1,0 +1,18 @@
+; Var marks the rest parameter: everything past it arrives as a List.
+(let tail (lambda (a Var rest) rest))
+(print "rest-many $0" (tail 1 2 3 4))           ; (2 3 4)
+(print "rest-none $0" (tail 1))                 ; ()
+
+; A bare symbol instead of a parameter list collects every argument.
+(let all (lambda args args))
+(print "all-many  $0" (all 1 2 3))              ; (1 2 3)
+(print "all-none  $0" (all))                    ; ()
+
+; Fixed parameters still bind positionally alongside the rest.
+(let split (lambda (a b Var others) (list a b others)))
+(print "split-3   $0" (split 1 2 3 4 5))        ; (1 2 (3 4 5))
+(print "split-min $0" (split 1 2))              ; (1 2 ())
+
+; The rest list is a real List and behaves like one.
+(let count (lambda (Var xs) (len xs)))
+(print "count     $0 $1" (count 1 2 3) (count))  ; 3 0

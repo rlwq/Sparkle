@@ -1,6 +1,0 @@
-(let fac (lambda (x)
-    (if (= x 0)
-      1
-      (* (fac (- x 1)) x))))
-
-(print "$0" (fac 10))

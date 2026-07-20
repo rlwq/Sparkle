@@ -1,0 +1,1 @@
+len 5 0 get h o sub world abc sub0 0 cat foo-bar 0 cat1 True find 2 0 -1 0 ord 65 B 97 immutable abc 3 compose (1 2 3) truthy f t

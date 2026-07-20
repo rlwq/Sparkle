@@ -1,0 +1,19 @@
+; set assigns to existing bindings and yields the last assigned value.
+(let x 1 y 2)
+(print "value $0" (set x 10))                   ; 10
+
+; Every right-hand side is evaluated before any assignment happens, so the old
+; values are what the expressions see. This is what makes a swap work.
+(set x 1 y 2)
+(set x y y x)
+(print "swap  $0 $1" x y)                       ; 2 1
+
+; The same rule read the other way: y sees the pre-assignment x.
+(set x 17 y 49)
+(set y x x (+ x y))
+(print "pair  $0 $1" x y)                       ; 66 17
+
+; set reaches outward through enclosing scopes rather than binding locally.
+(let counter 0)
+(begin (set counter (+ counter 1)))
+(print "outer $0" counter)                      ; 1

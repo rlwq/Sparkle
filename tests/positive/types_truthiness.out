@@ -1,0 +1,1 @@
+nil False false False true True int0 False int1 True intneg True float0 False float1 True str0 False str1 True list0 False list1 True symbol True lambda True builtin True if-empty-list skipped if-zero skipped if-string taken

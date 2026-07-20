@@ -1,0 +1,1 @@
+not False True False and-fn True False True or-fn True False False and-form True False or-form True False and-stopped 0 or-stopped 0 and-fn-ran 1 or-fn-ran 1 identities True False

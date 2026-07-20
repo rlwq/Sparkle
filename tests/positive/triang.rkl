@@ -1,7 +1,0 @@
-(let trig (lambda (n) (if (= n 0) 0 (+ n (trig (- n 1))))))
-
-(print "$0" (trig 5))
-(print "$0" (trig 15))
-(print "$0" (trig 25))
-(print "$0" (trig 50))
-(print "$0" (trig 100))

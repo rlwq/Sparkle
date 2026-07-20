@@ -1,0 +1,16 @@
+; let binds in the current scope and yields the last bound value.
+(print "one   $0" (let a 1))                    ; 1
+(print "many  $0" (let b 2 c 3))                ; 3
+(print "none  $0" (let))                        ; Nil
+
+; Each binding is visible to the ones after it in the same form.
+(print "chain $0" (let d 1 e (+ d 1) f (+ e 1)))  ; 3
+
+; A name bound in an inner scope shadows the outer one and does not outlive it.
+(let shadowed "outer")
+(print "inner $0" (begin (let shadowed "inner") shadowed))   ; inner
+(print "after $0" shadowed)                                   ; outer
+
+; Any value can be bound, including callables.
+(let double (lambda (x) (* x 2)))
+(print "callable $0" (double 21))               ; 42

@@ -1,0 +1,21 @@
+; + - * take one or more arguments and fold left to right; / div mod take two.
+
+(print "add   $0 $1 $2" (+ 1 2 3) (+ 5) (+ -2 2))          ; 6 5 0
+(print "mul   $0 $1 $2" (* 2 3 4) (* 7) (* 3 0))           ; 24 7 0
+(print "sub   $0 $1 $2" (- 10 3 2) (- 1 2 3) (- 5))        ; 5 -4 5
+
+; / always divides, div truncates toward zero, mod is the remainder.
+(print "div   $0 $1 $2" (/ 7 2) (div 7 2) (mod 7 2))       ; 3.500000 3 1
+(print "exact $0 $1" (/ 8 2) (div 8 2))                    ; 4.000000 4
+(print "negdiv $0 $1" (div -7 2) (mod -7 2))               ; -3 -1
+
+; Floats propagate: one float argument makes the result a float.
+(print "float $0 $1" (+ 1 0.5) (* 2 1.5))                  ; 1.500000 3.000000
+(print "mixed $0" (+ 1 (/ 3 2)))                           ; 2.500000
+
+; Bool coerces to 1 and 0 in arithmetic.
+(print "bool  $0 $1" (* 2 True) (+ 1 False))               ; 2 1
+(print "boolsum $0" (+ 1 False True 2 3 True 1 -1 -2))     ; 6
+
+; The result keeps its type, which the predicates confirm.
+(print "types $0 $1 $2" (?INTEGER (div 7 2)) (?FLOAT (/ 7 2)) (?INTEGER (+ 1 1)))

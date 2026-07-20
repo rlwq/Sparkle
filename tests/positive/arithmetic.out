@@ -1,0 +1,1 @@
+add 6 5 0 mul 24 7 0 sub 5 -4 5 div 3.500000 3 1 exact 4.000000 4 negdiv -3 -1 float 1.500000 3.000000 mixed 2.500000 bool 2 1 boolsum 6 types True True True

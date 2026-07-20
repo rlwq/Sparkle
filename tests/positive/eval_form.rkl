@@ -1,0 +1,16 @@
+; eval evaluates a value as an expression in the current scope.
+(print "arith $0" (eval '(+ 1 2)))              ; 3
+(print "built $0" (eval (list '+ 1 2)))         ; 3
+(print "atom  $0 $1" (eval 42) (eval "s"))      ; 42 s
+
+; A quoted symbol resolves against the bindings in scope.
+(let answer 42)
+(print "symbol $0" (eval 'answer))              ; 42
+
+; Lists built at run time are evaluable, which is what makes quote useful.
+(let call (list 'str-cat "a" "b"))
+(print "made  $0" (eval call))                  ; ab
+
+; quote stops evaluation; eval undoes exactly that.
+(print "round $0" (eval (quote (* 6 7))))       ; 42
+(print "twice $0" (eval (eval ''(+ 20 22))))    ; 42

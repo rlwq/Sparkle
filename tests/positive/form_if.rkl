@@ -1,0 +1,18 @@
+; if takes condition/branch pairs and an optional trailing default.
+(print "then    $0" (if True "yes" "no"))       ; yes
+(print "else    $0" (if False "yes" "no"))      ; no
+(print "default $0" (if False 1 False 2 "fell through"))  ; fell through
+
+; With no default and nothing matching, the result is Nil.
+(print "nomatch $0" (if False 1))               ; Nil
+
+; The first truthy condition wins and later ones are not evaluated.
+(let reached 0)
+(if True "first" (set reached 1) "second")
+(print "lazy    $0" reached)                    ; 0
+
+; Conditions are cast with the ? rule rather than needing a Bool.
+(print "truthy  $0 $1" (if 1 "t" "f") (if '() "t" "f"))   ; t f
+
+; Branches are expressions, so if composes.
+(print "nested  $0" (if (> 2 1) (if (> 3 2) "both" "one") "neither"))  ; both

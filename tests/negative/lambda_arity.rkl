@@ -1,0 +1,2 @@
+; Calling a lambda with the wrong number of arguments.
+((lambda (x y) x) 1)

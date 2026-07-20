@@ -1,0 +1,12 @@
+; begin evaluates its expressions in order and yields the last one.
+(print "last  $0" (begin 1 2 99))               ; 99
+(print "empty $0" (begin))                      ; Nil
+
+; It opens its own scope, so bindings made inside do not escape.
+(begin (let hidden 1))
+(print "scope $0" (try UNDEFINED_EXCEPTION hidden))   ; UNDEFINED_EXCEPTION
+
+; Outer bindings remain reachable and assignable from inside.
+(let seen 0)
+(begin (set seen (+ seen 1)) (set seen (+ seen 1)))
+(print "outer $0" seen)                         ; 2

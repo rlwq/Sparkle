@@ -1,0 +1,1 @@
+./tests/negative/undefined_symbol.rkl: [RUNTIME ERROR] Symbol has no definition.

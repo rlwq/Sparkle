@@ -1,0 +1,2 @@
+; Calling a builtin with the wrong number of arguments.
+(str-len "a" "b")

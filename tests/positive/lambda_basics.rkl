@@ -1,0 +1,21 @@
+; A lambda is a value: it can be called immediately, bound, or passed along.
+(print "direct  $0" ((lambda (x) (* x x)) 5))   ; 25
+(let square (lambda (x) (* x x)))
+(print "bound   $0" (square 6))                 ; 36
+(print "nullary $0" ((lambda () 7)))            ; 7
+(print "two     $0" ((lambda (a b) (- a b)) 10 3))  ; 7
+
+; The body is a single expression; begin groups several.
+(let noisy (lambda (x) (begin (let doubled (* x 2)) (+ doubled 1))))
+(print "body    $0" (noisy 5))                  ; 11
+
+; Parameters shadow outer bindings for the duration of the call.
+(let x "outer")
+(print "shadow  $0 $1" ((lambda (x) x) "inner") x)  ; inner outer
+
+; Lambdas are ordinary values, so they go in lists and through functions.
+(let fns (list (lambda (n) (+ n 1)) (lambda (n) (* n 2))))
+(print "in-list $0 $1" ((get fns 0) 10) ((get fns 1) 10))  ; 11 20
+(let apply-to-3 (lambda (f) (f 3)))
+(print "passed  $0" (apply-to-3 square))        ; 9
+(print "is-lambda $0 $1" (?LAMBDA square) (?BUILTIN +))    ; True True

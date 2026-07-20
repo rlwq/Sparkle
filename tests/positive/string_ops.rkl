@@ -1,0 +1,24 @@
+(print "len   $0 $1" (str-len "hello") (str-len ""))        ; 5 0
+(print "get   $0 $1" (str-get "hello" 0) (str-get "hello" 4))  ; h o
+(print "sub   $0 $1" (str-sub "hello world" 6 5) (str-sub "abc" 0 3))  ; world abc
+(print "sub0  $0" (str-len (str-sub "abc" 1 0)))            ; 0
+
+(print "cat   $0 $1" (str-cat "foo" "-" "bar") (str-len (str-cat)))  ; foo-bar 0
+(print "cat1  $0" (= (str-cat "ab" "c") "abc"))             ; True
+
+; str-find returns the index of the first match, or -1, and finds "" at 0.
+(print "find  $0 $1 $2 $3" (str-find "hello" "llo") (str-find "hello" "hello")
+                           (str-find "hello" "x") (str-find "hello" ""))  ; 2 0 -1 0
+
+(print "ord   $0 $1 $2" (str-ord "A") (str-chr 66) (str-ord (str-chr 97)))  ; 65 B 97
+
+; Strings are immutable: every operation returns a new one and leaves the
+; original alone.
+(let base "abc")
+(str-sub base 0 1)
+(str-cat base "!")
+(print "immutable $0 $1" base (str-len base))               ; abc 3
+
+; Results are ordinary strings, so they compose and follow the ? rule.
+(print "compose $0" (map str-len '("a" "bb" "ccc")))        ; (1 2 3)
+(print "truthy  $0 $1" (if (str-sub "abc" 0 0) "t" "f") (if (str-cat "a" "") "t" "f"))  ; f t
