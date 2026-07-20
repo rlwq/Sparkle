@@ -16,8 +16,6 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Language Semantics
 
-* [ ] `set` replaces all symbol definition simultaneously.
-
 ## Base Library
 
 * [ ] Structure equality. 
@@ -43,6 +41,7 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Done
 
+* [x] `set` replaces all symbol definition simultaneously.
 * [x] Multiline comments (`/* ... */`, nesting, between tokens).
 * [x] `vm_build_string` must only copy the provided data.
 * [x] Lambda definitions with duplicated argument names raise `VALUE_EXCEPTION`.

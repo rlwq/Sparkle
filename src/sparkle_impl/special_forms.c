@@ -1,6 +1,7 @@
 #include "special_forms.h"
 #include "dynamic_array.h"
 #include "object.h"
+#include "scope.h"
 #include "string_interner.h"
 #include "vm.h"
 
@@ -43,11 +44,16 @@ void rkl_let_form(VM *vm) {
     vm_build_nil(vm);
 }
 
+// All exprs are evaluated first (left to right), then all assignments are
+// performed against the pre-evaluation bindings - this is what lets
+// `(set a b b a)` swap instead of clobbering b before it's read.
 void rkl_set_form(VM *vm) {
     Object *args = vm_peek(vm);
     size_t n = LIST_SIZE(args);
 
     VM_RECOVER_IF(vm, n % 2 != 0, vm->singletons._VALUE_EXCEPTION);
+
+    size_t pairs = n / 2;
 
     for (size_t i = 0; i + 1 < n; i += 2) {
         Object *name = LIST_AT(args, i);
@@ -55,13 +61,22 @@ void rkl_set_form(VM *vm) {
 
         vm_push(vm, LIST_AT(args, i + 1));
         vm_eval_node(vm);
-
-        vm_scope_set(vm, SYMBOL(name));
-        vm_pop(vm);
     }
 
-    vm_pop(vm);
-    vm_build_nil(vm);
+    if (pairs == 0) {
+        vm_pop(vm);
+        vm_build_nil(vm);
+        return;
+    }
+
+    for (size_t k = 0; k < pairs; k++) {
+        Object *name = LIST_AT(args, k * 2);
+        Object *value = vm_peek_at(vm, pairs - 1 - k);
+        bool result = scope_set(VM_CURR_SCOPE(vm), SYMBOL(name), value);
+        VM_RECOVER_IF(vm, !result, vm->singletons._UNDEFINED_EXCEPTION);
+    }
+
+    vm_pop_prev_n(vm, pairs);
 }
 
 void rkl_if_form(VM *vm) {

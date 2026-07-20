@@ -1,0 +1,15 @@
+(let x 17
+     y 49)
+
+(print (set x 2))              ; 2
+
+(print (set y x                ; y = 2
+             x (+ x y)))       ; x = 51 (uses pre-assignment x and y)
+
+(print x)                      ; 51
+(print y)                      ; 2
+
+(let a 1 b 2)
+(set a b b a)                  ; simultaneous swap
+(print a)                      ; 2
+(print b)                      ; 1
