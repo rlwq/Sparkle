@@ -1,0 +1,44 @@
+; One name binds the element.
+(for v In '(10 20 30)
+  (print "v=$0" v))
+
+; Two names bind the 0-based index and the element.
+(for i v In '("a" "b" "c")
+  (print "$0->$1" i v))
+
+; The body may hold several expressions.
+(for v In '(1 2)
+  (print "first=$0" v)
+  (print "second=$0" v))
+
+; The list is an expression, so a bare symbol works there - which is exactly
+; what the In marker exists to keep unambiguous.
+(let xs '(7 8))
+(for v In xs (print "sym=$0" v))
+(for i v In xs (print "sym$0=$1" i v))
+
+; An empty list runs the body zero times, and the body itself may be empty.
+(for v In '() (print "never"))
+(print "returns=$0" (for v In '(1)))
+
+; Nesting works, inner names shadowing outer ones.
+(for a In '(1 2)
+  (for b In '(9)
+    (print "pair=$0$1" a b)))
+
+; The names are scoped to the loop and do not leak.
+(for v In '(1) (let inner v))
+(print "v-leaked=$0" (try UNDEFINED_EXCEPTION v))
+(print "inner-leaked=$0" (try UNDEFINED_EXCEPTION inner))
+
+; Each step gets its own binding, so a lambda made in the body captures that
+; step's value rather than sharing one cell with every other step.
+(let fns (list))
+(for v In '(1 2 3) (push fns (lambda () v)))
+(print "captured=$0$1$2" ((get fns 0)) ((get fns 1)) ((get fns 2)))
+
+; The length is re-read each step, so a body that shrinks the list stops
+; instead of reading past the end.
+(let ys (list 1 2 3 4 5))
+(for v In ys (pop ys))
+(print "left=$0" (len ys))

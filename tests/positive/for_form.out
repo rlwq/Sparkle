@@ -1,0 +1,1 @@
+v=10 v=20 v=30 0->a 1->b 2->c first=1 second=1 first=2 second=2 sym=7 sym=8 sym0=7 sym1=8 returns=Nil pair=19 pair=29 v-leaked=UNDEFINED_EXCEPTION inner-leaked=UNDEFINED_EXCEPTION captured=123 left=2

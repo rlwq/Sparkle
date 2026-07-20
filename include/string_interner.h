@@ -9,7 +9,8 @@
     X(False)                                                                                       \
     X(Nil)                                                                                         \
     X(quote)                                                                                       \
-    X(Var)
+    X(Var)                                                                                         \
+    X(In)
 
 typedef const char *StringName;
 

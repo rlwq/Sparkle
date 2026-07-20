@@ -137,6 +137,72 @@ void rkl_while_form(VM *vm) {
     vm_build_nil(vm);
 }
 
+// (for value In list body...) or (for key value In list body...). The marker
+// fixes where the names end: without it `(for x lst body1 body2)` reads equally
+// well as one name over `lst` or as two names over `body1`, since the list
+// position accepts a bare symbol. Same trick as Var in lambda.
+void rkl_for_form(VM *vm) {
+    Object *args = vm_peek(vm);
+    size_t n = LIST_SIZE(args);
+    StringName marker = vm->si->prebuilt._In;
+
+    size_t names = 0;
+    for (size_t i = 1; i <= 2 && i < n; i++) {
+        Object *at = LIST_AT(args, i);
+        if (OFTYPE(at, TY_SYMBOL) && SYMBOL(at) == marker) {
+            names = i;
+            break;
+        }
+    }
+
+    VM_RECOVER_IF(vm, names == 0, vm->singletons._VALUE_EXCEPTION);
+
+    // The list expression sits right after the marker; everything past it is
+    // the body, which may be empty.
+    size_t list_at = names + 1;
+    VM_RECOVER_IF(vm, list_at >= n, vm->singletons._VALUE_EXCEPTION);
+
+    for (size_t i = 0; i < names; i++)
+        VM_RECOVER_IF(vm, !OFTYPE(LIST_AT(args, i), TY_SYMBOL), vm->singletons._VALUE_EXCEPTION);
+    VM_RECOVER_IF(vm, names == 2 && SYMBOL(LIST_AT(args, 0)) == SYMBOL(LIST_AT(args, 1)),
+                  vm->singletons._VALUE_EXCEPTION);
+
+    vm_push(vm, LIST_AT(args, list_at));
+    vm_eval_node(vm);
+    VM_RECOVER_IF(vm, !OFTYPE(vm_peek(vm), TY_LIST), vm->singletons._TYPE_EXCEPTION);
+
+    Object *items = vm_peek(vm);
+
+    // The size is re-read every step rather than cached, so a body that shrinks
+    // the list stops the loop instead of indexing past the end.
+    for (size_t i = 0; i < LIST_SIZE(items); i++) {
+        // A scope per iteration, so a lambda made in the body captures that
+        // step's binding rather than sharing one cell with every other step.
+        vm_build_scope(vm);
+
+        if (names == 2) {
+            vm_build_integer(vm, (Integer)i);
+            vm_scope_define(vm, SYMBOL(LIST_AT(args, 0)));
+            vm_pop(vm);
+        }
+
+        vm_push(vm, LIST_AT(items, i));
+        vm_scope_define(vm, SYMBOL(LIST_AT(args, names - 1)));
+        vm_pop(vm);
+
+        for (size_t b = list_at + 1; b < n; b++) {
+            vm_push(vm, LIST_AT(args, b));
+            vm_eval_node(vm);
+            vm_pop(vm);
+        }
+
+        vm_pop_scope(vm);
+    }
+
+    vm_pop_n(vm, 2);
+    vm_build_nil(vm);
+}
+
 static bool lambda_has_arg(Object *lambda, StringName name) {
     for (size_t i = 0; i < LAMBDA_ARGS(lambda).size; i++)
         if (da_at(LAMBDA_ARGS(lambda), i) == name)
@@ -300,10 +366,10 @@ void rkl_or_form(VM *vm) {
     vm_build_bool(vm, result);
 }
 
-SpecialFormDef SPECIAL_FORMS[] = {{"let", rkl_let_form},       {"set", rkl_set_form},
-                                  {"if", rkl_if_form},         {"while", rkl_while_form},
-                                  {"lambda", rkl_lambda_form}, {"begin", rkl_begin_form},
-                                  {"quote", rkl_quote_form},   {"try", rkl_try_form},
-                                  {"and", rkl_and_form},       {"or", rkl_or_form}};
+SpecialFormDef SPECIAL_FORMS[] = {
+    {"let", rkl_let_form},     {"set", rkl_set_form},       {"if", rkl_if_form},
+    {"while", rkl_while_form}, {"lambda", rkl_lambda_form}, {"begin", rkl_begin_form},
+    {"quote", rkl_quote_form}, {"try", rkl_try_form},       {"and", rkl_and_form},
+    {"or", rkl_or_form},       {"for", rkl_for_form}};
 
 size_t SPECIAL_FORMS_COUNT = sizeof(SPECIAL_FORMS) / sizeof(SPECIAL_FORMS[0]);

@@ -16,8 +16,6 @@ assumed - the reproduction is written next to them.
 
 * [ ] Macros. The one Lisp feature the language is missing outright; needs
       quasiquote first.
-* [ ] Iteration over a list without hand-rolled index arithmetic (`for`, or
-      `while` plus a cursor is the only option today).
 * [ ] Early exit: no `break`, `continue` or `return`, so a loop cannot stop
       before its condition flips and a function cannot return from a branch.
 * [ ] `cond`-style dispatch on a value rather than on a chain of predicates.
@@ -110,6 +108,7 @@ assumed - the reproduction is written next to them.
 
 ## Done
 
+* [x] `for` iterates a `List`: `(for value In list ...)` and `(for key value In list ...)`.
 * [x] `input` reads a line from standard input; tests feed it through `.in` files.
 * [x] `try` implements its specified form: `(try ExceptionSymbol expr1 expr2 ...)`.
 * [x] Two error handler invocations behave differently: one duplicates the expression before entering the frame, the other does not.

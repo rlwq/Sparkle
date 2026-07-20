@@ -309,6 +309,31 @@ Usage: `(while condition expr)`
 ))
 ```
 
+### for
+
+Iterates over the elements of a `List`.
+
+Usage:
+* `(for value In list expr1 expr2 ...)`
+* `(for key value In list expr1 expr2 ...)`
+
+Evaluates `list`, which must be a `List`, then evaluates the body once per element with `value` bound to that element. Given two names, `key` is bound to the 0-based index as well. Returns `Nil`.
+
+The `In` marker is what separates the names from the list. Without it `(for x items expr1 expr2)` would read equally well as one name over `items` or as two names over `expr1`, since a bare symbol is a valid list expression.
+
+Each iteration gets a fresh scope, so a `lambda` created in the body captures that step's binding rather than sharing one with every other step. The names are not visible after the loop.
+The length is re-read on each step, so a body that shortens the list ends the loop early rather than running past the end.
+
+`key` and `value` must be `Symbol`s and must differ, and a missing `In` or a missing list expression raises `VALUE_EXCEPTION`. A `list` that is not a `List` raises `TYPE_EXCEPTION`.
+
+```lisp
+(for v In '(10 20 30)
+  (print "$0" v))              ; 10, 20, 30
+
+(for i v In '("a" "b")
+  (print "$0 -> $1" i v))      ; 0 -> a, 1 -> b
+```
+
 ### try
 
 Catches exceptions raised when evaluating an expression.

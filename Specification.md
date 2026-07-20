@@ -314,6 +314,22 @@ Conditional loop. Evaluates `condition` and casts the result to `Bool`. While tr
 
 Usage: `(while condition expr)`
 
+### for
+
+Iterates over the elements of a `List`. Returns `Nil`.
+
+Usage:
+* `(for value In list expr1 expr2 ...)`
+* `(for key value In list expr1 expr2 ...)`
+
+Evaluates `list` and then the body once per element, with `value` bound to the element and, in the second form, `key` bound to its 0-based index.
+The `In` marker delimits the names: the list position accepts a bare `Symbol`, so without the marker the two forms would not be distinguishable.
+
+Each iteration evaluates the body in a new lexical scope holding that iteration's bindings, so a `Lambda` created in the body captures that iteration alone. Neither name is bound after the loop.
+The length of the list is read before each iteration, so a body that shortens the list ends the loop rather than indexing past its end.
+
+`key` and `value` must be `Symbol`s and must be distinct. A missing `In` marker, a missing list expression, a non-`Symbol` name and two identical names each raise `VALUE_EXCEPTION`. A `list` that is not a `List` raises `TYPE_EXCEPTION`.
+
 ### try
 
 Catches exceptions raised when evaluating an expression.
