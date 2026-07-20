@@ -73,10 +73,16 @@ struct VM {
 
 // vm.c
 VM *vm_alloc(GC *gc, StringInterner *si);
+
+// Copies the pointers, so the caller may free its array right after. May be
+// called repeatedly: whatever the scope stack reaches survives a cycle.
 void vm_load_instructions(VM *vm, ObjectPtrDA instructions);
+
 void vm_free(VM *vm);
 void vm_mark(VM *vm);
 void vm_register_builtin(VM *vm, const char *name, BuiltinObject func_ptr);
+
+// Clears is_err and exception on entry: they describe one run, not the VM.
 void vm_run(VM *vm);
 
 // vm_recovery.c

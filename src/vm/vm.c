@@ -17,6 +17,9 @@ VM *vm_alloc(GC *gc, StringInterner *si) {
     vm->si = si;
     vm->try_special = NULL;
 
+    da_init(vm->instructions);
+    vm->instruction_ptr = 0;
+
     da_init(vm->scope_stack);
     da_init(vm->value_stack);
     da_init(vm->recovery_stack);
@@ -38,11 +41,15 @@ VM *vm_alloc(GC *gc, StringInterner *si) {
 }
 
 void vm_load_instructions(VM *vm, ObjectPtrDA instructions) {
-    vm->instructions = instructions;
+    vm->instructions.size = 0;
+    for (size_t i = 0; i < instructions.size; i++)
+        da_push(vm->instructions, da_at(instructions, i));
+
     vm->instruction_ptr = 0;
 }
 
 void vm_free(VM *vm) {
+    da_free(vm->instructions);
     da_free(vm->scope_stack);
     da_free(vm->value_stack);
     da_free(vm->recovery_stack);
@@ -83,6 +90,10 @@ void vm_register_builtin(VM *vm, const char *name, BuiltinObject func_ptr) {
 }
 
 void vm_run(VM *vm) {
+    // On entry, not on exit: callers read both to report the failure.
+    vm->is_err = false;
+    vm->exception = NULL;
+
     jmp_buf error_handler;
     vm_push_recovery(vm, &error_handler);
 
