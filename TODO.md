@@ -51,14 +51,6 @@ assumed - the reproduction is written next to them.
 
 ## Documentation & Presentation
 
-* [ ] `Evaluation Model`, `Standard Library` and `Exception Model` are empty
-      headings in `Specification.md`. *(verified)*
-* [ ] The `?KIND` type predicates (`?INTEGER`, `?STRING`, `?LIST`, `?LAMBDA`,
-      ...) are documented nowhere. *(verified: zero mentions in either document,
-      though all nine exist and work)*
-* [ ] Audit the rest of the builtin surface against `Specification.md` the same
-      way - `neg` was found by diffing documented names against the runtime, so
-      the reverse direction is worth a pass too.
 
 ## Code base, bugs, & fixes
 
@@ -94,6 +86,7 @@ assumed - the reproduction is written next to them.
 
 ## Done
 
+* [x] `Specification.md` covers the whole builtin surface, and its Evaluation, Exception and Standard Library sections are written.
 * [x] `throw` raises any Symbol as an exception, including kinds the program defines.
 * [x] `neg`, `abs`, `min`, `max`, `pow`, `sqrt`, `floor`, `ceil`, `round`.
 * [x] `apply` - call a callable with an argument list.

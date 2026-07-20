@@ -233,6 +233,23 @@ A `Builtin` value is always truthy.
 
 ## Evaluation Model
 
+Evaluating an expression yields a value. Which rule applies is decided by the type of the expression.
+
+`Nil`, `Bool`, `Integer`, `Float`, `String`, `Lambda` and `Builtin` are self-evaluating: they produce themselves.
+
+A `Symbol` evaluates by the rules under Types: `Nil`, `True` and `False` produce their values, a symbol whose first character is an uppercase ASCII letter produces itself, and any other symbol resolves to its binding in the current scope, raising `UNDEFINED_EXCEPTION` when it has none.
+
+A `List` evaluates as described under Types: the empty list produces itself, and a non-empty list is a special form when its first element is a symbol naming one, and a call otherwise.
+
+In a call, the first element is evaluated and must produce a `Lambda` or `Builtin`; anything else raises `UNCALLABLE_EXCEPTION`.
+The remaining elements are then evaluated left to right, and the callable is invoked with the results. Evaluation is strict: every argument is evaluated before the call happens, whether or not the callable would use it.
+A special form instead receives its arguments unevaluated and decides for itself which to evaluate and when, which is what lets `if` skip a branch and `and` stop early.
+
+Every expression has a value, including the forms that exist for their effect. `while` and `for` yield the last value their body produced, or `Nil` if it never ran; `let` and `set` yield the last value they bound or assigned. A form with nothing to report yields `Nil`.
+
+Bindings live in scopes that nest lexically. `let` binds in the current scope, `set` assigns to the nearest enclosing binding of that name, and a symbol resolves by searching outward from the current scope. `begin`, `for` and the body of a `try` each evaluate in a fresh scope, and a `Lambda` captures the scope it was created in.
+
+
 ## Special Forms
 
 Special forms look like function calls but are evaluated differently - arguments are not evaluated before being passed and are not bound to any scope - there is no function-like machinery involved.
@@ -369,6 +386,50 @@ With no arguments, returns `False`.
 
 ## Built-in Functions
 
+Built-ins are values of type `Builtin` and are first-class: they can be bound, passed to other functions and stored in lists.
+Their arguments are evaluated before the call, so unlike a special form a built-in never decides whether or when an argument is evaluated.
+Every built-in checks the number of arguments it was given; a wrong count raises `ARITY_EXCEPTION`.
+
+### Arithmetic
+
+`+`, `-` and `*` take one or more arguments and fold them left to right, so `(+ 5)` is `5` and `(- 10 3 2)` is `5`.
+Operands are combined under the numeric coercion rules, and a non-numeric operand raises `TYPE_EXCEPTION`.
+
+* `(+ x1 x2 ...)` / `(- x1 x2 ...)` / `(* x1 x2 ...)` - sum, difference and product.
+* `(/ x y)` - division, always yielding a `Float`. Division by zero follows IEEE 754 and yields an infinity rather than raising.
+* `(div x y)` - integer division, truncated toward zero. Both operands must be `Integer`; a zero divisor raises `VALUE_EXCEPTION`.
+* `(mod x y)` - the remainder matching `div`, taking the sign of `x`. Both operands must be `Integer`; a zero divisor raises `VALUE_EXCEPTION`.
+* `(neg x)` - negation of numeric `x`, keeping its kind. A `Bool` negates through `Integer`.
+* `(abs x)` - absolute value of numeric `x`, keeping its kind.
+* `(min x1 x2 ...)` / `(max x1 x2 ...)` - the smallest or largest argument, returned as it was given, so `(min 1 2)` is an `Integer` and `(min 1.0 2)` a `Float`. With no arguments, `ARITY_EXCEPTION`.
+* `(pow base exponent)` - `base` raised to `exponent`, always a `Float`.
+* `(sqrt x)` - square root as a `Float`. A negative `x` raises `VALUE_EXCEPTION` rather than yielding NaN.
+* `(floor x)` / `(ceil x)` / `(round x)` - `x` rounded down, up, or to nearest, returned as an `Integer`. `round` breaks ties away from zero.
+
+### Comparison
+
+* `(= x y)` / `(!= x y)` - equality and its negation, accepting values of any type. Values of different types are unequal, except that `Bool`, `Integer` and `Float` are compared under the numeric coercion rules. `String`s compare by content and `Symbol`s by name; `List`, `Lambda` and `Builtin` values compare by identity.
+* `(< x y)` / `(<= x y)` / `(> x y)` / `(>= x y)` - ordering. Both operands must be numeric; anything else raises `TYPE_EXCEPTION`.
+
+### Truth and type predicates
+
+* `(? x)` - casts `x` to `Bool` following the truthiness rules under Types.
+* `(not x)` - casts `x` to `Bool` and returns its negation, so `(not 0)` is `True`.
+* `(&& x1 x2 ...)` / `(|| x1 x2 ...)` - conjunction and disjunction of the arguments cast to `Bool`. These are functions, so every argument is evaluated; the `and` and `or` special forms stop as soon as the result is settled. With no arguments, `&&` is `True` and `||` is `False`.
+* `(?NIL x)`, and likewise `(?BOOL x)`, `(?INTEGER x)`, `(?FLOAT x)`, `(?STRING x)`, `(?SYMBOL x)`, `(?LIST x)`, `(?LAMBDA x)`, `(?BUILTIN x)` - returns `True` when `x` is of that type. One predicate exists per type, named `?` followed by the type name in upper case.
+* `(nil? x)` - `True` when `x` is `Nil`. Equivalent to `?NIL`.
+
+### Conversion
+
+* `(str x)` - returns the printed representation of `x` (any type, as `print` would show it) as a `String`. A `String` argument is returned unchanged.
+* `(int x)` - returns `x` as an `Integer`. A `Float` is truncated toward zero, a `Bool` yields `1` or `0`, and an `Integer` is returned unchanged.
+* `(float x)` - returns `x` as a `Float`. An `Integer` and a `Bool` widen, and a `Float` is returned unchanged.
+
+`int` and `float` also accept a `String`, which must hold a numeric literal as defined under Syntax, and nothing besides it. Every literal form qualifies, including the radix and exponent forms: `"0xFF"`, `".25"` and `"1.5e-3"` all convert.
+A `String` that is empty, padded with whitespace, or carries characters past the end of the literal raises `VALUE_EXCEPTION`.
+The written form selects how the text is read, not the kind it is read into: `(float "7")` is `7.0` and `(int "3.9")` is `3`.
+An argument that is neither numeric nor a `String` raises `TYPE_EXCEPTION`.
+
 ### List operations
 
 The following built-ins operate on `List` values. Passing a non-`List` value where a `List` is expected raises `TYPE_EXCEPTION`.
@@ -388,22 +449,6 @@ The following built-ins operate on `List` values. Passing a non-`List` value whe
 The following built-ins operate on `String` values. Passing a non-`String` value where a `String` is expected raises `TYPE_EXCEPTION`.
 `String` values are immutable: these functions never modify their arguments and always return new values.
 
-* `(str x)` - returns the printed representation of `x` (any type, as `print` would show it) as a `String`. A `String` argument is returned unchanged.
-* `(throw kind)` - raises `kind` as an exception. `kind` is evaluated and must be a `Symbol`, so any name works, not only the six the language defines. A non-`Symbol` raises `TYPE_EXCEPTION`. `throw` never returns: nothing after it in the same expression runs, and control passes to the nearest enclosing `try` that names the same kind, or out of the program if there is none.
-* `(int x)` - returns `x` as an `Integer`. A `Float` is truncated toward zero, a `Bool` yields `1` or `0`, and an `Integer` is returned unchanged.
-* `(float x)` - returns `x` as a `Float`. An `Integer` and a `Bool` widen, and a `Float` is returned unchanged.
-* `(neg x)` - negation of numeric `x`, keeping its kind. A `Bool` negates through `Integer`.
-* `(abs x)` - absolute value of numeric `x`, keeping its kind.
-* `(min x1 x2 ...)` / `(max x1 x2 ...)` - the smallest or largest argument, returned as it was given, so `(min 1 2)` is an `Integer` and `(min 1.0 2)` a `Float`. With no arguments, `ARITY_EXCEPTION`.
-* `(pow base exponent)` - `base` raised to `exponent`, always a `Float`.
-* `(sqrt x)` - square root as a `Float`. A negative `x` raises `VALUE_EXCEPTION` rather than yielding NaN.
-* `(floor x)` / `(ceil x)` / `(round x)` - `x` rounded down, up, or to nearest, returned as an `Integer`. `round` breaks ties away from zero.
-* `(apply f args)` - calls `f` with the elements of the `List` `args` as its arguments. A non-callable `f` raises `UNCALLABLE_EXCEPTION`, and `f`'s own arity still applies.
-
-`int` and `float` also accept a `String`, which must hold a numeric literal as defined under Syntax, and nothing besides it. Every literal form qualifies, including the radix and exponent forms: `"0xFF"`, `".25"` and `"1.5e-3"` all convert.
-A `String` that is empty, padded with whitespace, or carries characters past the end of the literal raises `VALUE_EXCEPTION`.
-The written form selects how the text is read, not the kind it is read into: `(float "7")` is `7.0` and `(int "3.9")` is `3`.
-An argument that is neither numeric nor a `String` raises `TYPE_EXCEPTION`.
 * `(str-len s)` - returns the length of `String` `s` as an `Integer`.
 * `(str-get s i)` - returns the character of `s` at 0-based index `i` as a `String` of length 1. An out-of-range index raises `VALUE_EXCEPTION`.
 * `(str-sub s start len)` - returns the substring of `s` of length `len` starting at 0-based index `start`. A negative or out-of-range `start` or `len` raises `VALUE_EXCEPTION`.
@@ -416,6 +461,12 @@ An argument that is neither numeric nor a `String` raises `TYPE_EXCEPTION`.
 * `(str-replace s target replacement)` - returns `s` with every occurrence of `target` replaced. An empty `target` raises `VALUE_EXCEPTION`.
 * `(str-trim s)` - returns `s` without leading or trailing whitespace.
 * `(str-upper s)` / `(str-lower s)` - returns `s` with ASCII letters converted; other bytes are left as they are.
+
+### Evaluation and control
+
+* `(eval x)` - evaluates `x` as an expression in the current scope and returns the result. A value that is not a `List` or `Symbol` evaluates to itself.
+* `(apply f args)` - calls `f` with the elements of the `List` `args` as its arguments. A non-callable `f` raises `UNCALLABLE_EXCEPTION`, and `f`'s own arity still applies.
+* `(throw kind)` - raises `kind` as an exception. `kind` must be a `Symbol`, so any name works, not only the kinds the language defines. A non-`Symbol` raises `TYPE_EXCEPTION`. `throw` does not return: control passes to the nearest enclosing `try` naming the same kind, or out of the program if there is none.
 
 ### I/O
 
@@ -435,4 +486,25 @@ A `${` not closed by `}` around a non-empty run of digits raises `VALUE_EXCEPTIO
 
 ## Standard Library
 
+Sparkle has no library layer separate from the language: everything available to a program is a built-in, and the set is fixed by the implementation. There is no module system and no way to import definitions from another file, so a program is a single source file plus the built-ins listed above.
+
+
 ## Exception Model
+
+An exception is a `Symbol` naming a kind. Raising one abandons the expression in progress and unwinds to the nearest enclosing `try` that names the same kind; if none does, the program stops and the implementation reports the kind, exiting with a non-zero status.
+
+The language raises these kinds:
+
+| Kind | Raised when |
+|---|---|
+| `TYPE_EXCEPTION` | A function receives an argument of the wrong type |
+| `ARITY_EXCEPTION` | A function receives the wrong number of arguments |
+| `VALUE_EXCEPTION` | An argument has the right type but an unusable value, and for an incorrect special-form call |
+| `UNDEFINED_EXCEPTION` | A symbol has no binding in any enclosing scope |
+| `REBINDING_EXCEPTION` | A name is bound twice in the same scope |
+| `UNCALLABLE_EXCEPTION` | A value that is not a `Lambda` or `Builtin` is used as one |
+
+A program raises its own with `throw`, and the kind it names need not be one of the above: kinds are matched by name, so a program may invent as many as it likes.
+
+`try` catches one kind. An exception of any other kind passes through it untouched and continues outward, so a handler never absorbs a failure it was not written for. Because matching is by name, a kind the language defines and a kind a program invented are caught the same way.
+
