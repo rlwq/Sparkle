@@ -1,4 +1,3 @@
-#include <assert.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -25,12 +24,27 @@ char *read_file(const char *path) {
         exit(1);
     }
 
-    fseek(file, 0, SEEK_END);
-    size_t size = ftell(file);
+    if (fseek(file, 0, SEEK_END) != 0) {
+        fprintf(stderr, "%s: cannot seek file: %s\n", path, strerror(errno));
+        exit(1);
+    }
+
+    // -1 here would wrap into a huge size_t below.
+    long length = ftell(file);
+    if (length < 0) {
+        fprintf(stderr, "%s: cannot size file: %s\n", path, strerror(errno));
+        exit(1);
+    }
     rewind(file);
 
+    size_t size = (size_t)length;
+
+    // Not an assert: NDEBUG would drop it in release.
     char *src = malloc(size + 1);
-    assert(src);
+    if (!src) {
+        fprintf(stderr, "%s: out of memory\n", path);
+        exit(1);
+    }
 
     if (fread(src, 1, size, file) != size) {
         fprintf(stderr, "%s: cannot read file\n", path);
@@ -44,7 +58,7 @@ char *read_file(const char *path) {
 
 int main(int argc, char **argv) {
     if (argc != 2) {
-        printf("USAGE: %s source.rkl\n", argv[0]);
+        fprintf(stderr, "USAGE: %s source.rkl\n", argv[0]);
         return 1;
     }
 
@@ -96,15 +110,15 @@ int main(int argc, char **argv) {
         goto cleanup;
     }
 
+    // Reverse order of allocation.
 cleanup:
     vm_free(vm);
-    da_free(exprs);
-
     parser_free(parser);
+    da_free(exprs);
+    lexer_free(lexer);
     da_free(tokens);
     gc_free(gc);
     si_free(si);
-    lexer_free(lexer);
     free(src);
 
     return (int)is_err;
