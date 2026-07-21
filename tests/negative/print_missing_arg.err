@@ -1,1 +1,1 @@
-./tests/negative/print_missing_arg.rkl: [RUNTIME ERROR] Function expected some other value.
+./tests/negative/print_missing_arg.spk: [RUNTIME ERROR] Function expected some other value.

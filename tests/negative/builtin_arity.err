@@ -1,1 +1,1 @@
-./tests/negative/builtin_arity.rkl: [RUNTIME ERROR] Wrong arity for a function call.
+./tests/negative/builtin_arity.spk: [RUNTIME ERROR] Wrong arity for a function call.

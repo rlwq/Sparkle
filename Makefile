@@ -1,5 +1,8 @@
 CC := gcc
-CFLAGS := -std=c11 -I./include -Wall -Wextra -Wswitch-enum -Wpedantic -Werror
+# -Wmissing-prototypes keeps a layer's public surface honest: anything not
+# declared in a header must be static, so a function cannot quietly become part
+# of the link-time API. -Wall and -Wextra say nothing about this.
+CFLAGS := -std=c11 -I./include -Wall -Wextra -Wswitch-enum -Wpedantic -Wmissing-prototypes -Werror
 
 DEBUG_FLAGS := -fsanitize=undefined,address -O1 -g
 BUILD_FLAGS := -O3 -flto -funroll-loops -DNDEBUG

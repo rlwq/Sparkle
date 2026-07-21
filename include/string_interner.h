@@ -2,26 +2,13 @@
 #define STRING_INTERNER_H
 
 #include "dynamic_array.h"
-#include <stddef.h>
 
-#define PREBUILTS                                                                                  \
-    X(True)                                                                                        \
-    X(False)                                                                                       \
-    X(Nil)                                                                                         \
-    X(quote)                                                                                       \
-    X(Var)                                                                                         \
-    X(In)
+#include <stddef.h>
 
 typedef const char *StringName;
 
 typedef struct {
     DA(char *) strings;
-
-    struct {
-#define X(t_) StringName _##t_;
-        PREBUILTS
-#undef X
-    } prebuilt;
 } StringInterner;
 
 StringInterner *si_alloc(void);

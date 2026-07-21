@@ -58,7 +58,7 @@ Truthiness rules for casting:
 
 An object representing an identifier.
 
-Literal syntax: any sequence of non-whitespace, non-parenthesis, non-quote characters that is not a valid `Integer` or `Float` literal. Examples: `x`, `foo`, `nil?`, `+`.
+Literal syntax: any sequence of non-whitespace, non-parenthesis, non-quote characters that is not a valid `Integer` or `Float` literal. Examples: `x`, `foo`, `empty?`, `+`.
 
 Evaluation:
 * `Nil`, `True`, `False` - produce their respective typed values.

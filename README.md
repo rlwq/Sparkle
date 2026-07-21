@@ -60,7 +60,7 @@ make test
 ## Usage
 
 ```bash
-./build/sparkle source.rkl
+./build/sparkle source.spk
 ```
 
 ## Examples

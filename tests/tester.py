@@ -13,12 +13,12 @@ def find_tests(folder: str) -> list[str]:
     return sorted(
         os.path.join(folder, f)
         for f in os.listdir(folder)
-        if f.endswith('.rkl')
+        if f.endswith('.spk')
     )
 
 
-def read_supl(rkl_path: str, extension: str) -> list[str] | None:
-    out_path = rkl_path[:-4] + extension
+def read_supl(spk_path: str, extension: str) -> list[str] | None:
+    out_path = spk_path[:-4] + extension
     if not os.path.exists(out_path):
         return None
     with open(out_path) as f:
@@ -29,26 +29,26 @@ def format_output(s: str) -> list[str]:
     return re.sub(r'\033\[[0-9;]*m', '', s).split()
 
 
-def read_stdin(rkl_path: str) -> str:
+def read_stdin(spk_path: str) -> str:
     """Contents of the test's .in file, fed to the interpreter on stdin.
 
     Absent one the test still gets an empty stdin rather than the terminal's,
     so a test that reads input ends at end-of-file instead of hanging.
     """
-    in_path = rkl_path[:-4] + '.in'
+    in_path = spk_path[:-4] + '.in'
     if not os.path.exists(in_path):
         return ''
     with open(in_path) as f:
         return f.read()
 
 
-def run_test(binary: str, rkl_path: str) -> tuple[list[str], list[str], int, float]:
+def run_test(binary: str, spk_path: str) -> tuple[list[str], list[str], int, float]:
     begin = time.perf_counter()
     result = subprocess.run(
-        [binary, rkl_path],
+        [binary, spk_path],
         capture_output=True,
         text=True,
-        input=read_stdin(rkl_path)
+        input=read_stdin(spk_path)
     )
     end = time.perf_counter()
     return (format_output(result.stdout),
@@ -62,23 +62,23 @@ def fmt_time(time: float) -> str:
 
 
 def rewrite(binary: str, tests: list[str], tests_folder: str, negative: bool) -> None:
-    for rkl_path in tests:
-        name = os.path.relpath(rkl_path, tests_folder)
-        stdout, stderr, code, _ = run_test(binary, rkl_path)
+    for spk_path in tests:
+        name = os.path.relpath(spk_path, tests_folder)
+        stdout, stderr, code, _ = run_test(binary, spk_path)
         if negative:
             if not code:
                 print(f'{RED}EXPECTED FAILURE BUT PASSED: {name}{RESET}')
                 sys.exit(1)
-            with open(rkl_path[:-4] + '.err', 'w') as f:
+            with open(spk_path[:-4] + '.err', 'w') as f:
                 print(' '.join(stderr), file=f)
             if stdout:
-                with open(rkl_path[:-4] + '.out', 'w') as f:
+                with open(spk_path[:-4] + '.out', 'w') as f:
                     print(' '.join(stdout), file=f)
         else:
             if code:
                 print(f'{RED}CAN\'T RUN TEST {name}{RESET}')
                 sys.exit(1)
-            with open(rkl_path[:-4] + '.out', 'w') as f:
+            with open(spk_path[:-4] + '.out', 'w') as f:
                 print(' '.join(stdout), file=f)
 
 
@@ -86,16 +86,16 @@ def run_positive(binary: str, tests: list[str], tests_folder: str) -> tuple[int,
     passed = failed = skipped = 0
     total_time = 0.0
  
-    for rkl_path in tests:
-        name = os.path.relpath(rkl_path, tests_folder)
-        expected_out = read_supl(rkl_path, '.out')
+    for spk_path in tests:
+        name = os.path.relpath(spk_path, tests_folder)
+        expected_out = read_supl(spk_path, '.out')
  
         if expected_out is None:
             print(f'{YELLOW}MISSING{RESET} {name}.out')
             skipped += 1
             continue
  
-        stdout, _, code, timing = run_test(binary, rkl_path)
+        stdout, _, code, timing = run_test(binary, spk_path)
         total_time += timing
         t = fmt_time(timing)
  
@@ -120,16 +120,16 @@ def run_negative(binary: str, tests: list[str], tests_folder: str) -> tuple[int,
     passed = failed = skipped = 0
     total_time = 0.0
  
-    for rkl_path in tests:
-        name = os.path.relpath(rkl_path, tests_folder)
-        expected_err = read_supl(rkl_path, '.err')
+    for spk_path in tests:
+        name = os.path.relpath(spk_path, tests_folder)
+        expected_err = read_supl(spk_path, '.err')
  
         if expected_err is None:
             print(f'{YELLOW}MISSING{RESET} {name}.err')
             skipped += 1
             continue
  
-        stdout, stderr, code, timing = run_test(binary, rkl_path)
+        stdout, stderr, code, timing = run_test(binary, spk_path)
         total_time += timing
         t = fmt_time(timing)
  
@@ -140,7 +140,7 @@ def run_negative(binary: str, tests: list[str], tests_folder: str) -> tuple[int,
  
         err_ok = stderr == expected_err
  
-        expected_out = read_supl(rkl_path, '.out')
+        expected_out = read_supl(spk_path, '.out')
         out_ok = (expected_out is None) or (stdout == expected_out)
  
         if err_ok and out_ok:

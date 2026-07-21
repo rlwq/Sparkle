@@ -1,17 +1,17 @@
-#include <stdbool.h>
-
 #include "builtins.h"
 #include "object.h"
 #include "vm.h"
 
+#include <stdbool.h>
+
 // ... -> List
-void rkl_list(VM *vm) {
+static void spk_list(VM *vm) {
     /* The args. list is already on the stack. Does nothing */
     (void)vm;
 }
 
 // List -> Integer
-void rkl_len(VM *vm) {
+static void spk_len(VM *vm) {
     vm_expect(vm, TY_LIST);
 
     Integer n = (Integer)OBJ_LIST_SIZE(vm_peek(vm));
@@ -20,7 +20,7 @@ void rkl_len(VM *vm) {
 }
 
 // List, Integer -> Value
-void rkl_get(VM *vm) {
+static void spk_get(VM *vm) {
     vm_expect2(vm, TY_LIST, TY_INTEGER);
 
     Object *l = vm_prev(vm);
@@ -34,7 +34,7 @@ void rkl_get(VM *vm) {
 }
 
 // List, Integer, Value -> List
-void rkl_put(VM *vm) {
+static void spk_put(VM *vm) {
     Object *l = vm_peek_at(vm, 2);
     Object *iobj = vm_prev(vm);
     Object *x = vm_peek(vm);
@@ -50,7 +50,7 @@ void rkl_put(VM *vm) {
 }
 
 // List, Value -> List
-void rkl_push(VM *vm) {
+static void spk_push(VM *vm) {
     vm_expect2(vm, TY_LIST, TY_ANY);
 
     Object *x = vm_peek(vm);
@@ -60,7 +60,7 @@ void rkl_push(VM *vm) {
 }
 
 // List -> Value
-void rkl_pop(VM *vm) {
+static void spk_pop(VM *vm) {
     vm_expect(vm, TY_LIST);
 
     Object *l = vm_peek(vm);
@@ -73,7 +73,7 @@ void rkl_pop(VM *vm) {
 }
 
 // List, List -> List
-void rkl_append(VM *vm) {
+static void spk_append(VM *vm) {
     vm_expect2(vm, TY_LIST, TY_LIST);
 
     vm_build_list(vm);
@@ -91,7 +91,7 @@ void rkl_append(VM *vm) {
 }
 
 // Callable, List -> List
-void rkl_map(VM *vm) {
+static void spk_map(VM *vm) {
     vm_expect2(vm, TY_CALLABLE, TY_LIST);
 
     Object *func = vm_prev(vm);
@@ -110,7 +110,7 @@ void rkl_map(VM *vm) {
 }
 
 // Callable, List -> List
-void rkl_filter(VM *vm) {
+static void spk_filter(VM *vm) {
     vm_expect2(vm, TY_CALLABLE, TY_LIST);
 
     Object *func = vm_prev(vm);
@@ -137,11 +137,11 @@ void rkl_filter(VM *vm) {
 }
 
 DEFINE_MODULE(LIST) = {
-    {"list", rkl_list, 0, true},      {"len", rkl_len, 1, false},
-    {"get", rkl_get, 2, false},       {"put", rkl_put, 3, false},
-    {"push", rkl_push, 2, false},     {"pop", rkl_pop, 1, false},
-    {"append", rkl_append, 2, false}, {"map", rkl_map, 2, false},
-    {"filter", rkl_filter, 2, false},
+    {"list", spk_list, 0, true},      {"len", spk_len, 1, false},
+    {"get", spk_get, 2, false},       {"put", spk_put, 3, false},
+    {"push", spk_push, 2, false},     {"pop", spk_pop, 1, false},
+    {"append", spk_append, 2, false}, {"map", spk_map, 2, false},
+    {"filter", spk_filter, 2, false},
 };
 
 DEFINE_MODULE_SIZE(LIST);

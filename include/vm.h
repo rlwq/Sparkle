@@ -4,6 +4,7 @@
 #include "forwards.h"
 #include "object.h"
 #include "string_interner.h"
+
 #include <setjmp.h>
 
 #define VM_CURR_SCOPE(e_) (da_at_end((e_)->scope_stack, 0))
@@ -27,6 +28,32 @@
     X(True, KIND_BOOL, {.bool_ = true})                                                            \
     X(False, KIND_BOOL, {.bool_ = false})
 
+// The names the language itself gives meaning to: the symbols that evaluate to
+// a value of their own (Nil, True, False), the head the reader expands 'x into,
+// and the markers that fix argument positions in lambda and for.
+//
+// Held as Symbol objects allocated once in vm_alloc, so a dispatch test is a
+// StringName pointer comparison - see VM_SYM. They live here rather than in the
+// interner because the interner is a utility: which strings a language calls
+// keywords is not its business.
+//
+// This is not their final home either: naming them here still has the VM core
+// spelling out words only the language gives meaning to. They belong in lang/,
+// registered into the VM the way special forms now are (see
+// vm_register_special_form) - the mechanism already exists, so what is left is
+// moving the list and the self-evaluating-symbol rule in vm_eval_symbol along
+// with it.
+#define X_LANGUAGE_SYMBOLS                                                                         \
+    X(Nil)                                                                                         \
+    X(True)                                                                                        \
+    X(False)                                                                                       \
+    X(quote)                                                                                       \
+    X(Var)                                                                                         \
+    X(In)
+
+// The interned name of a language symbol, for comparing against a StringName.
+#define VM_SYM(vm_, name_) (OBJ_SYMBOL((vm_)->symbols._##name_))
+
 #define X_RUNTIME_EXCEPTIONS                                                                       \
     X(TYPE_EXCEPTION, "Function expected some other object type.")                                 \
     X(ARITY_EXCEPTION, "Wrong arity for a function call.")                                         \
@@ -34,6 +61,13 @@
     X(REBINDING_EXCEPTION, "Symbol is already bound.")                                             \
     X(UNCALLABLE_EXCEPTION, "Can't use this kind of object as a function.")                        \
     X(VALUE_EXCEPTION, "Function expected some other value.")
+
+// A keyword bound to the handler that runs it. The keyword is interned at
+// registration, so a lookup is a StringName pointer comparison.
+typedef struct {
+    StringName keyword;
+    void (*func)(VM *vm);
+} SpecialFormEntry;
 
 typedef struct {
     jmp_buf *jmp;
@@ -52,10 +86,11 @@ struct VM {
     GC *gc;
     StringInterner *si;
 
-    // Special-form dispatch, injected by special_forms_attach so the VM core
-    // never names the language layer. The evaluator consults it before
-    // treating a list head as a function call; NULL means no forms installed.
-    bool (*try_special)(VM *vm, StringName name);
+    // Special forms installed by the language layer through
+    // vm_register_special_form, the same way builtins arrive through
+    // vm_register_builtin: the VM core holds the pairs and looks them up, but
+    // names none of them. Empty means no forms installed.
+    DA(SpecialFormEntry) special_forms;
 
     struct {
 #define X(name_, kind_, init_) Object *_##name_;
@@ -66,6 +101,14 @@ struct VM {
         X_RUNTIME_EXCEPTIONS
 #undef X
     } singletons;
+
+    // Kept apart from singletons: the Symbol `Nil` and the Nil value are two
+    // different objects, and both are needed.
+    struct {
+#define X(name_) Object *_##name_;
+        X_LANGUAGE_SYMBOLS
+#undef X
+    } symbols;
 
     Object *exception;
     bool is_err;
@@ -82,15 +125,23 @@ void vm_free(VM *vm);
 void vm_mark(VM *vm);
 void vm_register_builtin(VM *vm, const char *name, BuiltinObject func_ptr);
 
+// Interns keyword and stores it with its handler. The caller keeps its own
+// table constant: nothing here writes back into it.
+void vm_register_special_form(VM *vm, const char *keyword, void (*func)(VM *vm));
+
+// Runs the form registered for name and reports whether there was one. The
+// evaluator consults this before treating a list head as a function call.
+bool vm_try_special_form(VM *vm, StringName name);
+
 // Clears is_err and exception on entry: they describe one run, not the VM.
 void vm_run(VM *vm);
 
 // vm_recovery.c
 void vm_push_recovery(VM *vm, jmp_buf *jmp);
 void vm_pop_recovery(VM *vm);
-void vm_recover(VM *vm, Object *exception_symbol) __attribute__((noreturn)) __attribute__((cold));
-void vm_expect(VM *vm, ObjectType type) __attribute__((cold));
-void vm_expect2(VM *vm, ObjectType prev, ObjectType peek) __attribute__((cold));
+_Noreturn void vm_recover(VM *vm, Object *exception_symbol) __attribute__((cold));
+void vm_expect(VM *vm, ObjectType type);
+void vm_expect2(VM *vm, ObjectType prev, ObjectType peek);
 
 // vm_scope.c
 void vm_build_scope(VM *vm);
@@ -140,10 +191,7 @@ void vm_pack_list(VM *vm, size_t length);
 size_t vm_unpack_list(VM *vm);
 
 // vm_eval.c
-void vm_eval_node(VM *vm);
-// List (args, evaluated), Callable -> Node (result). Invokes the callable
-// without evaluating the arguments again - the primitive for calling a
-// function with values you already hold (map, filter, future apply).
+void vm_eval_object(VM *vm);
 void vm_call(VM *vm);
 bool vm_cast_to_bool(VM *vm);
 ObjectKind vm_to_common_numeric(VM *vm);

@@ -1,1 +1,1 @@
-./tests/negative/print_unclosed_index.rkl: [RUNTIME ERROR] Function expected some other value.
+./tests/negative/print_unclosed_index.spk: [RUNTIME ERROR] Function expected some other value.

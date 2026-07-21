@@ -1,1 +1,1 @@
-./tests/negative/int_not_numeric.rkl: [RUNTIME ERROR] Function expected some other value.
+./tests/negative/int_not_numeric.spk: [RUNTIME ERROR] Function expected some other value.

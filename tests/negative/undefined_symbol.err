@@ -1,1 +1,1 @@
-./tests/negative/undefined_symbol.rkl: [RUNTIME ERROR] Symbol has no definition.
+./tests/negative/undefined_symbol.spk: [RUNTIME ERROR] Symbol has no definition.

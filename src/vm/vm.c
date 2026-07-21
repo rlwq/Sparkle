@@ -1,13 +1,13 @@
-#include <assert.h>
-#include <setjmp.h>
-#include <stdio.h>
-#include <stdlib.h>
-
+#include "vm.h"
 #include "dynamic_array.h"
 #include "forwards.h"
 #include "gc.h"
 #include "object.h"
-#include "vm.h"
+
+#include <assert.h>
+#include <setjmp.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 VM *vm_alloc(GC *gc, StringInterner *si) {
     VM *vm = malloc(sizeof(VM));
@@ -15,7 +15,6 @@ VM *vm_alloc(GC *gc, StringInterner *si) {
 
     vm->gc = gc;
     vm->si = si;
-    vm->try_special = NULL;
 
     da_init(vm->instructions);
     vm->instruction_ptr = 0;
@@ -23,18 +22,23 @@ VM *vm_alloc(GC *gc, StringInterner *si) {
     da_init(vm->scope_stack);
     da_init(vm->value_stack);
     da_init(vm->recovery_stack);
+    da_init(vm->special_forms);
 
     vm->is_err = false;
     vm->exception = NULL;
 
 #define X(name_, kind_, init_)                                                                     \
     vm->singletons._##name_ = gc_alloc_object(vm->gc, kind_);                                      \
-    vm->singletons._##name_->as = (ObjectUnion)init_;
+    OBJ_AS(vm->singletons._##name_) = (ObjectUnion)init_;
     X_RUNTIME_SINGLETONS
 #undef X
 
 #define X(name_, msg_) vm->singletons._##name_ = gc_alloc_symbol(vm->gc, si_get(vm->si, #name_));
     X_RUNTIME_EXCEPTIONS
+#undef X
+
+#define X(name_) vm->symbols._##name_ = gc_alloc_symbol(vm->gc, si_get(vm->si, #name_));
+    X_LANGUAGE_SYMBOLS
 #undef X
 
     return vm;
@@ -53,13 +57,14 @@ void vm_free(VM *vm) {
     da_free(vm->scope_stack);
     da_free(vm->value_stack);
     da_free(vm->recovery_stack);
+    da_free(vm->special_forms);
 
     free(vm);
 }
 void vm_mark(VM *vm) {
     // Marking unevaluated expressions
     for (size_t i = vm->instruction_ptr; i < vm->instructions.size; i++)
-        gc_mark_node(da_at(vm->instructions, i));
+        gc_mark_object(da_at(vm->instructions, i));
 
     // Marking scopes
     for (size_t i = 0; i < vm->scope_stack.size; i++)
@@ -67,19 +72,24 @@ void vm_mark(VM *vm) {
 
     // Marking value stack
     for (size_t i = 0; i < vm->value_stack.size; i++)
-        gc_mark_node(da_at(vm->value_stack, i));
+        gc_mark_object(da_at(vm->value_stack, i));
 
     if (vm->exception)
-        gc_mark_node(vm->exception);
+        gc_mark_object(vm->exception);
 
 // Marking singletons
-#define X(name_, kind_, init_) gc_mark_node(vm->singletons._##name_);
+#define X(name_, kind_, init_) gc_mark_object(vm->singletons._##name_);
     X_RUNTIME_SINGLETONS
 #undef X
 
 // Marking exception symbols
-#define X(name_, msg_) gc_mark_node(vm->singletons._##name_);
+#define X(name_, msg_) gc_mark_object(vm->singletons._##name_);
     X_RUNTIME_EXCEPTIONS
+#undef X
+
+// Marking language symbols
+#define X(name_) gc_mark_object(vm->symbols._##name_);
+    X_LANGUAGE_SYMBOLS
 #undef X
 }
 
@@ -87,6 +97,22 @@ void vm_register_builtin(VM *vm, const char *name, BuiltinObject func_ptr) {
     vm_build_builtin(vm, func_ptr);
     vm_scope_define(vm, si_get(vm->si, name));
     vm_pop(vm);
+}
+
+void vm_register_special_form(VM *vm, const char *keyword, void (*func)(VM *vm)) {
+    SpecialFormEntry entry = {.keyword = si_get(vm->si, keyword), .func = func};
+    da_push(vm->special_forms, entry);
+}
+
+bool vm_try_special_form(VM *vm, StringName name) {
+    for (size_t i = 0; i < vm->special_forms.size; i++) {
+        if (name == da_at(vm->special_forms, i).keyword) {
+            da_at(vm->special_forms, i).func(vm);
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void vm_run(VM *vm) {
@@ -105,7 +131,7 @@ void vm_run(VM *vm) {
     while (vm->instruction_ptr < vm->instructions.size) {
         assert(vm->instruction_ptr < vm->instructions.size);
         vm_push(vm, da_at(vm->instructions, vm->instruction_ptr));
-        vm_eval_node(vm);
+        vm_eval_object(vm);
         vm_pop(vm);
 
         assert(vm->recovery_stack.size == 1);

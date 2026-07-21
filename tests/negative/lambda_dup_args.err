@@ -1,1 +1,1 @@
-./tests/negative/lambda_dup_args.rkl: [RUNTIME ERROR] Function expected some other value.
+./tests/negative/lambda_dup_args.spk: [RUNTIME ERROR] Function expected some other value.

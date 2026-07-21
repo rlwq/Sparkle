@@ -4,7 +4,7 @@
 
 void vm_build_scope(VM *vm) {
     // Collect before allocating so scope creation participates in the capacity
-    // check like node creation. The parent (VM_CURR_SCOPE) is already on the
+    // check like object creation. The parent (VM_CURR_SCOPE) is already on the
     // scope stack and thus stays rooted across the collection.
     vm_maybe_collect(vm);
     vm_push_scope(vm, gc_alloc_scope(vm->gc, VM_CURR_SCOPE(vm)));
@@ -29,12 +29,11 @@ void vm_scope_get(VM *vm, StringName name) {
     Object *lookup_result = scope_get(VM_CURR_SCOPE(vm), name);
     if (!lookup_result) {
         vm_recover(vm, vm->singletons._UNDEFINED_EXCEPTION);
-        return;
     }
     vm_push(vm, lookup_result);
 }
 
-// Node -> Node
+// Object -> Object
 void vm_scope_set(VM *vm, StringName name) {
     bool result = scope_set(VM_CURR_SCOPE(vm), name, vm_peek(vm));
     if (!result)

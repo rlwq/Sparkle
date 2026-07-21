@@ -6,8 +6,8 @@
 #define INIT_GC_CAPACITY 64
 
 struct GC {
-    Object *nodes_heap;
-    size_t nodes_count;
+    Object *objects_heap;
+    size_t objects_count;
 
     Scope *scopes_heap;
     size_t scopes_count;
@@ -18,8 +18,8 @@ struct GC {
 GC *gc_alloc(void);
 void gc_free(GC *gc);
 
-// The GC owns the whole object lifecycle: these constructors, gc_mark_node and
-// gc_free_node are the only places that know each kind's representation.
+// The GC owns the whole object lifecycle: these constructors, gc_mark_object and
+// gc_free_object are the only places that know each kind's representation.
 //
 // gc_alloc_* never trigger a collection themselves. Collection is driven by the
 // VM at safe points only (see vm_maybe_collect); this keeps the parser's
@@ -39,8 +39,8 @@ void gc_free_scope(GC *gc, Scope *scope);
 
 bool gc_grow_if_needed(GC *gc);
 void gc_mark_scope(Scope *scope);
-void gc_mark_node(Object *expr);
-void gc_free_node(GC *gc, Object *expr);
+void gc_mark_object(Object *object);
+void gc_free_object(GC *gc, Object *object);
 void gc_sweep(GC *gc);
 
 #endif

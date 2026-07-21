@@ -1,6 +1,7 @@
 #include "scope.h"
 #include "dynamic_array.h"
 #include "string_interner.h"
+
 #include <assert.h>
 #include <stdbool.h>
 

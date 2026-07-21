@@ -1,1 +1,1 @@
-./tests/negative/rebinding.rkl: [RUNTIME ERROR] Symbol is already bound.
+./tests/negative/rebinding.spk: [RUNTIME ERROR] Symbol is already bound.

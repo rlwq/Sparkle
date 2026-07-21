@@ -1,14 +1,14 @@
-#include <assert.h>
-#include <ctype.h>
-#include <stdlib.h>
-#include <string.h>
-
 #include "builtins.h"
 #include "io.h"
 #include "object.h"
 #include "vm.h"
 
-// Node -> String
+#include <assert.h>
+#include <ctype.h>
+#include <stdlib.h>
+#include <string.h>
+
+// Object -> String
 static void cast_to_string(VM *vm) {
     // Strings are immutable, so an existing string is shared as-is.
     if (vm_peek(vm)->kind == KIND_STRING)
@@ -16,21 +16,25 @@ static void cast_to_string(VM *vm) {
 
     CharDA repr;
     da_init(repr);
-    write_expr(&repr, vm_peek(vm));
+    write_expr(vm, &repr, vm_peek(vm));
 
-    // The DA grows before size reaches capacity, so the buffer is always at
-    // least repr.size + 1 bytes — hand it over instead of copying.
+    // Handed over instead of copied. da_init allocates before the first push,
+    // so the buffer is malloc'd and never zero-sized, which is what
+    // gc_alloc_string_own requires. It is not necessarily repr.size + 1 bytes:
+    // a size that lands exactly on the capacity leaves no spare byte. Nothing
+    // needs one - strings carry an explicit size and are never read as C
+    // strings (see object.h).
     vm_pop(vm);
     vm_build_string_own(vm, repr.data, repr.size);
 }
 
 // Any -> String
-void rkl_str(VM *vm) {
+static void spk_str(VM *vm) {
     cast_to_string(vm);
 }
 
 // String -> Integer
-void rkl_str_len(VM *vm) {
+static void spk_str_len(VM *vm) {
     vm_expect(vm, TY_STRING);
 
     Integer n = (Integer)OBJ_STRING_SIZE(vm_peek(vm));
@@ -39,7 +43,7 @@ void rkl_str_len(VM *vm) {
 }
 
 // String, Integer -> String
-void rkl_str_get(VM *vm) {
+static void spk_str_get(VM *vm) {
     vm_expect2(vm, TY_STRING, TY_INTEGER);
 
     Object *s = vm_prev(vm);
@@ -52,7 +56,7 @@ void rkl_str_get(VM *vm) {
 }
 
 // String, Integer (start), Integer (length) -> String
-void rkl_str_sub(VM *vm) {
+static void spk_str_sub(VM *vm) {
     Object *s = vm_peek_at(vm, 2);
     Object *start_obj = vm_prev(vm);
     Object *len_obj = vm_peek(vm);
@@ -73,23 +77,23 @@ void rkl_str_sub(VM *vm) {
 }
 
 // List of String -> String
-void rkl_str_cat(VM *vm) {
+static void spk_str_cat(VM *vm) {
     // Variadic: the args always arrive packed in a list.
     assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
 
     Object *args = vm_peek(vm);
     size_t total = 0;
     OBJ_LIST_FOREACH(arg, args)
-    VM_RECOVER_IF(vm, !OBJ_OFTYPE(arg, TY_STRING), vm->singletons._TYPE_EXCEPTION);
-    total += OBJ_STRING_SIZE(arg);
+        VM_RECOVER_IF(vm, !OBJ_OFTYPE(arg, TY_STRING), vm->singletons._TYPE_EXCEPTION);
+        total += OBJ_STRING_SIZE(arg);
     OBJ_END_LIST_FOREACH
 
     char *data = malloc(total + 1);
     assert(data);
     size_t offset = 0;
     OBJ_LIST_FOREACH(arg, args)
-    memcpy(data + offset, OBJ_STRING_DATA(arg), OBJ_STRING_SIZE(arg));
-    offset += OBJ_STRING_SIZE(arg);
+        memcpy(data + offset, OBJ_STRING_DATA(arg), OBJ_STRING_SIZE(arg));
+        offset += OBJ_STRING_SIZE(arg);
     OBJ_END_LIST_FOREACH
 
     vm_pop(vm);
@@ -117,7 +121,7 @@ static bool find_from(Object *haystack, Object *needle, size_t from, size_t *at)
 }
 
 // String (haystack), String (needle) -> Integer (index of first occurrence, or -1)
-void rkl_str_find(VM *vm) {
+static void spk_str_find(VM *vm) {
     vm_expect2(vm, TY_STRING, TY_STRING);
 
     size_t at = 0;
@@ -128,7 +132,7 @@ void rkl_str_find(VM *vm) {
 }
 
 // String -> Integer
-void rkl_str_ord(VM *vm) {
+static void spk_str_ord(VM *vm) {
     vm_expect(vm, TY_STRING);
 
     Object *s = vm_peek(vm);
@@ -140,7 +144,7 @@ void rkl_str_ord(VM *vm) {
 }
 
 // Integer -> String
-void rkl_str_chr(VM *vm) {
+static void spk_str_chr(VM *vm) {
     vm_expect(vm, TY_INTEGER);
 
     Integer code = OBJ_INTEGER(vm_peek(vm));
@@ -154,7 +158,7 @@ void rkl_str_chr(VM *vm) {
 // String, String (separator) -> List of String. An empty separator has no
 // meaning here - every position would match it - so it is refused rather than
 // given some invented reading.
-void rkl_str_split(VM *vm) {
+static void spk_str_split(VM *vm) {
     vm_expect2(vm, TY_STRING, TY_STRING);
     VM_RECOVER_IF(vm, OBJ_STRING_SIZE(vm_peek(vm)) == 0, vm->singletons._VALUE_EXCEPTION);
 
@@ -181,7 +185,7 @@ void rkl_str_split(VM *vm) {
 }
 
 // List of String, String (separator) -> String
-void rkl_str_join(VM *vm) {
+static void spk_str_join(VM *vm) {
     vm_expect2(vm, TY_LIST, TY_STRING);
 
     Object *parts = vm_prev(vm);
@@ -190,8 +194,8 @@ void rkl_str_join(VM *vm) {
 
     size_t total = 0;
     OBJ_LIST_FOREACH(part, parts)
-    VM_RECOVER_IF(vm, !OBJ_OFTYPE(part, TY_STRING), vm->singletons._TYPE_EXCEPTION);
-    total += OBJ_STRING_SIZE(part);
+        VM_RECOVER_IF(vm, !OBJ_OFTYPE(part, TY_STRING), vm->singletons._TYPE_EXCEPTION);
+        total += OBJ_STRING_SIZE(part);
     OBJ_END_LIST_FOREACH
 
     if (n > 1)
@@ -216,7 +220,7 @@ void rkl_str_join(VM *vm) {
 }
 
 // String, String (target), String (replacement) -> String, every occurrence.
-void rkl_str_replace(VM *vm) {
+static void spk_str_replace(VM *vm) {
     Object *s = vm_peek_at(vm, 2);
     Object *target = vm_prev(vm);
     Object *replacement = vm_peek(vm);
@@ -258,7 +262,7 @@ void rkl_str_replace(VM *vm) {
 }
 
 // String -> String, without leading or trailing whitespace.
-void rkl_str_trim(VM *vm) {
+static void spk_str_trim(VM *vm) {
     vm_expect(vm, TY_STRING);
 
     Object *s = vm_peek(vm);
@@ -279,7 +283,7 @@ void rkl_str_trim(VM *vm) {
 
 // String -> String. ASCII only, matching str-chr and str-ord.
 #define STRING_CASE_BUILTIN(func_name_, convert_)                                                  \
-    void func_name_(VM *vm) {                                                                      \
+    static void func_name_(VM *vm) {                                                               \
         vm_expect(vm, TY_STRING);                                                                  \
                                                                                                    \
         Object *s = vm_peek(vm);                                                                   \
@@ -294,24 +298,24 @@ void rkl_str_trim(VM *vm) {
         vm_build_string_own(vm, data, size);                                                       \
     }
 
-STRING_CASE_BUILTIN(rkl_str_upper, toupper)
-STRING_CASE_BUILTIN(rkl_str_lower, tolower)
+STRING_CASE_BUILTIN(spk_str_upper, toupper)
+STRING_CASE_BUILTIN(spk_str_lower, tolower)
 
 DEFINE_MODULE(STRING) = {
-    {"str", rkl_str, 1, false},
-    {"str-len", rkl_str_len, 1, false},
-    {"str-get", rkl_str_get, 2, false},
-    {"str-sub", rkl_str_sub, 3, false},
-    {"str-cat", rkl_str_cat, 0, true},
-    {"str-find", rkl_str_find, 2, false},
-    {"str-ord", rkl_str_ord, 1, false},
-    {"str-split", rkl_str_split, 2, false},
-    {"str-join", rkl_str_join, 2, false},
-    {"str-replace", rkl_str_replace, 3, false},
-    {"str-trim", rkl_str_trim, 1, false},
-    {"str-upper", rkl_str_upper, 1, false},
-    {"str-lower", rkl_str_lower, 1, false},
-    {"str-chr", rkl_str_chr, 1, false},
+    {"str", spk_str, 1, false},
+    {"str-len", spk_str_len, 1, false},
+    {"str-get", spk_str_get, 2, false},
+    {"str-sub", spk_str_sub, 3, false},
+    {"str-cat", spk_str_cat, 0, true},
+    {"str-find", spk_str_find, 2, false},
+    {"str-ord", spk_str_ord, 1, false},
+    {"str-split", spk_str_split, 2, false},
+    {"str-join", spk_str_join, 2, false},
+    {"str-replace", spk_str_replace, 3, false},
+    {"str-trim", spk_str_trim, 1, false},
+    {"str-upper", spk_str_upper, 1, false},
+    {"str-lower", spk_str_lower, 1, false},
+    {"str-chr", spk_str_chr, 1, false},
 };
 
 DEFINE_MODULE_SIZE(STRING);

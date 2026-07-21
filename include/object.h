@@ -1,12 +1,12 @@
 #ifndef OBJECT_H
 #define OBJECT_H
 
+#include "forwards.h"
+#include "string_interner.h"
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-
-#include "forwards.h"
-#include "string_interner.h"
 
 // Adding a kind: extend X_KINDS, add the union member and accessor macros
 // below, then give gc.c a constructor plus mark and free cases, io.c's
@@ -66,9 +66,10 @@ typedef struct {
 } BuiltinObject;
 
 // Strings are immutable byte arrays, so sharing one object is always safe.
-// data is malloc'd and at least size + 1 bytes (never zero-sized), but the
+// data is malloc'd, holds at least size bytes and is never zero-sized, but the
 // content is not NUL-terminated and may itself contain '\0' - always work
-// with the explicit size.
+// with the explicit size. Buffers handed over from a CharDA are sized by the
+// array's capacity, so there is no spare byte past size to rely on.
 typedef struct {
     char *data;
     size_t size;
@@ -92,6 +93,11 @@ struct Object {
     Object *heap_next;
     ObjectUnion as;
 };
+
+// The whole payload at once. Only the singleton setup in vm_alloc needs this:
+// it is X-macro driven and assigns a whole ObjectUnion initializer, so no
+// per-kind accessor fits. Everything else goes through the accessors below.
+#define OBJ_AS(n_) ((n_)->as)
 
 #define OBJ_LIST(n_) ((n_)->as.list)
 #define OBJ_LIST_ITEMS(n_) ((n_)->as.list.items)

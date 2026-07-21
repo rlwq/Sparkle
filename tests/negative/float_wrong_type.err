@@ -1,1 +1,1 @@
-./tests/negative/float_wrong_type.rkl: [RUNTIME ERROR] Function expected some other object type.
+./tests/negative/float_wrong_type.spk: [RUNTIME ERROR] Function expected some other object type.

@@ -1,1 +1,1 @@
-./tests/negative/lambda_arity.rkl: [RUNTIME ERROR] Wrong arity for a function call.
+./tests/negative/lambda_arity.spk: [RUNTIME ERROR] Wrong arity for a function call.

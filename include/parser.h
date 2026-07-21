@@ -1,12 +1,12 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-#include <assert.h>
-#include <stddef.h>
-
 #include "forwards.h"
 #include "lexer.h"
 #include "string_interner.h"
+
+#include <assert.h>
+#include <stddef.h>
 
 #define PARSER_DONE(p_) ((p_)->cursor == (p_)->tokens->size)
 #define PARSER_VALID(p_) (!PARSER_DONE(p_) && !(p_)->is_err)

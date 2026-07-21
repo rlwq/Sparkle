@@ -17,5 +17,5 @@ AllowShortBlocksOnASingleLine: Never
 # has to be described here or clang-format reads the body as unindented
 # statements following a call. Keep in sync with object.h.
 Macros:
-  - LIST_FOREACH(name_, list_)=_FOR {
-  - END_LIST_FOREACH=}
+  - OBJ_LIST_FOREACH(name_, list_)=_FOR {
+  - OBJ_END_LIST_FOREACH=}

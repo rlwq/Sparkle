@@ -2,9 +2,9 @@
 #include "dynamic_array.h"
 #include "forwards.h"
 #include "object.h"
+
 #include <assert.h>
 #include <stdio.h>
-#include <string.h>
 
 static void write_bytes(CharDA *out, const char *data, size_t size) {
     for (size_t i = 0; i < size; i++)
@@ -16,15 +16,14 @@ static void write_cstr(CharDA *out, const char *s) {
         da_push(*out, *s++);
 }
 
-static void write_list(CharDA *out, Object *expr) {
+static void write_list(VM *vm, CharDA *out, Object *expr) {
     assert(expr->kind == KIND_LIST);
 
-    // A (quote x) list prints in its reader form 'x. Compared by name, not by
-    // interned pointer, since the printer has no access to the interner.
+    // A (quote x) list prints in its reader form 'x.
     if (OBJ_LIST_SIZE(expr) == 2 && OBJ_OFTYPE(OBJ_LIST_AT(expr, 0), TY_SYMBOL) &&
-        strcmp(OBJ_SYMBOL(OBJ_LIST_AT(expr, 0)), "quote") == 0) {
+        OBJ_SYMBOL(OBJ_LIST_AT(expr, 0)) == VM_SYM(vm, quote)) {
         write_cstr(out, "'");
-        write_expr(out, OBJ_LIST_AT(expr, 1));
+        write_expr(vm, out, OBJ_LIST_AT(expr, 1));
         return;
     }
 
@@ -32,31 +31,31 @@ static void write_list(CharDA *out, Object *expr) {
     for (size_t i = 0; i < OBJ_LIST_SIZE(expr); i++) {
         if (i > 0)
             write_cstr(out, " ");
-        write_expr(out, OBJ_LIST_AT(expr, i));
+        write_expr(vm, out, OBJ_LIST_AT(expr, i));
     }
     write_cstr(out, ")");
 }
 
-static void write_lambda(CharDA *out, Object *expr) {
+static void write_lambda(VM *vm, CharDA *out, Object *expr) {
     assert(expr->kind == KIND_LAMBDA);
 
     write_cstr(out, "(lambda (");
-    if (expr->as.lambda.args.size > (expr->as.lambda.is_variadic ? 1 : 0))
-        write_cstr(out, da_at(expr->as.lambda.args, 0));
+    if (OBJ_LAMBDA_ARGS(expr).size > (OBJ_LAMBDA_IS_VARIADIC(expr) ? 1 : 0))
+        write_cstr(out, da_at(OBJ_LAMBDA_ARGS(expr), 0));
     for (size_t i = 1; i < OBJ_LAMBDA_POS_ARGS_N(expr); i++) {
         write_cstr(out, " ");
-        write_cstr(out, da_at(expr->as.lambda.args, i));
+        write_cstr(out, da_at(OBJ_LAMBDA_ARGS(expr), i));
     }
-    if (expr->as.lambda.is_variadic) {
+    if (OBJ_LAMBDA_IS_VARIADIC(expr)) {
         write_cstr(out, " Var ");
-        write_cstr(out, da_at_end(expr->as.lambda.args, 0));
+        write_cstr(out, da_at_end(OBJ_LAMBDA_ARGS(expr), 0));
     }
     write_cstr(out, ") ");
-    write_expr(out, expr->as.lambda.subexpr);
+    write_expr(vm, out, OBJ_LAMBDA_SUBEXPR(expr));
     write_cstr(out, ")");
 }
 
-void write_expr(CharDA *out, Object *expr) {
+void write_expr(VM *vm, CharDA *out, Object *expr) {
     // Large enough for %f of any double (~317 chars for DBL_MAX).
     char buf[512];
 
@@ -82,28 +81,12 @@ void write_expr(CharDA *out, Object *expr) {
         write_cstr(out, OBJ_SYMBOL(expr));
         break;
     case KIND_LIST:
-        write_list(out, expr);
+        write_list(vm, out, expr);
         break;
     case KIND_BUILTIN:
         break;
     case KIND_LAMBDA:
-        write_lambda(out, expr);
+        write_lambda(vm, out, expr);
         break;
     }
-}
-
-void print_list(Object *expr) {
-    CharDA out;
-    da_init(out);
-    write_list(&out, expr);
-    fwrite(out.data, 1, out.size, stdout);
-    da_free(out);
-}
-
-void print_expr(Object *expr) {
-    CharDA out;
-    da_init(out);
-    write_expr(&out, expr);
-    fwrite(out.data, 1, out.size, stdout);
-    da_free(out);
 }

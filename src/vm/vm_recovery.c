@@ -2,6 +2,7 @@
 #include "object.h"
 #include "string_interner.h"
 #include "vm.h"
+
 #include <assert.h>
 
 void vm_push_recovery(VM *vm, jmp_buf *jmp) {
@@ -15,7 +16,7 @@ void vm_pop_recovery(VM *vm) {
     da_pop(vm->recovery_stack);
 }
 
-void vm_recover(VM *vm, Object *exception_symbol) {
+_Noreturn void vm_recover(VM *vm, Object *exception_symbol) {
     assert(vm->recovery_stack.size > 0);
     assert(OBJ_OFTYPE(exception_symbol, TY_SYMBOL));
 

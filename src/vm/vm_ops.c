@@ -1,5 +1,6 @@
 #include "object.h"
 #include "vm.h"
+
 #include <assert.h>
 
 // v0, v1, ..., v[n-1] -> List(v0, v1, ..., v[n-1])

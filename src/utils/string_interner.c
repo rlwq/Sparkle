@@ -1,5 +1,6 @@
 #include "string_interner.h"
 #include "dynamic_array.h"
+
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -10,10 +11,6 @@ StringInterner *si_alloc(void) {
     assert(si);
 
     da_init(si->strings);
-
-#define X(t_) si->prebuilt._##t_ = si_get(si, #t_);
-    PREBUILTS
-#undef X
 
     return si;
 }
@@ -26,7 +23,7 @@ void si_free(StringInterner *si) {
     free(si);
 }
 
-bool comp_nstr_cstr(const char *nstr, size_t size, const char *cstr) {
+static bool si_comp_nstr_cstr(const char *nstr, size_t size, const char *cstr) {
     for (size_t i = 0; i < size; i++)
         if (cstr[i] == '\0' || nstr[i] != cstr[i])
             return false;
@@ -36,7 +33,7 @@ bool comp_nstr_cstr(const char *nstr, size_t size, const char *cstr) {
 
 StringName si_getn(StringInterner *si, const char *str, size_t n) {
     for (size_t i = 0; i < si->strings.size; i++)
-        if (comp_nstr_cstr(str, n, da_at(si->strings, i)))
+        if (si_comp_nstr_cstr(str, n, da_at(si->strings, i)))
             return da_at(si->strings, i);
 
     char *sn = malloc(n + 1);

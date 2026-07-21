@@ -1,8 +1,8 @@
 #include "diagnostics.h"
+#include "vm.h"
+
 #include <assert.h>
 #include <stdio.h>
-
-#include "vm.h"
 
 #define RED "\033[31m"
 #define RESET "\033[0m"

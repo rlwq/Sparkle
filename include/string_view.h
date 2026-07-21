@@ -2,6 +2,7 @@
 #define STRING_VIEW_H
 
 #include "dynamic_array.h"
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>

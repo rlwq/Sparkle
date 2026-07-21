@@ -1,11 +1,11 @@
+#include "lexer.h"
+#include "dynamic_array.h"
+#include "string_view.h"
+
 #include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#include "dynamic_array.h"
-#include "lexer.h"
-#include "string_view.h"
 
 #define CURR(l_) ((l_)->src.size == 0 ? '\0' : *((l_)->src.data))
 #define NEXT(l_) ((l_)->src.size < 2 ? '\0' : *((l_)->src.data + 1))
@@ -54,7 +54,7 @@ void lexer_free(Lexer *lexer) {
     free(lexer);
 }
 
-char lexer_advance(Lexer *lexer) {
+static char lexer_advance(Lexer *lexer) {
     if (IS_EOF(lexer))
         return '\0';
 
@@ -70,23 +70,23 @@ char lexer_advance(Lexer *lexer) {
     return curr;
 }
 
-void lexer_marker_set(Lexer *lexer) {
+static void lexer_marker_set(Lexer *lexer) {
     lexer->marker = lexer->src;
     lexer->marker_pos = lexer->pos;
 }
 
-Token lexer_marker_cut(Lexer *lexer, TokenKind kind) {
+static Token lexer_marker_cut(Lexer *lexer, TokenKind kind) {
     size_t size = lexer->src.data - lexer->marker.data;
     StringView src = (StringView){.data = lexer->marker.data, .size = size};
     Token result = (Token){.kind = kind, .src = src, .pos = lexer->marker_pos};
     return result;
 }
 
-void lexer_skip_ws(Lexer *lexer) {
+static void lexer_skip_ws(Lexer *lexer) {
     lexer_skip_while(lexer, isspace(CURR(lexer)));
 }
 
-void lexer_skip_line_comment(Lexer *lexer) {
+static void lexer_skip_line_comment(Lexer *lexer) {
     if (CURR(lexer) != ';')
         return;
     lexer_advance(lexer);
@@ -98,7 +98,7 @@ void lexer_skip_line_comment(Lexer *lexer) {
 // symbol stays symbolic, so division and names like /* survive in strings and
 // symbols). Unlike C they nest: every inner /* needs its own */. Hitting EOF
 // before the matching */ is a lexing error.
-void lexer_skip_block_comment(Lexer *lexer) {
+static void lexer_skip_block_comment(Lexer *lexer) {
     if (CURR(lexer) != '/' || NEXT(lexer) != '*')
         return;
     lexer_advance(lexer);
@@ -123,7 +123,7 @@ void lexer_skip_block_comment(Lexer *lexer) {
         lexer->is_err = true;
 }
 
-Token lex_char_token(Lexer *lexer, TokenKind kind) {
+static Token lexer_read_char_token(Lexer *lexer, TokenKind kind) {
     StringView src = sv_take(lexer->src, 1);
     Token result = BUILD_TOKEN(lexer, kind);
     lexer_advance(lexer);
@@ -134,7 +134,7 @@ Token lex_char_token(Lexer *lexer, TokenKind kind) {
 
 // The shape has already been decided by sv_scan_number, so this only has to
 // walk over what the scan measured, keeping line and column tracking intact.
-Token lex_numeric_token(Lexer *lexer, SvNumber kind, size_t length) {
+static Token lexer_read_numeric_token(Lexer *lexer, SvNumber kind, size_t length) {
     lexer_marker_set(lexer);
 
     for (size_t i = 0; i < length; i++)
@@ -143,7 +143,7 @@ Token lex_numeric_token(Lexer *lexer, SvNumber kind, size_t length) {
     return lexer_marker_cut(lexer, kind == SV_NUMBER_FLOAT ? TK_DECIMAL : TK_INTEGER);
 }
 
-Token lex_string_token(Lexer *lexer) {
+static Token lexer_read_string_token(Lexer *lexer) {
     lexer_marker_set(lexer);
     lexer_advance(lexer);
 
@@ -161,7 +161,7 @@ Token lex_string_token(Lexer *lexer) {
     return lexer_marker_cut(lexer, TK_STRING);
 }
 
-Token lex_symbol_token(Lexer *lexer) {
+static Token lexer_read_symbol_token(Lexer *lexer) {
     lexer_marker_set(lexer);
 
     lexer_skip_while(lexer, issymbolic(CURR(lexer)));
@@ -169,20 +169,20 @@ Token lex_symbol_token(Lexer *lexer) {
     return lexer_marker_cut(lexer, TK_SYMBOL);
 }
 
-Token lex_token(Lexer *lexer) {
+static Token lexer_read_token(Lexer *lexer) {
     char curr = CURR(lexer);
 
     if (curr == '(')
-        return lex_char_token(lexer, TK_L_PAREN);
+        return lexer_read_char_token(lexer, TK_L_PAREN);
 
     if (curr == ')')
-        return lex_char_token(lexer, TK_R_PAREN);
+        return lexer_read_char_token(lexer, TK_R_PAREN);
 
     if (curr == '\'')
-        return lex_char_token(lexer, TK_QUOTE);
+        return lexer_read_char_token(lexer, TK_QUOTE);
 
     if (curr == '"')
-        return lex_string_token(lexer);
+        return lexer_read_string_token(lexer);
 
     // Numbers are recognised by the shared scanner rather than by peeking at a
     // character or two: with a leading point and an exponent in the grammar,
@@ -190,16 +190,16 @@ Token lex_token(Lexer *lexer) {
     size_t number_length = 0;
     SvNumber number = sv_scan_number(lexer->src, &number_length);
     if (number != SV_NUMBER_NONE)
-        return lex_numeric_token(lexer, number, number_length);
+        return lexer_read_numeric_token(lexer, number, number_length);
 
     if (issymbolic(curr))
-        return lex_symbol_token(lexer);
+        return lexer_read_symbol_token(lexer);
 
     lexer->is_err = true;
     return BUILD_TOKEN(lexer, TK_ERR);
 }
 
-void lexer_skip_to_token(Lexer *lexer) {
+static void lexer_skip_to_token(Lexer *lexer) {
     while (!IS_EOF(lexer)) {
         if (isspace(CURR(lexer)))
             lexer_skip_ws(lexer);
@@ -212,14 +212,14 @@ void lexer_skip_to_token(Lexer *lexer) {
     }
 }
 
-void lex_current(Lexer *lexer) {
+static void lexer_read_current(Lexer *lexer) {
     lexer_skip_to_token(lexer);
     if (!IS_EOF(lexer))
-        da_push(*(lexer->tokens), lex_token(lexer));
+        da_push(*(lexer->tokens), lexer_read_token(lexer));
 }
 
 void lexer_run(Lexer *lexer) {
     while (!IS_EOF(lexer) && !lexer->is_err) {
-        lex_current(lexer);
+        lexer_read_current(lexer);
     }
 }

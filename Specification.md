@@ -417,7 +417,6 @@ Operands are combined under the numeric coercion rules, and a non-numeric operan
 * `(not x)` - casts `x` to `Bool` and returns its negation, so `(not 0)` is `True`.
 * `(&& x1 x2 ...)` / `(|| x1 x2 ...)` - conjunction and disjunction of the arguments cast to `Bool`. These are functions, so every argument is evaluated; the `and` and `or` special forms stop as soon as the result is settled. With no arguments, `&&` is `True` and `||` is `False`.
 * `(?NIL x)`, and likewise `(?BOOL x)`, `(?INTEGER x)`, `(?FLOAT x)`, `(?STRING x)`, `(?SYMBOL x)`, `(?LIST x)`, `(?LAMBDA x)`, `(?BUILTIN x)` - returns `True` when `x` is of that type. One predicate exists per type, named `?` followed by the type name in upper case.
-* `(nil? x)` - `True` when `x` is `Nil`. Equivalent to `?NIL`.
 
 ### Conversion
 

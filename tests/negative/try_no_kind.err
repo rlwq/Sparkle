@@ -1,1 +1,1 @@
-./tests/negative/try_no_kind.rkl: [RUNTIME ERROR] Function expected some other value.
+./tests/negative/try_no_kind.spk: [RUNTIME ERROR] Function expected some other value.

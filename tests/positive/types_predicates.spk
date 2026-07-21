@@ -15,9 +15,6 @@
 ; The empty list is still a List, and Nil is not one.
 (print "empty   $0 $1" (?LIST '()) (?LIST Nil))
 
-; nil? overlaps ?NIL but is a plain function rather than a generated predicate.
-(print "nil?    $0 $1" (nil? Nil) (nil? False))
-
 ; Predicates answer about the value, so a quoted list is a List once evaluated.
 (let xs '(1 2))
 (print "bound   $0 $1" (?LIST xs) (?INTEGER (get xs 0)))

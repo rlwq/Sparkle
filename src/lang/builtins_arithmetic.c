@@ -1,16 +1,14 @@
-#include <assert.h>
-#include <math.h>
-#include <stdbool.h>
-#include <string.h>
-
 #include "builtins.h"
-#include "forwards.h"
 #include "object.h"
 #include "string_view.h"
 #include "vm.h"
 
+#include <assert.h>
+#include <math.h>
+#include <stdbool.h>
+
 #define NUMERIC_VARIADIC_BUILTIN(func_name_, operator_)                                            \
-    void func_name_(VM *vm) {                                                                      \
+    static void func_name_(VM *vm) {                                                               \
         vm_swap(vm);                                                                               \
                                                                                                    \
         Object *args_ = vm_prev(vm);                                                               \
@@ -31,87 +29,11 @@
         OBJ_END_LIST_FOREACH vm_pop_prev(vm);                                                      \
     }
 
-#define NUMERIC_ORDER_BUILTIN(func_name_, operator_)                                               \
-    void func_name_(VM *vm) {                                                                      \
-        vm_expect2(vm, TY_NUMERIC, TY_NUMERIC);                                                    \
-        vm_to_common_numeric(vm);                                                                  \
-        switch (OBJ_TYPEOF(vm_peek(vm))) {                                                         \
-        case TY_BOOL:                                                                              \
-            vm_build_bool(vm, OBJ_BOOL(vm_prev(vm)) operator_ OBJ_BOOL(vm_peek(vm)));              \
-            break;                                                                                 \
-        case TY_INTEGER:                                                                           \
-            vm_build_bool(vm, OBJ_INTEGER(vm_prev(vm)) operator_ OBJ_INTEGER(vm_peek(vm)));        \
-            break;                                                                                 \
-        case TY_FLOAT:                                                                             \
-            vm_build_bool(vm, OBJ_FLOAT(vm_prev(vm)) operator_ OBJ_FLOAT(vm_peek(vm)));            \
-            break;                                                                                 \
-        default:                                                                                   \
-            assert(false && "UNREACHABLE");                                                        \
-        }                                                                                          \
-        vm_pop_prev_n(vm, 2);                                                                      \
-    }
+NUMERIC_VARIADIC_BUILTIN(spk_add, +)
+NUMERIC_VARIADIC_BUILTIN(spk_mul, *)
+NUMERIC_VARIADIC_BUILTIN(spk_sub, -)
 
-// Node, Node -> Node
-void rkl_eq(VM *vm) {
-    bool is_equal = false;
-
-    if (OBJ_OFTYPE(vm_peek(vm), TY_NUMERIC) && OBJ_OFTYPE(vm_prev(vm), TY_NUMERIC))
-        vm_to_common_numeric(vm);
-
-    if (vm_peek(vm)->kind != vm_prev(vm)->kind) {
-        is_equal = false;
-        goto end;
-    }
-
-    switch (vm_peek(vm)->kind) {
-    case KIND_NIL:
-        is_equal = true;
-        break;
-    case KIND_SYMBOL:
-        is_equal = OBJ_SYMBOL(vm_peek(vm)) == OBJ_SYMBOL(vm_prev(vm));
-        break;
-    case KIND_INTEGER:
-        is_equal = OBJ_INTEGER(vm_peek(vm)) == OBJ_INTEGER(vm_prev(vm));
-        break;
-    case KIND_FLOAT:
-        is_equal = OBJ_FLOAT(vm_peek(vm)) == OBJ_FLOAT(vm_prev(vm));
-        break;
-    case KIND_BOOL:
-        is_equal = OBJ_BOOL(vm_peek(vm)) == OBJ_BOOL(vm_prev(vm));
-        break;
-    case KIND_STRING:
-        is_equal = OBJ_STRING_SIZE(vm_peek(vm)) == OBJ_STRING_SIZE(vm_prev(vm)) &&
-                   memcmp(OBJ_STRING_DATA(vm_peek(vm)), OBJ_STRING_DATA(vm_prev(vm)),
-                          OBJ_STRING_SIZE(vm_peek(vm))) == 0;
-        break;
-    case KIND_LIST:
-    case KIND_LAMBDA:
-    case KIND_BUILTIN:
-        is_equal = vm_peek(vm) == vm_prev(vm);
-        break;
-    }
-
-end:
-    vm_pop_n(vm, 2);
-    vm_build_bool(vm, is_equal);
-}
-
-void rkl_ne(VM *vm) {
-    rkl_eq(vm);
-    vm_build_bool(vm, !OBJ_BOOL(vm_peek(vm)));
-    vm_pop_prev(vm);
-}
-
-NUMERIC_VARIADIC_BUILTIN(rkl_add, +)
-NUMERIC_VARIADIC_BUILTIN(rkl_mul, *)
-NUMERIC_VARIADIC_BUILTIN(rkl_sub, -)
-
-NUMERIC_ORDER_BUILTIN(rkl_gt, >)
-NUMERIC_ORDER_BUILTIN(rkl_ge, >=)
-NUMERIC_ORDER_BUILTIN(rkl_lt, <)
-NUMERIC_ORDER_BUILTIN(rkl_le, <=)
-
-void rkl_truediv(VM *vm) {
+static void spk_truediv(VM *vm) {
     vm_expect2(vm, TY_NUMERIC, TY_NUMERIC);
 
     vm_to_common_numeric(vm);
@@ -133,7 +55,7 @@ void rkl_truediv(VM *vm) {
     vm_build_float(vm, v1 / v2);
 }
 
-void rkl_div(VM *vm) {
+static void spk_div(VM *vm) {
     vm_expect2(vm, TY_INTEGER, TY_INTEGER);
     VM_RECOVER_IF(vm, OBJ_INTEGER(vm_peek(vm)) == 0, vm->singletons._VALUE_EXCEPTION);
 
@@ -141,37 +63,12 @@ void rkl_div(VM *vm) {
     vm_pop_prev_n(vm, 2);
 }
 
-void rkl_mod(VM *vm) {
+static void spk_mod(VM *vm) {
     vm_expect2(vm, TY_INTEGER, TY_INTEGER);
     VM_RECOVER_IF(vm, OBJ_INTEGER(vm_peek(vm)) == 0, vm->singletons._VALUE_EXCEPTION);
 
     vm_build_integer(vm, OBJ_INTEGER(vm_prev(vm)) % OBJ_INTEGER(vm_peek(vm)));
     vm_pop_prev_n(vm, 2);
-}
-
-void rkl_eval(VM *vm) {
-    vm_eval_node(vm);
-}
-
-// Symbol -> does not return. A plain function rather than a special form: the
-// kind has to be evaluated anyway, and a builtin is handed its arguments
-// already evaluated, so there is nothing for a form to control here.
-//
-// The kind is a Symbol because that is what an exception is in this language -
-// try matches on it and the reporter prints it.
-void rkl_throw(VM *vm) {
-    vm_expect(vm, TY_SYMBOL);
-    vm_recover(vm, vm_peek(vm));
-}
-
-void rkl_is_nil(VM *vm) {
-    bool is_nil = vm_peek(vm)->kind == KIND_NIL;
-    vm_pop(vm);
-    vm_build_bool(vm, is_nil);
-}
-
-void rkl_cast_to_bool(VM *vm) {
-    vm_cast_to_bool(vm);
 }
 
 // A string converts exactly when the same text would have read as a numeric
@@ -186,7 +83,7 @@ static bool scan_number(Object *s, bool *is_decimal) {
     return kind != SV_NUMBER_NONE && length == OBJ_STRING_SIZE(s);
 }
 
-// Node -> Integer or Float, per want. A String is read as a numeric literal, a
+// Object -> Integer or Float, per want. A String is read as a numeric literal, a
 // Bool counts as 1 or 0, and Float to Integer truncates toward zero.
 static void cast_numeric(VM *vm, ObjectKind want) {
     Object *value = vm_peek(vm);
@@ -267,7 +164,7 @@ static double numeric_as_double(Object *value) {
 
 // Numeric -> Integer or Float. Bool negates through Integer, since arithmetic
 // already reads it as 1 and 0 and there is no negative Bool to land on.
-void rkl_neg(VM *vm) {
+static void spk_neg(VM *vm) {
     vm_expect(vm, TY_NUMERIC);
 
     Object *value = vm_peek(vm);
@@ -282,7 +179,7 @@ void rkl_neg(VM *vm) {
 }
 
 // Numeric -> Integer or Float, keeping the kind it was given.
-void rkl_abs(VM *vm) {
+static void spk_abs(VM *vm) {
     vm_expect(vm, TY_NUMERIC);
 
     Object *value = vm_peek(vm);
@@ -305,7 +202,7 @@ static void extremum(VM *vm, bool want_greater) {
     VM_RECOVER_IF(vm, n == 0, vm->singletons._ARITY_EXCEPTION);
 
     OBJ_LIST_FOREACH(arg, args)
-    VM_RECOVER_IF(vm, !OBJ_OFTYPE(arg, TY_NUMERIC), vm->singletons._TYPE_EXCEPTION);
+        VM_RECOVER_IF(vm, !OBJ_OFTYPE(arg, TY_NUMERIC), vm->singletons._TYPE_EXCEPTION);
     OBJ_END_LIST_FOREACH
 
     // The winner is carried as the original object, so (min 1 2) stays an
@@ -322,16 +219,16 @@ static void extremum(VM *vm, bool want_greater) {
     vm_pop_prev(vm);
 }
 
-void rkl_min(VM *vm) {
+static void spk_min(VM *vm) {
     extremum(vm, false);
 }
 
-void rkl_max(VM *vm) {
+static void spk_max(VM *vm) {
     extremum(vm, true);
 }
 
 #define FLOAT_RESULT_BUILTIN(func_name_, expr_)                                                    \
-    void func_name_(VM *vm) {                                                                      \
+    static void func_name_(VM *vm) {                                                               \
         vm_expect(vm, TY_NUMERIC);                                                                 \
         double x = numeric_as_double(vm_peek(vm));                                                 \
         (void)x;                                                                                   \
@@ -339,18 +236,18 @@ void rkl_max(VM *vm) {
         vm_pop_prev(vm);                                                                           \
     }
 
-FLOAT_RESULT_BUILTIN(rkl_sqrt_impl, sqrt(x))
+FLOAT_RESULT_BUILTIN(spk_sqrt_impl, sqrt(x))
 
 // Numeric -> Float. A negative argument has no real root, so it is a value
 // error rather than a quiet NaN.
-void rkl_sqrt(VM *vm) {
+static void spk_sqrt(VM *vm) {
     vm_expect(vm, TY_NUMERIC);
     VM_RECOVER_IF(vm, numeric_as_double(vm_peek(vm)) < 0, vm->singletons._VALUE_EXCEPTION);
-    rkl_sqrt_impl(vm);
+    spk_sqrt_impl(vm);
 }
 
 // Numeric, Numeric -> Float. Float throughout, the same choice / makes.
-void rkl_pow(VM *vm) {
+static void spk_pow(VM *vm) {
     vm_expect2(vm, TY_NUMERIC, TY_NUMERIC);
 
     double base = numeric_as_double(vm_prev(vm));
@@ -363,105 +260,44 @@ void rkl_pow(VM *vm) {
 // Numeric -> Integer. Rounding lands on an Integer because that is what the
 // result is wanted for - indexing, counting, further integer arithmetic.
 #define ROUNDING_BUILTIN(func_name_, round_)                                                       \
-    void func_name_(VM *vm) {                                                                      \
+    static void func_name_(VM *vm) {                                                               \
         vm_expect(vm, TY_NUMERIC);                                                                 \
         vm_build_integer(vm, (Integer)round_(numeric_as_double(vm_peek(vm))));                     \
         vm_pop_prev(vm);                                                                           \
     }
 
-ROUNDING_BUILTIN(rkl_floor, floor)
-ROUNDING_BUILTIN(rkl_ceil, ceil)
-ROUNDING_BUILTIN(rkl_round, round)
+ROUNDING_BUILTIN(spk_floor, floor)
+ROUNDING_BUILTIN(spk_ceil, ceil)
+ROUNDING_BUILTIN(spk_round, round)
 
-// List (args), Callable -> Node. vm_call is the primitive that invokes a
-// callable over an argument list without evaluating the arguments again, which
-// is exactly what apply needs.
-void rkl_apply(VM *vm) {
-    vm_expect(vm, TY_LIST);
-    VM_RECOVER_IF(vm, !OBJ_OFTYPE(vm_prev(vm), TY_CALLABLE), vm->singletons._UNCALLABLE_EXCEPTION);
-
-    vm_swap(vm);
-    vm_call(vm);
-}
-
-// Node -> Integer
-void rkl_cast_to_integer(VM *vm) {
+// Object -> Integer
+static void spk_cast_to_integer(VM *vm) {
     cast_numeric(vm, KIND_INTEGER);
 }
 
-// Node -> Float
-void rkl_cast_to_float(VM *vm) {
+// Object -> Float
+static void spk_cast_to_float(VM *vm) {
     cast_numeric(vm, KIND_FLOAT);
 }
 
-void rkl_logical_and(VM *vm) {
-    bool result = true;
-
-    Object *args_ = vm_peek(vm);
-    OBJ_LIST_FOREACH(curr, args_)
-    vm_push(vm, curr);
-    vm_cast_to_bool(vm);
-    result = result && OBJ_BOOL(vm_peek(vm));
-    vm_pop(vm);
-    OBJ_END_LIST_FOREACH
-
-    vm_pop(vm);
-    vm_build_bool(vm, result);
-}
-
-void rkl_logical_or(VM *vm) {
-    bool result = false;
-
-    Object *args_ = vm_peek(vm);
-    OBJ_LIST_FOREACH(curr, args_)
-    vm_push(vm, curr);
-    vm_cast_to_bool(vm);
-    result = result || OBJ_BOOL(vm_peek(vm));
-    vm_pop(vm);
-    OBJ_END_LIST_FOREACH
-
-    vm_pop(vm);
-    vm_build_bool(vm, result);
-}
-
-void rkl_logical_not(VM *vm) {
-    vm_cast_to_bool(vm);
-    vm_build_bool(vm, !OBJ_BOOL(vm_peek(vm)));
-    vm_pop_prev(vm);
-}
-
-DEFINE_MODULE(ARITHMETIC_LOGIC) = {
-    {"+", rkl_add, 1, true},
-    {"*", rkl_mul, 1, true},
-    {"-", rkl_sub, 1, true},
-    {"/", rkl_truediv, 2, false},
-    {"=", rkl_eq, 2, false},
-    {"!=", rkl_ne, 2, false},
-    {">", rkl_gt, 2, false},
-    {">=", rkl_ge, 2, false},
-    {"<", rkl_lt, 2, false},
-    {"<=", rkl_le, 2, false},
-    {"div", rkl_div, 2, false},
-    {"mod", rkl_mod, 2, false},
-    {"eval", rkl_eval, 1, false},
-    {"throw", rkl_throw, 1, false},
-    {"nil?", rkl_is_nil, 1, false},
-    {"?", rkl_cast_to_bool, 1, false},
-    {"not", rkl_logical_not, 1, false},
-    {"int", rkl_cast_to_integer, 1, false},
-    {"float", rkl_cast_to_float, 1, false},
-    {"neg", rkl_neg, 1, false},
-    {"abs", rkl_abs, 1, false},
-    {"min", rkl_min, 0, true},
-    {"max", rkl_max, 0, true},
-    {"pow", rkl_pow, 2, false},
-    {"sqrt", rkl_sqrt, 1, false},
-    {"floor", rkl_floor, 1, false},
-    {"ceil", rkl_ceil, 1, false},
-    {"round", rkl_round, 1, false},
-    {"apply", rkl_apply, 2, false},
-    {"&&", rkl_logical_and, 0, true},
-    {"||", rkl_logical_or, 0, true},
+DEFINE_MODULE(ARITHMETIC) = {
+    {"+", spk_add, 1, true},
+    {"*", spk_mul, 1, true},
+    {"-", spk_sub, 1, true},
+    {"/", spk_truediv, 2, false},
+    {"div", spk_div, 2, false},
+    {"mod", spk_mod, 2, false},
+    {"int", spk_cast_to_integer, 1, false},
+    {"float", spk_cast_to_float, 1, false},
+    {"neg", spk_neg, 1, false},
+    {"abs", spk_abs, 1, false},
+    {"min", spk_min, 0, true},
+    {"max", spk_max, 0, true},
+    {"pow", spk_pow, 2, false},
+    {"sqrt", spk_sqrt, 1, false},
+    {"floor", spk_floor, 1, false},
+    {"ceil", spk_ceil, 1, false},
+    {"round", spk_round, 1, false},
 };
 
-DEFINE_MODULE_SIZE(ARITHMETIC_LOGIC);
+DEFINE_MODULE_SIZE(ARITHMETIC);

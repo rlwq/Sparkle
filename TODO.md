@@ -2,9 +2,6 @@
 
 This document outlines the features and fixes planned for Sparkle.
 
-Items marked *(verified)* were reproduced against the current build rather than
-assumed - the reproduction is written next to them.
-
 ## Syntax & Parser
 
 * [ ] More descriptive parsing errors (on expected tokens).
@@ -18,7 +15,7 @@ assumed - the reproduction is written next to them.
 * [ ] `try` should catch several kinds at once:
       `(try kind1 kind2 ... In expr1 expr2 ...)`. It catches exactly one today,
       so guarding against more means nesting one `try` per kind - four deep in
-      `examples/rpn.rkl`, which is the first thing real code runs into.
+      `examples/rpn.spk`, which is the first thing real code runs into.
       The `In` marker earns its place the same way it does in `for`: kinds are
       evaluated expressions, so a bare symbol is legal in both positions and
       `(try A B expr)` is otherwise indistinguishable from `(try A expr1 expr2)`.
@@ -47,7 +44,8 @@ assumed - the reproduction is written next to them.
 * [ ] String interning is a linear scan over every string interned so far
       (`si_getn`), so interning is O(n) in the program's symbol count. Hash it.
 * [ ] Special-form dispatch scans the whole table on every list evaluation
-      (`try_dispatch_special_form`).
+      (`vm_try_special_form`). The scan is now over `vm->special_forms`, so it is
+      per-VM data rather than a global table.
 
 ## Language Semantics
 
@@ -104,18 +102,14 @@ assumed - the reproduction is written next to them.
 
 * [ ] Deep recursion overflows the C stack and kills the process instead of
       raising something catchable. Each Sparkle-level call costs several C
-      frames (`vm_eval_node` -> `vm_eval_list` -> `vm_call` -> `call_lambda` ->
-      `vm_eval_node`). Wants tail-call elimination, or a depth limit that
+      frames (`vm_eval_object` -> `vm_eval_list` -> `vm_call` -> `vm_call_lambda`
+      -> `vm_eval_object`). Wants tail-call elimination, or a depth limit that
       raises, or an explicit control stack.
       *(verified: depth 10000 fine, 50000 overflows the stack under `make debug`)*
 * [ ] Runtime errors report the file and a generic message - no line, no column,
       no call stack, no offending expression. Lexer errors already carry
       `line:column`, so the machinery exists. *(verified: `diag_vm` prints only
       `path: [RUNTIME ERROR] message`)*
-* [ ] `cast_to_string` says the DA buffer is always at least `size + 1` bytes;
-      when the size lands exactly on the capacity there is no spare byte.
-      Harmless today, since strings are a data/size pair and are never treated
-      as NUL-terminated, but the comment claims an invariant that does not hold.
 * [ ] Allocation failure is unchecked in release. `da_init` and `da_push` guard
       `malloc` and `realloc` with `assert`, which `NDEBUG` compiles out, so the
       release build writes through a null pointer under memory pressure rather
@@ -123,6 +117,14 @@ assumed - the reproduction is written next to them.
       `dynamic_array.h:22` and `:31` are asserts; release defines `NDEBUG`)*
 * [ ] Nothing bounds interpreter memory. A runaway program takes the machine
       down with it instead of raising.
+* [ ] `X_LANGUAGE_SYMBOLS` still lives in `vm.h`, so the VM core spells out
+      words only the language gives meaning to (`Nil`, `True`, `False`,
+      `quote`, `Var`, `In`). It belongs in `lang/`, registered into the VM the
+      way special forms now are - `vm_register_special_form` already shows the
+      shape. The self-evaluating-symbol rule in `vm_eval_symbol` (capitalized
+      symbols evaluate to themselves) has to move with it, since that is the
+      only thing reading `Nil`/`True`/`False`. Moving it out of the interner
+      was the first half of this.
 
 ## Tooling
 
@@ -130,7 +132,7 @@ assumed - the reproduction is written next to them.
       so nothing can be split up or reused across programs.
 * [ ] Benchmark suite - the test runner times each case, but nothing tracks
       whether the interpreter is getting faster or slower.
-* [ ] Editor support: syntax highlighting, at least a `.rkl` grammar.
+* [ ] Editor support: syntax highlighting, at least a `.spk` grammar.
 * [ ] No CI. `make build && make test` and the sanitizer run are the contract
       and nothing enforces them on a push.
 * [ ] No install target - the binary only exists at `./build/sparkle`.
@@ -148,14 +150,15 @@ assumed - the reproduction is written next to them.
       survives both errors and collections.
       Two things still open.
       Echo: `vm_run` pops each result, so `(+ 1 2)` would print nothing.
-      `write_expr` (`io.h`) can print it; the question is who calls it. Leaning
+      `write_expr` (`io.h`) can print it and now takes the `VM *` anyway, which
+      suits the flag below; the question is who calls it. Leaning
       towards a `vm->echo_results` flag over wrapping input in `(print ...)`
       textually, which breaks on `(let x 1)` and on multi-expression lines, and
       over a second run loop, which would duplicate the `setjmp` recovery.
       Undecided whether `(print "hi")` should then also echo its `Nil`.
-      Input: `rkl_input` reads the same `stdin` the REPL reads commands from,
+      Input: `spk_input` reads the same `stdin` the REPL reads commands from,
       so `(input)` will eat the next command.
-      *(verified: `rkl_input` calls `fgetc(stdin)`, `builtins_io.c:130`)*
+      *(verified: `spk_input` calls `fgetc(stdin)`, `builtins_io.c:130`)*
 * [ ] Run a program from standard input, and evaluate an expression given on the
       command line (`-e`).
 * [ ] The CLI takes one argument and nothing else: no `--help`, no `--version`,
@@ -165,6 +168,54 @@ assumed - the reproduction is written next to them.
 
 ## Done
 
+* [x] Special forms are registered, not patched in. `special_forms_attach` used
+      to overwrite `SPECIAL_FORMS[i].keyword` with an interned pointer, which
+      made a constant table into consumed global state and meant a second VM
+      with its own interner invalidated the first one's keywords.
+      `vm_register_special_form` now interns into `vm->special_forms` the way
+      `vm_register_builtin` registers builtins, and `vm->try_special` is gone:
+      the VM holds the pairs and looks them up itself, still naming no form.
+      *(verified: `SPECIAL_FORMS` is in `.rodata`; three independent
+      interner/GC/VM triples registering the same table run `let`, `if`,
+      `for ... In` and variadic `lambda` correctly under ASan/UBSan)*
+* [x] `-Wmissing-prototypes` is on, and every function is either declared in a
+      header or `static` - 77 were neither, including the ones generated inside
+      the builtin macros. A layer's public surface is now enforced by the
+      compiler rather than by discipline; `builtins_string.c` went from 16
+      exported symbols to 0. `try_dispatch_special_form` turned out to be
+      unused outside its own file and left `special_forms.h` entirely.
+* [x] Language keywords left the string interner. `PREBUILTS` and
+      `si->prebuilt` are gone, so `StringInterner` is a plain utility again;
+      the names live as Symbol objects in `vm->symbols`, reached through
+      `VM_SYM`. `parser_read_quote` interns `"quote"` directly, being under
+      `core/` where `vm.h` is out of reach. `write_expr` takes the VM and
+      recognises a quoted list by `StringName` identity instead of `strcmp`.
+* [x] `.clang-format` names the macros it describes. The `Macros:` entries
+      still said `LIST_FOREACH`/`END_LIST_FOREACH` after the rename to
+      `OBJ_LIST_FOREACH`, so every `OBJ_LIST_FOREACH` body was formatted as
+      unindented statements following a call.
+* [x] The `rkl` fossil is gone: builtins are `spk_*` and source files are
+      `.spk`, including the paths embedded in `tests/negative/*.err`.
+* [x] `builtins_arithmetic_logic.c` split into `builtins_arithmetic.c`,
+      `builtins_logic.c` and `builtins_control.c` - `eval`, `throw` and `apply`
+      were neither arithmetic nor logic.
+* [x] One name per concept: `Node` is gone in favour of `Object`, and `expr` is
+      kept only where the value really is an expression. Object fields go
+      through the `OBJ_*` accessors everywhere, `OBJ_AS` covering the single
+      whole-union assignment in `vm_alloc`.
+* [x] Prefixes match their file: everything in `vm_*.c` is `vm_*`, and the
+      lexer and parser internals are `lexer_*`/`parser_*` (`lexer_read_token`,
+      `parser_read_expr`, ...) instead of `lex_*`/`parse_*`.
+* [x] `_Noreturn` replaces `__attribute__((noreturn))` on `vm_recover`, and
+      `__attribute__((cold))` came off `vm_expect`/`vm_expect2`: they run on
+      the way into every builtin, so calling them cold misinformed the
+      optimizer about the hot path.
+* [x] `nil?` removed as a hand-written duplicate of the generated `?NIL`.
+* [x] The string buffer invariant says what actually holds: `malloc`'d, at
+      least `size` bytes, never zero-sized. `cast_to_string` and `spk_input`
+      hand over a `CharDA` buffer sized by capacity, so the old "at least
+      `size + 1` bytes" claim in `object.h`, `gc_alloc_string_own` and
+      `cast_to_string` was false whenever the size landed on the capacity.
 * [x] The VM survives repeated load/run cycles, which a REPL needs: the root
       scope and its globals outlive both errors and collections.
       `vm_load_instructions` copies the caller's array instead of aliasing it -

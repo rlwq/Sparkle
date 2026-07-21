@@ -2,8 +2,9 @@
 #define SCOPE_H
 
 #include "forwards.h"
-#include "stdbool.h"
 #include "string_interner.h"
+
+#include <stdbool.h>
 
 typedef struct {
     StringName key;

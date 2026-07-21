@@ -1,12 +1,12 @@
-#include <assert.h>
-#include <ctype.h>
-#include <stdint.h>
-#include <stdio.h>
-
 #include "builtins.h"
 #include "io.h"
 #include "object.h"
 #include "vm.h"
+
+#include <assert.h>
+#include <ctype.h>
+#include <stdint.h>
+#include <stdio.h>
 
 // A format string carries arbitrary bytes, so every char reaching isdigit is
 // cast through unsigned char: on a signed-char build the high bytes of UTF-8
@@ -45,7 +45,7 @@ static bool read_index(const char *data, size_t size, size_t *cursor, size_t *in
 //
 // "$$" is the escape for a literal '$'; a '$' that is followed by none of '$',
 // '{' or a digit stands for itself, so a format may end in one or read "100$".
-static bool format_walk(CharDA *out, Object *fmt, Object *args) {
+static bool format_walk(VM *vm, CharDA *out, Object *fmt, Object *args) {
     const char *data = OBJ_STRING_DATA(fmt);
     size_t size = OBJ_STRING_SIZE(fmt);
     size_t argc = OBJ_LIST_SIZE(args);
@@ -74,7 +74,7 @@ static bool format_walk(CharDA *out, Object *fmt, Object *args) {
             if (index >= argc)
                 return false;
 
-            write_expr(out, OBJ_LIST_AT(args, index));
+            write_expr(vm, out, OBJ_LIST_AT(args, index));
             i = cursor;
             continue;
         }
@@ -88,7 +88,7 @@ static bool format_walk(CharDA *out, Object *fmt, Object *args) {
         if (!read_index(data, size, &cursor, &index) || index >= argc)
             return false;
 
-        write_expr(out, OBJ_LIST_AT(args, index));
+        write_expr(vm, out, OBJ_LIST_AT(args, index));
         i = cursor - 1;
     }
 
@@ -96,7 +96,7 @@ static bool format_walk(CharDA *out, Object *fmt, Object *args) {
 }
 
 // String (fmt), List (args) -> Nil
-void rkl_print(VM *vm) {
+static void spk_print(VM *vm) {
     // Variadic: everything past the format string arrives packed in a list.
     assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
 
@@ -108,7 +108,7 @@ void rkl_print(VM *vm) {
 
     // vm_recover longjmps out of this frame and knows nothing about the C heap,
     // so the buffer has to be released before raising rather than after.
-    if (!format_walk(&out, fmt, vm_peek(vm))) {
+    if (!format_walk(vm, &out, fmt, vm_peek(vm))) {
         da_free(out);
         vm_recover(vm, vm->singletons._VALUE_EXCEPTION);
     }
@@ -122,7 +122,7 @@ void rkl_print(VM *vm) {
 }
 
 // -> String or Nil
-void rkl_input(VM *vm) {
+static void spk_input(VM *vm) {
     CharDA line;
     da_init(line);
 
@@ -144,5 +144,5 @@ void rkl_input(VM *vm) {
     vm_build_string_own(vm, line.data, line.size);
 }
 
-DEFINE_MODULE(IO) = {{"print", rkl_print, 1, true}, {"input", rkl_input, 0, false}};
+DEFINE_MODULE(IO) = {{"print", spk_print, 1, true}, {"input", spk_input, 0, false}};
 DEFINE_MODULE_SIZE(IO);

@@ -1,1 +1,1 @@
-./tests/negative/str_get_out_of_range.rkl: [RUNTIME ERROR] Function expected some other value.
+./tests/negative/str_get_out_of_range.spk: [RUNTIME ERROR] Function expected some other value.

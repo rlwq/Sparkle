@@ -3,7 +3,7 @@
 
 // The single VM-driven collection point. Raw gc_alloc_* never collect on their
 // own (see gc.h); every VM-level allocation path must funnel through here so the
-// capacity check is applied consistently to both nodes and scopes, and only at a
+// capacity check is applied consistently to both objects and scopes, and only at a
 // point where the value/scope stacks are fully rooted.
 void vm_maybe_collect(VM *vm) {
     if (gc_grow_if_needed(vm->gc)) {
@@ -12,9 +12,11 @@ void vm_maybe_collect(VM *vm) {
     }
 }
 
-// Every vm_build_ constructor is collect-then-alloc-then-push: the sweep runs
-// while everything live is rooted and the new object does not exist yet, so a
-// fresh object can never be collected before it is reachable.
+// Every allocating vm_build_ constructor is collect-then-alloc-then-push: the
+// sweep runs while everything live is rooted and the new object does not exist
+// yet, so a fresh object can never be collected before it is reachable.
+// vm_build_bool and vm_build_nil are the exceptions and allocate nothing - they
+// push a singleton that vm_alloc made once, so there is nothing to collect for.
 void vm_build_integer(VM *vm, Integer value) {
     vm_maybe_collect(vm);
     vm_push(vm, gc_alloc_integer(vm->gc, value));

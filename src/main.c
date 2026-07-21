@@ -1,9 +1,4 @@
-#include <errno.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
+#include "builtins.h"
 #include "diagnostics.h"
 #include "dynamic_array.h"
 #include "forwards.h"
@@ -15,9 +10,13 @@
 #include "string_view.h"
 #include "vm.h"
 
-#include "builtins.h"
+#include <errno.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-char *read_file(const char *path) {
+static char *read_file(const char *path) {
     FILE *file = fopen(path, "rb");
     if (!file) {
         fprintf(stderr, "%s: cannot open file: %s\n", path, strerror(errno));
@@ -58,7 +57,7 @@ char *read_file(const char *path) {
 
 int main(int argc, char **argv) {
     if (argc != 2) {
-        fprintf(stderr, "USAGE: %s source.rkl\n", argv[0]);
+        fprintf(stderr, "USAGE: %s source.spk\n", argv[0]);
         return 1;
     }
 

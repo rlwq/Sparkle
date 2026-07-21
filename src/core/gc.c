@@ -1,20 +1,20 @@
+#include "gc.h"
+#include "dynamic_array.h"
+#include "forwards.h"
+#include "object.h"
+#include "scope.h"
+
 #include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "dynamic_array.h"
-#include "forwards.h"
-#include "gc.h"
-#include "object.h"
-#include "scope.h"
-
 GC *gc_alloc(void) {
     GC *gc = malloc(sizeof(GC));
     assert(gc);
 
-    gc->nodes_heap = NULL;
-    gc->nodes_count = 0;
+    gc->objects_heap = NULL;
+    gc->objects_count = 0;
 
     gc->scopes_heap = NULL;
     gc->scopes_count = 0;
@@ -25,10 +25,10 @@ GC *gc_alloc(void) {
 }
 
 void gc_free(GC *gc) {
-    while (gc->nodes_heap) {
-        Object *next = gc->nodes_heap->heap_next;
-        gc_free_node(gc, gc->nodes_heap);
-        gc->nodes_heap = next;
+    while (gc->objects_heap) {
+        Object *next = gc->objects_heap->heap_next;
+        gc_free_object(gc, gc->objects_heap);
+        gc->objects_heap = next;
     }
 
     while (gc->scopes_heap) {
@@ -41,24 +41,24 @@ void gc_free(GC *gc) {
 }
 
 bool gc_grow_if_needed(GC *gc) {
-    if (gc->scopes_count + gc->nodes_count < gc->capacity)
+    if (gc->scopes_count + gc->objects_count < gc->capacity)
         return false;
     gc->capacity *= 2;
     return true;
 }
 
 Object *gc_alloc_object(GC *gc, ObjectKind kind) {
-    Object *node = malloc(sizeof(Object));
-    assert(node);
+    Object *object = malloc(sizeof(Object));
+    assert(object);
 
-    gc->nodes_count++;
-    node->kind = kind;
+    gc->objects_count++;
+    object->kind = kind;
 
-    node->marked = false;
-    node->heap_next = gc->nodes_heap;
-    gc->nodes_heap = node;
+    object->marked = false;
+    object->heap_next = gc->objects_heap;
+    gc->objects_heap = object;
 
-    return node;
+    return object;
 }
 
 Object *gc_alloc_integer(GC *gc, Integer value) {
@@ -93,15 +93,15 @@ Object *gc_alloc_list(GC *gc) {
 
 Object *gc_alloc_lambda(GC *gc, bool is_variadic, Object *expr, Scope *scope) {
     Object *object = gc_alloc_object(gc, KIND_LAMBDA);
-    da_init(OBJ_LAMBDA(object).args);
-    OBJ_LAMBDA(object).is_variadic = is_variadic;
-    OBJ_LAMBDA(object).subexpr = expr;
-    OBJ_LAMBDA(object).scope = scope;
+    da_init(OBJ_LAMBDA_ARGS(object));
+    OBJ_LAMBDA_IS_VARIADIC(object) = is_variadic;
+    OBJ_LAMBDA_SUBEXPR(object) = expr;
+    OBJ_LAMBDA_SCOPE(object) = scope;
     return object;
 }
 
-// Adopts data: a malloc'd buffer of at least size + 1 bytes (so it is never
-// zero-sized) that the GC will free with the object.
+// Adopts data: a malloc'd buffer holding at least size bytes, never
+// zero-sized, that the GC will free with the object.
 Object *gc_alloc_string_own(GC *gc, char *data, size_t size) {
     Object *object = gc_alloc_object(gc, KIND_STRING);
     OBJ_STRING_DATA(object) = data;
@@ -117,33 +117,33 @@ Object *gc_alloc_string(GC *gc, const char *data, size_t size) {
     return gc_alloc_string_own(gc, buffer, size);
 }
 
-void gc_free_node(GC *gc, Object *expr) {
-    assert(!expr->marked);
-    gc->nodes_count--;
+void gc_free_object(GC *gc, Object *object) {
+    assert(!object->marked);
+    gc->objects_count--;
 
-    switch (expr->kind) {
+    switch (object->kind) {
     case KIND_NIL:
     case KIND_INTEGER:
     case KIND_SYMBOL:
     case KIND_BUILTIN:
     case KIND_BOOL:
     case KIND_FLOAT:
-        free(expr);
+        free(object);
         break;
 
     case KIND_LIST:
-        da_free(OBJ_LIST_ITEMS(expr));
-        free(expr);
+        da_free(OBJ_LIST_ITEMS(object));
+        free(object);
         break;
 
     case KIND_STRING:
-        free(OBJ_STRING_DATA(expr));
-        free(expr);
+        free(OBJ_STRING_DATA(object));
+        free(object);
         break;
 
     case KIND_LAMBDA:
-        da_free(expr->as.lambda.args);
-        free(expr);
+        da_free(OBJ_LAMBDA_ARGS(object));
+        free(object);
         break;
     }
 }
@@ -173,16 +173,16 @@ void gc_free_scope(GC *gc, Scope *scope) {
 }
 
 void gc_sweep(GC *gc) {
-    Object **curr_node = &(gc->nodes_heap);
+    Object **curr_object = &(gc->objects_heap);
 
-    while (*curr_node) {
-        if ((*curr_node)->marked) {
-            (*curr_node)->marked = false;
-            curr_node = &((*curr_node)->heap_next);
+    while (*curr_object) {
+        if ((*curr_object)->marked) {
+            (*curr_object)->marked = false;
+            curr_object = &((*curr_object)->heap_next);
         } else {
-            Object *dead = *curr_node;
-            *curr_node = dead->heap_next;
-            gc_free_node(gc, dead);
+            Object *dead = *curr_object;
+            *curr_object = dead->heap_next;
+            gc_free_object(gc, dead);
         }
     }
 
@@ -200,11 +200,11 @@ void gc_sweep(GC *gc) {
     }
 }
 
-void gc_mark_node(Object *expr) {
+void gc_mark_object(Object *object) {
     ObjectPtrDA to_mark;
     da_init(to_mark);
 
-    da_push(to_mark, expr);
+    da_push(to_mark, object);
 
     while (to_mark.size > 0) {
         Object *curr = da_at_end(to_mark, 0);
@@ -246,7 +246,7 @@ void gc_mark_scope(Scope *scope) {
         scope->marked = true;
 
         for (size_t i = 0; i < scope->items.size; i++)
-            gc_mark_node(da_at(scope->items, i).value);
+            gc_mark_object(da_at(scope->items, i).value);
 
         scope = scope->parent;
     }

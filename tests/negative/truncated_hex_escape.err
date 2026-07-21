@@ -1,1 +1,1 @@
-./tests/negative/truncated_hex_escape.rkl: [PARSE ERROR] Invalid or incomplete expression.
+./tests/negative/truncated_hex_escape.spk: [PARSE ERROR] Invalid or incomplete expression.

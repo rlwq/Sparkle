@@ -7,26 +7,13 @@
 
 void special_forms_attach(VM *vm) {
     for (size_t i = 0; i < SPECIAL_FORMS_COUNT; i++)
-        SPECIAL_FORMS[i].keyword = si_get(vm->si, SPECIAL_FORMS[i].keyword);
-
-    vm->try_special = try_dispatch_special_form;
-}
-
-bool try_dispatch_special_form(VM *vm, StringName name) {
-    for (size_t i = 0; i < SPECIAL_FORMS_COUNT; i++) {
-        if (name == SPECIAL_FORMS[i].keyword) {
-            SPECIAL_FORMS[i].func(vm);
-            return true;
-        }
-    }
-
-    return false;
+        vm_register_special_form(vm, SPECIAL_FORMS[i].keyword, SPECIAL_FORMS[i].func);
 }
 
 // A running result sits on the stack from the start: Nil stands in until the
 // first binding, and each one drops the previous value and leaves its own, so
 // whatever remains at the end is the last bound value.
-void rkl_let_form(VM *vm) {
+static void spk_let_form(VM *vm) {
     Object *args = vm_peek(vm);
     size_t n = OBJ_LIST_SIZE(args);
 
@@ -40,7 +27,7 @@ void rkl_let_form(VM *vm) {
 
         vm_pop(vm);
         vm_push(vm, OBJ_LIST_AT(args, i + 1));
-        vm_eval_node(vm);
+        vm_eval_object(vm);
 
         vm_scope_define(vm, OBJ_SYMBOL(name));
     }
@@ -51,7 +38,7 @@ void rkl_let_form(VM *vm) {
 // All exprs are evaluated first (left to right), then all assignments are
 // performed against the pre-evaluation bindings - this is what lets
 // `(set a b b a)` swap instead of clobbering b before it's read.
-void rkl_set_form(VM *vm) {
+static void spk_set_form(VM *vm) {
     Object *args = vm_peek(vm);
     size_t n = OBJ_LIST_SIZE(args);
 
@@ -64,7 +51,7 @@ void rkl_set_form(VM *vm) {
         VM_RECOVER_IF(vm, !OBJ_OFTYPE(name, TY_SYMBOL), vm->singletons._VALUE_EXCEPTION);
 
         vm_push(vm, OBJ_LIST_AT(args, i + 1));
-        vm_eval_node(vm);
+        vm_eval_object(vm);
     }
 
     if (pairs == 0) {
@@ -83,20 +70,20 @@ void rkl_set_form(VM *vm) {
     vm_pop_prev_n(vm, pairs);
 }
 
-void rkl_if_form(VM *vm) {
+static void spk_if_form(VM *vm) {
     Object *args = vm_peek(vm);
     size_t n = OBJ_LIST_SIZE(args);
 
     size_t i = 0;
     for (; i + 1 < n; i += 2) {
         vm_push(vm, OBJ_LIST_AT(args, i));
-        vm_eval_node(vm);
+        vm_eval_object(vm);
         bool result = vm_cast_to_bool(vm);
         vm_pop(vm);
 
         if (result) {
             vm_push(vm, OBJ_LIST_AT(args, i + 1));
-            vm_eval_node(vm);
+            vm_eval_object(vm);
             vm_pop_prev(vm);
             return;
         }
@@ -104,7 +91,7 @@ void rkl_if_form(VM *vm) {
 
     if (i < n) {
         vm_push(vm, OBJ_LIST_AT(args, i));
-        vm_eval_node(vm);
+        vm_eval_object(vm);
         vm_pop_prev(vm);
         return;
     }
@@ -113,7 +100,7 @@ void rkl_if_form(VM *vm) {
     vm_build_nil(vm);
 }
 
-void rkl_while_form(VM *vm) {
+static void spk_while_form(VM *vm) {
     Object *args = vm_peek(vm);
     VM_RECOVER_IF(vm, OBJ_LIST_SIZE(args) != 2, vm->singletons._VALUE_EXCEPTION);
 
@@ -125,7 +112,7 @@ void rkl_while_form(VM *vm) {
     vm_build_nil(vm);
 
     vm_push(vm, condition);
-    vm_eval_node(vm);
+    vm_eval_object(vm);
     bool truthy = vm_cast_to_bool(vm);
 
     while (truthy) {
@@ -133,10 +120,10 @@ void rkl_while_form(VM *vm) {
         vm_pop(vm);
 
         vm_push(vm, body);
-        vm_eval_node(vm);
+        vm_eval_object(vm);
 
         vm_push(vm, condition);
-        vm_eval_node(vm);
+        vm_eval_object(vm);
         truthy = vm_cast_to_bool(vm);
     }
 
@@ -148,10 +135,10 @@ void rkl_while_form(VM *vm) {
 // fixes where the names end: without it `(for x lst body1 body2)` reads equally
 // well as one name over `lst` or as two names over `body1`, since the list
 // position accepts a bare symbol. Same trick as Var in lambda.
-void rkl_for_form(VM *vm) {
+static void spk_for_form(VM *vm) {
     Object *args = vm_peek(vm);
     size_t n = OBJ_LIST_SIZE(args);
-    StringName marker = vm->si->prebuilt._In;
+    StringName marker = VM_SYM(vm, In);
 
     size_t names = 0;
     for (size_t i = 1; i <= 2 && i < n; i++) {
@@ -177,7 +164,7 @@ void rkl_for_form(VM *vm) {
         vm->singletons._VALUE_EXCEPTION);
 
     vm_push(vm, OBJ_LIST_AT(args, list_at));
-    vm_eval_node(vm);
+    vm_eval_object(vm);
     VM_RECOVER_IF(vm, !OBJ_OFTYPE(vm_peek(vm), TY_LIST), vm->singletons._TYPE_EXCEPTION);
 
     Object *items = vm_peek(vm);
@@ -206,7 +193,7 @@ void rkl_for_form(VM *vm) {
         for (size_t b = list_at + 1; b < n; b++) {
             vm_pop(vm);
             vm_push(vm, OBJ_LIST_AT(args, b));
-            vm_eval_node(vm);
+            vm_eval_object(vm);
         }
 
         vm_pop_scope(vm);
@@ -222,7 +209,7 @@ static bool lambda_has_arg(Object *lambda, StringName name) {
     return false;
 }
 
-void rkl_lambda_form(VM *vm) {
+static void spk_lambda_form(VM *vm) {
     Object *args = vm_peek(vm);
     VM_RECOVER_IF(vm, OBJ_LIST_SIZE(args) != 2, vm->singletons._VALUE_EXCEPTION);
 
@@ -240,7 +227,7 @@ void rkl_lambda_form(VM *vm) {
         is_variadic = true;
         da_push(OBJ_LAMBDA_ARGS(lambda), OBJ_SYMBOL(params));
     } else {
-        StringName var_marker = vm->si->prebuilt._Var;
+        StringName var_marker = VM_SYM(vm, Var);
         size_t np = OBJ_LIST_SIZE(params);
 
         for (size_t i = 0; i < np; i++) {
@@ -275,14 +262,14 @@ void rkl_lambda_form(VM *vm) {
 // armed yet. The frame is then pushed with the stack already holding everything
 // the handler reads, which lets the unwind discard the try scope and every
 // intermediate value on its own.
-void rkl_try_form(VM *vm) {
+static void spk_try_form(VM *vm) {
     Object *args = vm_peek(vm);
     size_t n = OBJ_LIST_SIZE(args);
 
     VM_RECOVER_IF(vm, n == 0, vm->singletons._VALUE_EXCEPTION);
 
     vm_push(vm, OBJ_LIST_AT(args, 0));
-    vm_eval_node(vm);
+    vm_eval_object(vm);
     VM_RECOVER_IF(vm, !OBJ_OFTYPE(vm_peek(vm), TY_SYMBOL), vm->singletons._VALUE_EXCEPTION);
 
     jmp_buf env;
@@ -309,7 +296,7 @@ void rkl_try_form(VM *vm) {
     for (size_t i = 1; i < n; i++) {
         vm_pop(vm);
         vm_push(vm, OBJ_LIST_AT(args, i));
-        vm_eval_node(vm);
+        vm_eval_object(vm);
     }
 
     vm_pop_scope(vm);
@@ -317,7 +304,7 @@ void rkl_try_form(VM *vm) {
     vm_pop_prev_n(vm, 2);
 }
 
-void rkl_quote_form(VM *vm) {
+static void spk_quote_form(VM *vm) {
     Object *args = vm_peek(vm);
     VM_RECOVER_IF(vm, OBJ_LIST_SIZE(args) != 1, vm->singletons._VALUE_EXCEPTION);
 
@@ -326,62 +313,62 @@ void rkl_quote_form(VM *vm) {
     vm_push(vm, expr);
 }
 
-void rkl_begin_form(VM *vm) {
+static void spk_begin_form(VM *vm) {
     Object *args = vm_peek(vm);
 
     vm_build_scope(vm);
     vm_build_nil(vm);
 
     OBJ_LIST_FOREACH(curr, args)
-    vm_pop(vm);
-    vm_push(vm, curr);
-    vm_eval_node(vm);
+        vm_pop(vm);
+        vm_push(vm, curr);
+        vm_eval_object(vm);
     OBJ_END_LIST_FOREACH
 
     vm_pop_prev(vm);
     vm_pop_scope(vm);
 }
 
-void rkl_and_form(VM *vm) {
+static void spk_and_form(VM *vm) {
     Object *args = vm_peek(vm);
 
     bool result = true;
     OBJ_LIST_FOREACH(curr, args)
-    vm_push(vm, curr);
-    vm_eval_node(vm);
-    vm_cast_to_bool(vm);
-    result = OBJ_BOOL(vm_peek(vm));
-    vm_pop(vm);
-    if (!result)
-        break;
+        vm_push(vm, curr);
+        vm_eval_object(vm);
+        vm_cast_to_bool(vm);
+        result = OBJ_BOOL(vm_peek(vm));
+        vm_pop(vm);
+        if (!result)
+            break;
     OBJ_END_LIST_FOREACH
 
     vm_pop(vm);
     vm_build_bool(vm, result);
 }
 
-void rkl_or_form(VM *vm) {
+static void spk_or_form(VM *vm) {
     Object *args = vm_peek(vm);
 
     bool result = false;
     OBJ_LIST_FOREACH(curr, args)
-    vm_push(vm, curr);
-    vm_eval_node(vm);
-    vm_cast_to_bool(vm);
-    result = OBJ_BOOL(vm_peek(vm));
-    vm_pop(vm);
-    if (result)
-        break;
+        vm_push(vm, curr);
+        vm_eval_object(vm);
+        vm_cast_to_bool(vm);
+        result = OBJ_BOOL(vm_peek(vm));
+        vm_pop(vm);
+        if (result)
+            break;
     OBJ_END_LIST_FOREACH
 
     vm_pop(vm);
     vm_build_bool(vm, result);
 }
 
-SpecialFormDef SPECIAL_FORMS[] = {
-    {"let", rkl_let_form},     {"set", rkl_set_form},       {"if", rkl_if_form},
-    {"while", rkl_while_form}, {"lambda", rkl_lambda_form}, {"begin", rkl_begin_form},
-    {"quote", rkl_quote_form}, {"try", rkl_try_form},       {"and", rkl_and_form},
-    {"or", rkl_or_form},       {"for", rkl_for_form}};
+const SpecialFormDef SPECIAL_FORMS[] = {
+    {"let", spk_let_form},     {"set", spk_set_form},       {"if", spk_if_form},
+    {"while", spk_while_form}, {"lambda", spk_lambda_form}, {"begin", spk_begin_form},
+    {"quote", spk_quote_form}, {"try", spk_try_form},       {"and", spk_and_form},
+    {"or", spk_or_form},       {"for", spk_for_form}};
 
-size_t SPECIAL_FORMS_COUNT = sizeof(SPECIAL_FORMS) / sizeof(SPECIAL_FORMS[0]);
+const size_t SPECIAL_FORMS_COUNT = sizeof(SPECIAL_FORMS) / sizeof(SPECIAL_FORMS[0]);
