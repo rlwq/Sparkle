@@ -1,17 +1,8 @@
-#include "builtins.h"
-#include "diagnostics.h"
-#include "dynamic_array.h"
-#include "forwards.h"
-#include "gc.h"
-#include "lexer.h"
-#include "parser.h"
-#include "special_forms.h"
-#include "string_interner.h"
+#include "interpreter.h"
 #include "string_view.h"
-#include "vm.h"
 
 #include <errno.h>
-#include <stddef.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -62,63 +53,14 @@ int main(int argc, char **argv) {
     }
 
     char *src = read_file(argv[1]);
-    StringView prog = sv_mk(src);
 
-    StringInterner *si = si_alloc();
-    GC *gc = gc_alloc();
+    // src has to outlive the call and need not outlive it by more: interp_eval
+    // finishes parsing before returning, and parsed objects own their copies.
+    Interpreter *interp = interp_alloc();
+    bool ok = interp_eval(interp, sv_mk(src), argv[1]);
 
-    TokenDA tokens;
-    da_init(tokens);
-
-    Lexer *lexer = lexer_alloc(prog, &tokens);
-
-    ObjectPtrDA exprs;
-    da_init(exprs);
-    Parser *parser = parser_alloc(&tokens, &exprs, gc, si);
-
-    VM *vm = vm_alloc(gc, si);
-
-    bool is_err = false;
-
-    special_forms_attach(vm);
-
-    lexer_run(lexer);
-
-    if (lexer->is_err) {
-        diag_lexer(argv[1], lexer);
-        is_err = true;
-        goto cleanup;
-    }
-
-    parser_run(parser);
-
-    if (parser->is_err) {
-        diag_parser(argv[1], parser);
-        is_err = true;
-        goto cleanup;
-    }
-
-    vm_push_scope(vm, gc_alloc_scope(vm->gc, NULL));
-    vm_load_instructions(vm, exprs);
-    register_builtins(vm);
-    vm_run(vm);
-
-    if (vm->is_err) {
-        diag_vm(argv[1], vm);
-        is_err = true;
-        goto cleanup;
-    }
-
-    // Reverse order of allocation.
-cleanup:
-    vm_free(vm);
-    parser_free(parser);
-    da_free(exprs);
-    lexer_free(lexer);
-    da_free(tokens);
-    gc_free(gc);
-    si_free(si);
+    interp_free(interp);
     free(src);
 
-    return (int)is_err;
+    return ok ? 0 : 1;
 }

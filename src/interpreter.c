@@ -1,0 +1,87 @@
+#include "interpreter.h"
+
+#include "builtins.h"
+#include "diagnostics.h"
+#include "dynamic_array.h"
+#include "gc.h"
+#include "parser.h"
+#include "special_forms.h"
+#include "vm.h"
+
+#include <assert.h>
+#include <stdlib.h>
+
+Interpreter *interp_alloc(void) {
+    Interpreter *interp = malloc(sizeof(Interpreter));
+    assert(interp);
+
+    interp->si = si_alloc();
+    interp->gc = gc_alloc();
+    interp->vm = vm_alloc(interp->gc, interp->si);
+
+    da_init(interp->tokens);
+    da_init(interp->exprs);
+
+    // The root scope goes up before register_builtins: vm_scope_define writes
+    // into whatever scope is current, so there has to be one.
+    vm_push_scope(interp->vm, gc_alloc_scope(interp->gc, NULL));
+    register_builtins(interp->vm);
+    special_forms_attach(interp->vm);
+
+    return interp;
+}
+
+void interp_free(Interpreter *interp) {
+    // Reverse order of allocation. The GC outlives the VM on purpose: vm_free
+    // drops only the VM's own arrays, while every object in them belongs to the
+    // GC and is released by gc_free.
+    vm_free(interp->vm);
+
+    da_free(interp->exprs);
+    da_free(interp->tokens);
+
+    gc_free(interp->gc);
+    si_free(interp->si);
+
+    free(interp);
+}
+
+bool interp_eval(Interpreter *interp, StringView src, const char *name) {
+    interp->tokens.size = 0;
+    interp->exprs.size = 0;
+
+    Lexer *lexer = lexer_alloc(src, &interp->tokens);
+    lexer_run(lexer);
+
+    // Reported before the lexer is freed, then answered after: diag_lexer reads
+    // the lexer, and the caller only ever sees the verdict.
+    bool failed = lexer->is_err;
+    if (failed)
+        diag_lexer(name, lexer);
+    lexer_free(lexer);
+    if (failed)
+        return false;
+
+    Parser *parser = parser_alloc(&interp->tokens, &interp->exprs, interp->gc, interp->si);
+    parser_run(parser);
+
+    failed = parser->is_err;
+    if (failed)
+        diag_parser(name, parser);
+    parser_free(parser);
+    if (failed)
+        return false;
+
+    // The parsed objects sit in a plain C array here, rooted by nothing. That
+    // is safe only because gc_alloc_* never collect on their own (see gc.h) and
+    // nothing between the parse and the load builds anything.
+    vm_load_instructions(interp->vm, interp->exprs);
+    vm_run(interp->vm);
+
+    if (interp->vm->is_err) {
+        diag_vm(name, interp->vm);
+        return false;
+    }
+
+    return true;
+}
