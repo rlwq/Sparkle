@@ -127,6 +127,11 @@ It represents the absence of a meaningful value.
 The symbol `Nil` evaluates to the `Nil` value. `Nil` is distinct from the empty list `()`, which is its own empty `List` value.
 `Nil` is falsy.
  
+```lisp
+Nil                 ; Nil
+(print "$0" Nil)    ; Nil
+```
+
 ### Bool
  
 `Bool` has exactly two values: `True` and `False`.
@@ -147,6 +152,13 @@ Any value can be cast to `Bool` via the `?` function. The truthiness rules are:
 | `List` | empty | non-empty |
 | `Symbol`, `Lambda`, `Builtin` | - | always |
  
+```lisp
+(? 0)    ; False
+(? 1)    ; True
+(? Nil)  ; False
+(? "")   ; False
+```
+
 ### Integer
  
 `Integer` is a signed integer type.
@@ -194,6 +206,16 @@ Evaluation of a symbol depends on its name:
 - All other symbols resolve to the value bound to that name in the current scope. If no binding exists, `UNDEFINED_EXCEPTION` is raised.
 A `Symbol` value is always truthy.
  
+```lisp
+(let x 42)
+
+x                         ; 42
+(quote symbol-is-itself)  ; symbol-is-itself
+(eval True)               ; True   - a Bool value
+(eval Maybe)              ; Maybe  - a Symbol
+(= Foo Bar)               ; False
+```
+
 ### List
  
 `List` is an ordered, dynamically-sized, index-addressable sequence of values. It is represented as a dynamic array; the reference implementation uses a growable array of object references. A `List` is not built from pairs.
@@ -215,6 +237,14 @@ A non-empty list expression is evaluated as a call or special form, determined b
 - If the first element is a symbol naming a special form, that special form is invoked and receives the remaining elements unevaluated.
 - Otherwise the first element is evaluated. It must yield a `Lambda` or `Builtin`; if it yields any other type, `UNCALLABLE_EXCEPTION` is raised. The remaining elements are then evaluated left-to-right and passed as arguments.
  
+```lisp
+(list 1 2 3)          ; (1 2 3)
+'(1 2 3)              ; (1 2 3)
+()                    ; ()  - the empty list
+(get '(1 2 3) 0)      ; 1
+(len '(1 2 3))        ; 3
+```
+
 ### Lambda
  
 `Lambda` is a first-class function value. It carries a parameter list, a body expression, and a reference to the lexical scope in which it was defined (a closure).
@@ -223,6 +253,16 @@ Two `Lambda` values are equal if and only if they are the same object (reference
 
 A `Lambda` value is always truthy.
  
+```lisp
+(let add (lambda (x y) (+ x y)))
+(add 1 2)  ; 3
+
+; A closure captures the scope it was created in
+(let make-adder (lambda (x) (lambda (y) (+ x y))))
+(let add5 (make-adder 5))
+(add5 3)   ; 8
+```
+
 ### Builtin
  
 `Builtin` is a function implemented natively by the interpreter. From the caller's perspective it is identical to `Lambda`: first-class, callable, passable as a value.
@@ -271,6 +311,13 @@ Each `name` must be a `Symbol`.
 Binding a name that is already bound in the current scope raises a `REBINDING_EXCEPTION` exception.
 Shadowing a name from a parent scope is allowed.
 
+```lisp
+(let x 42)              ; 42
+(let a 1                ; a = 1
+     b (+ a 1))         ; b = 2
+(let q 1 p 2)           ; binds q to 1, then p to 2
+```
+
 ### set
 
 `set` updates existing bindings in parallel.
@@ -284,6 +331,16 @@ Returns the last assigned value.
 An odd number of arguments raises `VALUE_EXCEPTION`.
 Using `set` on an unbound name raises an `UNDEFINED_EXCEPTION` exception.
 
+```lisp
+(let x 17
+     y 49)
+
+(set x 2)  ; 2
+
+(set y x          ; y = 2
+     x (+ x y))   ; x = 51
+```
+
 ### if
 
 Conditional expression with multiple branches.
@@ -294,21 +351,58 @@ Usage:
 Evaluates `condition`s and casts the result to `Bool` until one of them is `True` and then evaluates and returns the corresponding `then`.
 If no condition is `True` and a `default` expression is provided, evaluates and returns it, `Nil` otherwise.
 
+```lisp
+(if False (print "no"))     ; Nil
+(if True (print "yes"))     ; yes
+
+(if False 1
+    False 2
+    3)                      ; 3 - default branch
+
+(if False 1
+    True  2
+    False 3)                ; 2 - second condition matched
+
+(if False 1
+    False 2)                ; Nil - no match, no default
+```
+
 ### lambda
 
 Creates and returns a `Lambda` object that captures the current scope.
 
-Usage: `(lambda args expr1 expr2 ...)`
+Usage: `(lambda args body)`
 
 `args` is either:
 * a list of symbols: `(x y z)` - evaluates to a fixed-arity lambda.
 * a single symbol: `args` - fully variadic lambda with no positional arguments; all arguments are collected into a `List` bound to that symbol.
 * a list of symbols containing the reserved marker symbol `Var` as its second-to-last element: `(x y Var rest)` - the symbols before `Var` are fixed positional parameters, and the single symbol after `Var` is bound to a `List` of the remaining arguments.
 
-The body consists of one or more expressions evaluated in order in a new lexical
-scope.
-The value of the last expression is returned.
+The body is a single expression, evaluated in a new lexical scope; its value is
+what the call returns. A sequence of statements goes inside a `begin`, which is
+itself one expression. A `lambda` form given anything other than exactly two
+arguments raises `VALUE_EXCEPTION`.
 Duplicate argument names raise `VALUE_EXCEPTION`.
+
+```lisp
+(let add (lambda (x y) (+ x y)))
+(add 1 2)  ; 3
+
+; Fully variadic - every argument collected into a List
+(let collect (lambda args args))
+(collect 1 2 3)  ; (1 2 3)
+
+; Fixed positional parameters plus a variadic tail
+(let f (lambda (x y Var rest) rest))
+(f 1 2 3 4 5)  ; (3 4 5)
+
+; Several statements need a begin, since the body is one expression
+(let verbose-add (lambda (x y)
+  (begin
+    (let result (+ x y))
+    result)))
+(verbose-add 3 4)  ; 7
+```
 
 ### quote
 
@@ -318,6 +412,12 @@ Usage: `(quote expr)`
 
 Shorthand: `'expr`.
 
+```lisp
+(quote x)        ; x       - a symbol, not its value
+(quote (1 2 3))  ; (1 2 3) - a list, not a call
+'(+ 1 2)         ; (+ 1 2)
+```
+
 ### begin
 
 Evaluates a sequence of expressions in order in a new lexical scope, returns the value of the last one.
@@ -325,12 +425,27 @@ Returns `Nil` if no body was provided.
 
 Usage: `(begin expr1 expr2 ...)`
 
+```lisp
+(begin
+  (let x 1)
+  (let y 2)
+  (+ x y))  ; 3
+```
+
 ### while
 
 Conditional loop. Evaluates `condition` and casts the result to `Bool`. While truthy, evaluates `expr` then re-evaluates `condition`.
 Returns the value `expr` produced on the last iteration, or `Nil` if the condition was never truthy.
 
 Usage: `(while condition expr)`
+
+```lisp
+(let i 0)
+(while (< i 3) (begin
+  (print "i=$0" i)
+  (set i (+ i 1))
+))                ; prints i=0, i=1, i=2
+```
 
 ### for
 
@@ -349,6 +464,14 @@ The length of the list is read before each iteration, so a body that shortens th
 
 `key` and `value` must be `Symbol`s and must be distinct. A missing `In` marker, a missing list expression, a non-`Symbol` name and two identical names each raise `VALUE_EXCEPTION`. A `list` that is not a `List` raises `TYPE_EXCEPTION`.
 
+```lisp
+(for v In '(10 20 30)
+  (print "$0" v))              ; 10, 20, 30
+
+(for i v In '("a" "b")
+  (print "$0 -> $1" i v))      ; 0 -> a, 1 -> b
+```
+
 ### try
 
 Catches exceptions raised when evaluating an expression.
@@ -362,6 +485,12 @@ If no exception occurs, returns the value of the last expression, or `Nil` when 
 `ExceptionSymbol` is evaluated, so it must be a self-evaluating symbol or an expression resulting in a symbol.
 It is evaluated before the handler is armed, so an exception raised while producing it is not caught here.
 
+```lisp
+(try TYPE_EXCEPTION (get Nil 0))  ; TYPE_EXCEPTION - caught
+(try TYPE_EXCEPTION (+ 1 2))      ; 3 - no exception
+(try TYPE_EXCEPTION (div 1 0))    ; propagates VALUE_EXCEPTION - not caught
+```
+
 ### and
 
 Short-circuiting logical AND.
@@ -373,6 +502,12 @@ As soon as any argument evaluates to `False` it stops evaluating the arguments a
 If all arguments evaluate to `True`, returns `True`.
 With no arguments, returns `True`.
 
+```lisp
+(and 1 2 3)        ; True
+(and 1 Nil 3)      ; False
+(and)              ; True
+```
+
 ### or
 
 Short-circuiting logical OR.
@@ -383,6 +518,12 @@ Evaluates arguments left-to-right and casts them to `Bool`.
 As soon as any argument evaluates to `True` it stops evaluating the arguments and returns `True`.
 If all arguments evaluate to `False`, returns `False`.
 With no arguments, returns `False`.
+
+```lisp
+(or Nil 0 3)       ; True
+(or Nil False)     ; False
+(or)               ; False
+```
 
 ## Built-in Functions
 
@@ -429,6 +570,14 @@ A `String` that is empty, padded with whitespace, or carries characters past the
 The written form selects how the text is read, not the kind it is read into: `(float "7")` is `7.0` and `(int "3.9")` is `3`.
 An argument that is neither numeric nor a `String` raises `TYPE_EXCEPTION`.
 
+```lisp
+(int "12")        ; 12
+(int 3.9)         ; 3       - truncated, not rounded
+(float "7")       ; 7.000000
+(+ 1 (int "41"))  ; 42
+(int "abc")       ; VALUE_EXCEPTION
+```
+
 ### List operations
 
 The following built-ins operate on `List` values. Passing a non-`List` value where a `List` is expected raises `TYPE_EXCEPTION`.
@@ -442,6 +591,19 @@ The following built-ins operate on `List` values. Passing a non-`List` value whe
 * `(append l1 l2)` - returns a new `List` containing the elements of `l1` followed by the elements of `l2`.
 * `(map func l)` - returns a new `List` obtained by applying `func` to each element of `l`.
 * `(filter func l)` - returns a new `List` containing the elements of `l` for which `func` returns a truthy value.
+
+```lisp
+(list 1 2 3)                            ; (1 2 3)
+(list)                                  ; ()
+(len '(1 2 3))                          ; 3
+(get '(a b c) 1)                        ; b
+(put (list 1 2 3) 0 9)                  ; (9 2 3)
+(push (list 1 2) 3)                     ; (1 2 3)
+(pop (list 1 2 3))                      ; 3
+(append '(1 2) '(3 4))                  ; (1 2 3 4)
+(map (lambda (x) (* x x)) '(1 2 3))     ; (1 4 9)
+(filter (lambda (x) (> x 1)) '(1 2 3))  ; (2 3)
+```
 
 ### String operations
 
@@ -467,6 +629,14 @@ The following built-ins operate on `String` values. Passing a non-`String` value
 * `(apply f args)` - calls `f` with the elements of the `List` `args` as its arguments. A non-callable `f` raises `UNCALLABLE_EXCEPTION`, and `f`'s own arity still applies.
 * `(throw kind)` - raises `kind` as an exception. `kind` must be a `Symbol`, so any name works, not only the kinds the language defines. A non-`Symbol` raises `TYPE_EXCEPTION`. `throw` does not return: control passes to the nearest enclosing `try` naming the same kind, or out of the program if there is none.
 
+```lisp
+(eval '(+ 1 2))         ; 3
+(eval (list '+ 1 2))    ; 3
+
+(let x 10)
+(eval 'x)               ; 10
+```
+
 ### I/O
 
 * `(print fmt arg1 arg2 ...)` - writes `fmt` to standard output followed by a newline and returns `Nil`. A non-`String` `fmt` raises `TYPE_EXCEPTION`.
@@ -481,7 +651,29 @@ A `${` not closed by `}` around a non-empty run of digits raises `VALUE_EXCEPTIO
 
 `$$` produces a literal `$`. A `$` followed by none of `$`, `{` or a digit stands for itself.
 
+```lisp
+(print "Hello $0!" "World")       ; Hello World!
+(print "$0 + $0 = $1" 5 10)       ; 5 + 5 = 10
+(print "$1 then $0" "a" "b")      ; b then a
+(print "${0}0" 10)                ; 100
+(print "$00" 10)                  ; 10 - one index, not $0 then a literal 0
+(print "$$0 stays put")           ; $0 stays put
+(print "costs 100$")              ; costs 100$
+(print "$0")                      ; VALUE_EXCEPTION
+```
+
 * `(input)` - reads one line from standard input and returns it as a `String` with the terminating newline removed. An empty line yields an empty `String`. A final line that no newline terminates is returned like any other. When there is no line left to read, returns `Nil`.
+
+```lisp
+(let name (input))                     ; reads one line
+(print "Hello, $0!" name)
+
+(let line (input))                     ; loop until the input runs out
+(while (!= line Nil) (begin
+  (print "$0" line)
+  (set line (input))
+))
+```
 
 ## Standard Library
 
@@ -507,3 +699,7 @@ A program raises its own with `throw`, and the kind it names need not be one of 
 
 `try` catches one kind. An exception of any other kind passes through it untouched and continues outward, so a handler never absorbs a failure it was not written for. Because matching is by name, a kind the language defines and a kind a program invented are caught the same way.
 
+```lisp
+(let result (try TYPE_EXCEPTION (get Nil 0)))
+(print "$0" result)      ; TYPE_EXCEPTION
+```

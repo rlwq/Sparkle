@@ -12,8 +12,8 @@
 > Some features are incomplete, experimental, or in a raw state.
 
 > [!WARNING]
-> Not all features described in [Sparkle.md](./Sparkle.md) are yet implemented.
-> The language specification is under active development - some described behavior may differ from the actual interpreter.
+> Not all features described in [Specification.md](./Specification.md) are yet implemented.
+> The specification is under active development - some described behavior may differ from the actual interpreter.
 
 ## Philosophy
 
@@ -22,7 +22,7 @@ dialect: Lisp rethought as a modern scripting language. It keeps what makes
 Lisp different - code as data, one syntax for everything - and takes the rest
 from modern scripting languages: their paradigms, patterns, and conventions.
 
-For the full language reference, see [Sparkle.md](./Sparkle.md).
+For the full language reference, see [Specification.md](./Specification.md).
 
 ## Main features
 

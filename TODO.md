@@ -9,6 +9,16 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Special Forms & Control Flow 
 
+* [ ] `lambda` takes exactly one body expression, while both documents promised
+      `(lambda args expr1 expr2 ...)` and a body "evaluated in order" - the
+      spec now says what the code does, and a sequence needs an explicit
+      `begin`. Decide which way to close the gap: let the body be variadic like
+      `begin`, `for` and `try` already are, or leave it and keep `begin`
+      explicit. Every other form with a body accepts several expressions, so
+      `lambda` is the odd one out.
+      *(verified: `spk_lambda_form` raises `VALUE_EXCEPTION` unless it is given
+      exactly two arguments; `((lambda (x) (print "s") x) 1)` fails)*
+
 * [ ] `try` should catch several kinds at once:
       `(try kind1 kind2 ... In expr1 expr2 ...)`. It catches exactly one today,
       so guarding against more means nesting one `try` per kind - four deep in
@@ -147,12 +157,19 @@ is why piece 2 buys more than piece 4 for a fraction of the work.
 
 * [ ] `Readme.md` does not open with what the language looks like. A reader
       deciding whether to keep scrolling wants a program in the first screen.
-* [ ] A tutorial: `Sparkle.md` is a reference, so there is no path from zero to
-      a working program that is not reading the whole thing.
+* [ ] A tutorial. `Specification.md` defines the language, which is not the
+      same as teaching it: there is no path from zero to a working program
+      short of reading the whole thing. This is what `README.md` should carry,
+      now that it is the only document written for a reader rather than for an
+      implementer.
 * [ ] `examples/` is thin. Each one should be a program worth reading, not a
       feature demo.
-* [ ] Nothing keeps `Sparkle.md` and `Specification.md` honest as the language
-      moves. A checklist in the test suite, or a test that reads the documents.
+* [ ] Nothing keeps `Specification.md` honest as the language moves. A
+      checklist in the test suite, or a test that reads the document. The
+      merge that removed `Sparkle.md` found the gap the hard way: it was
+      missing all thirteen string functions, claimed `(+)` with no arguments
+      returns `0` when it raises `ARITY_EXCEPTION`, and carried a worked
+      example of a multi-expression `lambda` body that has never parsed.
 * [ ] No version number and no changelog, so there is nothing to point at when
       something changes under a user.
 
