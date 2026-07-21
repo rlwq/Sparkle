@@ -7,7 +7,17 @@
 #define RED "\033[31m"
 #define RESET "\033[0m"
 
+// Diagnostics go to stderr while the program's own output goes to stdout, and
+// the two are buffered differently: stderr is unbuffered, stdout is block
+// buffered as soon as it is not a terminal. Without this the report jumps ahead
+// of the output it is about whenever either stream is redirected - which is
+// exactly what a piped REPL session and the test runner both do.
+static void flush_output(void) {
+    fflush(stdout);
+}
+
 void diag_lexer(const char *path, Lexer *lexer) {
+    flush_output();
     assert(lexer->is_err);
 
     fprintf(stderr, RED "%s:%zu:%zu: [PARSE ERROR] Unexpected character: " SV_FMT "\n" RESET, path,
@@ -16,12 +26,14 @@ void diag_lexer(const char *path, Lexer *lexer) {
 }
 
 void diag_parser(const char *path, Parser *parser) {
+    flush_output();
     (void)parser;
     assert(parser->is_err);
     fprintf(stderr, RED "%s: [PARSE ERROR] Invalid or incomplete expression.\n" RESET, path);
 }
 
 void diag_vm(const char *path, VM *vm) {
+    flush_output();
     assert(vm->is_err);
 
     fprintf(stderr, RED "%s: [RUNTIME ERROR] ", path);

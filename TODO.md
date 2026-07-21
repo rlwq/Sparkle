@@ -140,23 +140,14 @@ This document outlines the features and fixes planned for Sparkle.
 ## UX
 
 * [ ] Proper interpreter interaction.
-* [ ] REPL. **Next task.** One line per iteration, no multi-line continuation:
-      an unbalanced line is an ordinary parse error, so `core/` needs no change
-      and `diag_parser` works as is. A line holding several expressions already
-      works - the parser yields several nodes and `vm_run` runs them all.
-      The VM side is ready: load/run repeats on one VM, and the root scope
-      survives both errors and collections.
-      Two things still open.
-      Echo: `vm_run` pops each result, so `(+ 1 2)` would print nothing.
-      `write_expr` (`io.h`) can print it and now takes the `VM *` anyway, which
-      suits the flag below; the question is who calls it. Leaning
-      towards a `vm->echo_results` flag over wrapping input in `(print ...)`
-      textually, which breaks on `(let x 1)` and on multi-expression lines, and
-      over a second run loop, which would duplicate the `setjmp` recovery.
-      Undecided whether `(print "hi")` should then also echo its `Nil`.
-      Input: `spk_input` reads the same `stdin` the REPL reads commands from,
-      so `(input)` will eat the next command.
-      *(verified: `spk_input` calls `fgetc(stdin)`, `builtins_io.c:130`)*
+* [ ] The REPL is not covered by a single test. `tester.py` always invokes
+      `[binary, spk_path]`, and the interactive mode is what runs when there is
+      no path, so the suite cannot reach it. Wants a `tests/repl/` folder whose
+      cases are fed to the binary on stdin with no argument; the comparison,
+      the `.out` files and `--rewrite` all carry over unchanged.
+* [ ] A REPL session exits 0 even when lines in it failed. Right for an
+      interactive session, arguable for a piped one. Decided rather than
+      stumbled into, but worth revisiting alongside exit statuses generally.
 * [ ] REPL echo has no readable form for values. `write_expr` renders a String
       as its raw bytes, which is what `print` and `str` need, so `"hello"`
       echoes as `hello` and cannot be told from the symbol `hello` - and a
@@ -176,6 +167,18 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Done
 
+* [x] REPL. `sparkle` with no argument reads a line, evaluates it and prints
+      what it came to, until end of input. Bindings accumulate, and neither a
+      runtime error nor a parse error ends the session. One line is one chunk
+      of source, so several expressions on a line all run and an unbalanced
+      line is an ordinary parse error - there is no multi-line continuation.
+      Prompts go to stderr, so stdout carries only what the session produced
+      and a piped session stays machine-readable. A Nil result prints nothing.
+* [x] Diagnostics flush stdout before writing to stderr. stderr is unbuffered
+      and stdout is block buffered once it is not a terminal, so a report used
+      to jump ahead of the output it describes whenever either stream was
+      redirected. Present in the file mode all along; invisible because the
+      tester compares the two streams separately.
 * [x] CI runs the contract on every push: the release build, the suite under
       ASan/UBSan with `halt_on_error` so undefined behaviour fails the job
       rather than printing past it, and a clang build so `-Werror` sees two

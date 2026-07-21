@@ -1,4 +1,5 @@
 #include "interpreter.h"
+#include "repl.h"
 #include "string_view.h"
 
 #include <errno.h>
@@ -47,8 +48,16 @@ static char *read_file(const char *path) {
 }
 
 int main(int argc, char **argv) {
+    // No argument is the interactive session, not a usage error.
+    if (argc == 1) {
+        Repl *repl = repl_alloc();
+        repl_run(repl);
+        repl_free(repl);
+        return 0;
+    }
+
     if (argc != 2) {
-        fprintf(stderr, "USAGE: %s source.spk\n", argv[0]);
+        fprintf(stderr, "USAGE: %s [source.spk]\n", argv[0]);
         return 1;
     }
 
