@@ -1,0 +1,54 @@
+# Runs the contract stated in CLAUDE.md on every push: the release build, the
+# same suite under ASan/UBSan, and a second compiler to keep the ISO C11 claim
+# honest. All three call `make test` rather than tests/tester.py directly - the
+# expected stderr of a negative test embeds the source path exactly as it was
+# passed on the command line, so invoking the tester differently makes all 23
+# of them fail for no real reason.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Adds a "Run workflow" button on the Actions tab, for running this without
+  # pushing anything.
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: release (gcc)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: make build
+      - name: Test
+        run: make test
+
+  sanitizers:
+    name: ASan + UBSan (gcc)
+    runs-on: ubuntu-latest
+    env:
+      # Without halt_on_error UBSan prints the report and carries on, so the
+      # process still exits 0 and the tester - which compares stdout - sees a
+      # pass. This turns undefined behaviour into a failed job.
+      UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+      ASAN_OPTIONS: detect_leaks=1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build with sanitizers
+        run: make debug
+      - name: Test
+        run: make test
+
+  clang:
+    name: release (clang)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        # -Werror means a warning only clang emits is a build failure, which is
+        # the point: two compilers disagree about more than one does.
+        run: make build CC=clang
+      - name: Test
+        run: make test

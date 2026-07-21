@@ -133,8 +133,6 @@ This document outlines the features and fixes planned for Sparkle.
 * [ ] Benchmark suite - the test runner times each case, but nothing tracks
       whether the interpreter is getting faster or slower.
 * [ ] Editor support: syntax highlighting, at least a `.spk` grammar.
-* [ ] No CI. `make build && make test` and the sanitizer run are the contract
-      and nothing enforces them on a push.
 * [ ] No install target - the binary only exists at `./build/sparkle`.
 * [ ] A trace mode that prints evaluation steps. The interpreter is a teaching
       artifact as much as a tool, and it cannot show its own work.
@@ -168,6 +166,10 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Done
 
+* [x] CI runs the contract on every push: the release build, the suite under
+      ASan/UBSan with `halt_on_error` so undefined behaviour fails the job
+      rather than printing past it, and a clang build so `-Werror` sees two
+      compilers. `.github/workflows/ci.yml`.
 * [x] Special forms are registered, not patched in. `special_forms_attach` used
       to overwrite `SPECIAL_FORMS[i].keyword` with an interned pointer, which
       made a constant table into consumed global state and meant a second VM
