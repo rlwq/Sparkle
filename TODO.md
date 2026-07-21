@@ -6,9 +6,6 @@ This document outlines the features and fixes planned for Sparkle.
 
 * [ ] More descriptive parsing errors (on expected tokens).
 * [ ] Escape syntax for symbols that contain delimiters.
-* [ ] Parsed nodes carry no source position, so nothing downstream can name a
-      line. Tokens have `line:column` and lose it at `parse_expr`. Prerequisite
-      for runtime errors that point somewhere.
 
 ## Special Forms & Control Flow 
 
@@ -35,6 +32,65 @@ This document outlines the features and fixes planned for Sparkle.
       body sees the second symbol depends on when the scope entry appears.
       Decide it and write it down.
 
+## Error Reporting
+
+**Next task.** Not one job but four independent ones, listed in the order they
+are worth doing: each is cheaper than the one after it, and each leaves the next
+somewhere to plug into. Two numbers worth having in hand before starting.
+
+`sizeof(Object)` is 64 bytes today, laid out `kind` at 0, `marked` at 4, three
+bytes of padding, `heap_next` at 8, the union at 16. Adding a position costs:
+`uint16` byte offset **0 bytes** (it fits the padding hole, but caps a source
+file at 64K), `uint32` byte offset **+8**, a `TextPos` of two `size_t`
+**+16**. That is per object, every Integer included.
+
+The sixty places that raise an exception are 33 `VALUE_EXCEPTION`, 17
+`TYPE_EXCEPTION`, 4 `ARITY`, 3 `UNDEFINED`, 2 `UNCALLABLE`, 1 `REBINDING` - so
+fifty of sixty raise one of the two messages that say nothing whatsoever. Which
+is why piece 2 buys more than piece 4 for a fraction of the work.
+
+* [ ] **1. Parser errors carry no position, though the position is already in
+      hand.** `diag_parser` opens with `(void)parser;` and prints a constant
+      string, while `parser->cursor` points at the token that failed and every
+      token carries `pos`. The cheapest item in this file: stop discarding what
+      is already there. Subsumes "More descriptive parsing errors" above.
+
+* [ ] **2. Messages do not say what went wrong, though the answer is in scope
+      where the exception is raised.** `vm_scope_get` holds the name it failed
+      to find and reports "Symbol has no definition". `vm_expect` holds both the
+      expected type mask and the offending object and reports "Function expected
+      some other object type". `vm_call_lambda` holds both arities. Nothing new
+      has to be collected - the information exists and is thrown away.
+      Wants a detail channel on the VM beside `vm->exception`: a fixed buffer
+      rather than an allocation, since allocating while unwinding is asking for
+      trouble, and a `vm_recover_fmt` beside `vm_recover` so the sixty existing
+      sites keep compiling and improve one at a time. Kind names generate from
+      `X_KINDS`, the way `token_kind_names` already does for tokens.
+      Detail for the reporter only. A payload the program can catch and inspect
+      is a language change, tracked separately under Language Semantics.
+
+* [ ] **3. No call trace.** "Failed in `foo`" without "called from `bar`, called
+      from line 12" is half an answer. Wants the explicit control stack that the
+      deep-recursion item under Code base also wants - one structure, both
+      problems: a depth limit that raises instead of a segfault, and a trace to
+      print. Do them in one go.
+
+* [ ] **4. Runtime errors carry no position, and objects have nowhere to put
+      one.** The expensive, architectural piece; left last because by then the
+      trace and the detail channel already exist, so there is somewhere to put
+      a position rather than a format to invent alongside it.
+      Store a byte offset and derive `line:column` when reporting, by counting
+      newlines: it happens once, at failure, where speed is irrelevant, and it
+      halves the cost per object. Take the `uint32`; the free `uint16` buys a
+      silent 64K ceiling, which is worse than eight bytes.
+      Only the parser sets it. Objects built at runtime have no position and
+      should not pretend to, and the scheme survives singletons because the
+      parser allocates a fresh object per token and shares nothing.
+      New requirement to write down where it is enforced: the source text has
+      to be alive when the report is made. It is today, since `interp_eval`
+      reports before returning while `src` is still the caller's, but that is
+      currently a coincidence rather than a stated contract.
+
 ## Optimizations
  
 * [ ] Integer Interning.
@@ -52,7 +108,9 @@ This document outlines the features and fixes planned for Sparkle.
 * [ ] Decide whether shadowing a builtin is allowed, and say so.
 * [ ] Exceptions carry nothing. `throw` raises a bare Symbol, so a failure
       cannot report which value or index caused it - the kind is the whole
-      message. Wants a payload, and `try` wants a way to bind it.
+      message. Wants a payload, and `try` wants a way to bind it. This is a
+      language change and is deliberately not part of Error Reporting piece 2,
+      which only routes detail to the reporter and leaves `try` alone.
 * [ ] Integer overflow is unspecified. `Integer` is a C `long long` and signed
       overflow is undefined behaviour, so `(* 99999999999 99999999999)` is
       whatever the optimizer decides. Pick wrapping, saturation, promotion or
@@ -104,12 +162,10 @@ This document outlines the features and fixes planned for Sparkle.
       raising something catchable. Each Sparkle-level call costs several C
       frames (`vm_eval_object` -> `vm_eval_list` -> `vm_call` -> `vm_call_lambda`
       -> `vm_eval_object`). Wants tail-call elimination, or a depth limit that
-      raises, or an explicit control stack.
+      raises, or an explicit control stack. The control stack is the same
+      structure error reporting wants for a call trace - see Error Reporting,
+      piece 3, and do them together.
       *(verified: depth 10000 fine, 50000 overflows the stack under `make debug`)*
-* [ ] Runtime errors report the file and a generic message - no line, no column,
-      no call stack, no offending expression. Lexer errors already carry
-      `line:column`, so the machinery exists. *(verified: `diag_vm` prints only
-      `path: [RUNTIME ERROR] message`)*
 * [ ] Allocation failure is unchecked in release. `da_init` and `da_push` guard
       `malloc` and `realloc` with `assert`, which `NDEBUG` compiles out, so the
       release build writes through a null pointer under memory pressure rather
