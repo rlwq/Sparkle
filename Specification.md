@@ -1,5 +1,22 @@
 # Sparkle Language Specification
 
+## Program Model
+
+A program is a sequence of s-expressions. They are evaluated one at a time in
+the order they are written, and each is evaluated to completion before the next
+one begins.
+
+Nothing in the language consumes the value of a top-level expression; a program
+communicates through the effects its expressions have. Whether an implementation
+shows that value is a property of how the program is run rather than of the
+language.
+
+A program is a single source file. There is no module system and no way to load
+definitions from another file - see Standard Library.
+
+Evaluation ends early only when an exception reaches the top level uncaught, in
+which case the implementation reports its kind and exits with a non-zero status.
+
 ## Syntax
 
 ### Literals
@@ -174,6 +191,22 @@ Arithmetic overflow behavior is implementation-defined.
 `Float` is a double-precision floating-point type, conforming to IEEE 754.
  
 `0.0` is falsy. All other `Float` values, including `NaN`, are truthy.
+
+A `Float` is printed - by `print`, by `str`, and anywhere else a value is
+rendered - in fixed-point notation with exactly six digits after the decimal
+point, never in exponent form. `7.0` prints as `7.000000` and `1e20` as
+`100000000000000000000.000000`.
+
+The form is lossy in both directions. A small enough magnitude rounds away
+entirely: `0.0000005` prints as `0.000000`, while `0.0000006` prints as
+`0.000001`. A magnitude too large for a `double` to hold exactly prints the
+digits of the value actually stored, which are an artifact of the conversion
+rather than of the literal that was written. A printed `Float` therefore does
+not in general read back as the value it came from.
+
+An infinity prints as `inf` or `-inf` and a NaN as `nan` or `-nan`, with the
+exact spelling implementation-defined. Neither is a literal the reader accepts,
+so neither reads back at all.
  
 ### Numeric coercion
  
@@ -248,6 +281,12 @@ A non-empty list expression is evaluated as a call or special form, determined b
 ### Lambda
  
 `Lambda` is a first-class function value. It carries a parameter list, a body expression, and a reference to the lexical scope in which it was defined (a closure).
+
+The capture is by reference to that scope, not by copy of the bindings in it.
+Two consequences follow, and both are observable. A binding changed with `set`
+after the `Lambda` was created is seen inside it. And a name bound after the
+`Lambda` was created is visible to it as well, which is what lets two lambdas
+defined in the same scope call one another regardless of which came first.
  
 Two `Lambda` values are equal if and only if they are the same object (reference equality).
 

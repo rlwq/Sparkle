@@ -38,9 +38,6 @@ This document outlines the features and fixes planned for Sparkle.
       program wanted to run. Once file handles exist this stops being academic.
 * [ ] `try` cannot re-raise. A handler that inspects the kind and decides it is
       not the right one has no way to pass it outward.
-* [ ] Mutual recursion between two lambdas is unspecified - whether the first
-      body sees the second symbol depends on when the scope entry appears.
-      Decide it and write it down.
 
 ## Error Reporting
 
@@ -125,11 +122,12 @@ is why piece 2 buys more than piece 4 for a fraction of the work.
       overflow is undefined behaviour, so `(* 99999999999 99999999999)` is
       whatever the optimizer decides. Pick wrapping, saturation, promotion or
       an exception, then say so in `Specification.md`.
-* [ ] Closure capture is unwritten: a lambda holds a `Scope *`, so it captures
-      by reference and a later `set` is visible inside. That is a real choice
-      and it is documented nowhere.
-* [ ] Float printing does not round-trip - the printed form is not guaranteed
-      to read back as the same double.
+* [ ] Float printing does not round-trip. The form is now specified - fixed
+      point, six decimals, never an exponent - so the loss is at least written
+      down rather than merely suffered, but a magnitude below `0.0000005` still
+      prints as `0.000000` and `inf` and `nan` do not read back at all. Wants a
+      shortest-round-trip form, and literals the reader accepts for the
+      non-finite values.
 
 ## Base Library
 
