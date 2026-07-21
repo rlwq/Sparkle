@@ -4,11 +4,13 @@
 #include "diagnostics.h"
 #include "dynamic_array.h"
 #include "gc.h"
+#include "io.h"
 #include "parser.h"
 #include "special_forms.h"
 #include "vm.h"
 
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 Interpreter *interp_alloc(void) {
@@ -44,6 +46,34 @@ void interp_free(Interpreter *interp) {
     si_free(interp->si);
 
     free(interp);
+}
+
+// Installed as the VM's result sink by interp_set_echo. Goes through
+// write_expr, so an echoed value reads exactly as str would render it and as
+// print would write it - one representation, three ways out.
+//
+// Nil is never echoed, including when the expression was the literal `Nil`.
+// The rule is about the value and not about how it was produced: everything
+// whose whole point is an effect - print, while, a for over an empty list -
+// answers Nil, and a REPL that prints it says nothing and says it loudly.
+// Nothing is lost, since an expression that really is asking about Nil can ask
+// with (?NIL x).
+static void interp_echo(VM *vm, Object *result) {
+    if (OBJ_OFTYPE(result, TY_NIL))
+        return;
+
+    CharDA out;
+    da_init(out);
+
+    write_expr(vm, &out, result);
+    fwrite(out.data, 1, out.size, stdout);
+    fputc('\n', stdout);
+
+    da_free(out);
+}
+
+void interp_set_echo(Interpreter *interp, bool echo) {
+    interp->vm->on_result = echo ? interp_echo : NULL;
 }
 
 bool interp_eval(Interpreter *interp, StringView src, const char *name) {

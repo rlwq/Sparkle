@@ -23,6 +23,7 @@ VM *vm_alloc(GC *gc, StringInterner *si) {
     da_init(vm->value_stack);
     da_init(vm->recovery_stack);
     da_init(vm->special_forms);
+    vm->on_result = NULL;
 
     vm->is_err = false;
     vm->exception = NULL;
@@ -132,6 +133,10 @@ void vm_run(VM *vm) {
         assert(vm->instruction_ptr < vm->instructions.size);
         vm_push(vm, da_at(vm->instructions, vm->instruction_ptr));
         vm_eval_object(vm);
+
+        if (vm->on_result)
+            vm->on_result(vm, vm_peek(vm));
+
         vm_pop(vm);
 
         assert(vm->recovery_stack.size == 1);

@@ -92,6 +92,16 @@ struct VM {
     // names none of them. Empty means no forms installed.
     DA(SpecialFormEntry) special_forms;
 
+    // Handed the value of every top-level expression, just before vm_run drops
+    // it. NULL discards results, which is what running a file wants; a REPL
+    // installs a sink that prints. The value is on the value stack at the call,
+    // so it is rooted and the sink may allocate.
+    //
+    // A function pointer rather than a bool because rendering a value lives in
+    // lang/: a bool would have vm_run reaching for write_expr, and src/vm/ has
+    // been kept clear of the language layer on purpose.
+    void (*on_result)(VM *vm, Object *result);
+
     struct {
 #define X(name_, kind_, init_) Object *_##name_;
         X_RUNTIME_SINGLETONS

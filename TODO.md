@@ -157,6 +157,16 @@ This document outlines the features and fixes planned for Sparkle.
       Input: `spk_input` reads the same `stdin` the REPL reads commands from,
       so `(input)` will eat the next command.
       *(verified: `spk_input` calls `fgetc(stdin)`, `builtins_io.c:130`)*
+* [ ] REPL echo has no readable form for values. `write_expr` renders a String
+      as its raw bytes, which is what `print` and `str` need, so `"hello"`
+      echoes as `hello` and cannot be told from the symbol `hello` - and a
+      string holding parens or spaces reads as structure. This is the `display`
+      vs `write` split every Lisp ends up making: one form for showing a value
+      to a user, one that is unambiguous and reads back.
+      Wants a readable mode on `write_expr` used by echo alone, leaving `print`
+      and `str` exactly as they are. The comment in `io.h` claiming one
+      representation for everything has to become two, with the reason.
+      *(verified: `(str 3.5)` and `"3.500000"` echo identically)*
 * [ ] Run a program from standard input, and evaluate an expression given on the
       command line (`-e`).
 * [ ] The CLI takes one argument and nothing else: no `--help`, no `--version`,

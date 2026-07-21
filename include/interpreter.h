@@ -40,4 +40,11 @@ void interp_free(Interpreter *interp);
 // StringViews into it, but not past it: parsed objects own their own copies.
 bool interp_eval(Interpreter *interp, StringView src, const char *name);
 
+// Whether the value of each top-level expression is printed as it is produced.
+// Off by default, since running a file wants only what the program itself
+// prints. Turning it on is what makes a session interactive.
+//
+// A Nil result prints nothing at all - see interp_echo for why.
+void interp_set_echo(Interpreter *interp, bool echo);
+
 #endif
