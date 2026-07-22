@@ -626,7 +626,7 @@ The following built-ins operate on `List` values. Passing a non-`List` value whe
 
 * `(list e1 e2 ...)` - constructs a `List` from the evaluated arguments. With no arguments, returns an empty `List`.
 * `(len l)` - returns the length of `List` `l` as an `Integer`.
-* `(get l i)` - returns the element of `l` at 0-based index `i`. An out-of-range index raises `VALUE_EXCEPTION`.
+* `(get obj i1 i2 ...)` - indexes `obj` by each 0-based index in turn, `obj[i1][i2]...`, and returns the result. With no indices, returns `obj` unchanged. Each step must land in a `List`: indexing into a non-`List` raises `TYPE_EXCEPTION` and an out-of-range index raises `VALUE_EXCEPTION`.
 * `(put l i x)` - sets the element of `l` at 0-based index `i` to `x` in place and returns `l`. An out-of-range index raises `VALUE_EXCEPTION`.
 * `(push l x)` - appends `x` to the end of `l` in place and returns `l`.
 * `(pop l)` - removes and returns the last element of `l`. An empty list raises `VALUE_EXCEPTION`.
@@ -639,6 +639,7 @@ The following built-ins operate on `List` values. Passing a non-`List` value whe
 (list)                                  ; ()
 (len '(1 2 3))                          ; 3
 (get '(a b c) 1)                        ; b
+(get '((1 2) (3 4)) 1 0)                ; 3
 (put (list 1 2 3) 0 9)                  ; (9 2 3)
 (push (list 1 2) 3)                     ; (1 2 3)
 (pop (list 1 2 3))                      ; 3

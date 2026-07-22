@@ -20,18 +20,29 @@ static void spk_len(VM *vm) {
     vm_build_integer(vm, n);
 }
 
-// List, Integer (index) -> Value
+// Value, Integer... -> Value   (variadic: indices arrive packed)
 static void spk_get(VM *vm) {
-    vm_expect2(vm, TY_LIST, TY_INTEGER);
+    assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
 
-    Object *l = vm_prev(vm);
-    Integer idx = OBJ_INTEGER(vm_peek(vm));
+    // obj and the index list stay rooted on the stack; the descent allocates
+    // nothing, so the walking pointer stays valid the whole way down.
+    Object *indices = vm_peek(vm);
+    Object *obj = vm_prev(vm);
 
-    VM_RECOVER_IF(vm, idx < 0 || (size_t)idx >= OBJ_LIST_SIZE(l), vm->singletons._VALUE_EXCEPTION);
+    for (size_t k = 0; k < OBJ_LIST_SIZE(indices); k++) {
+        Object *iobj = OBJ_LIST_AT(indices, k);
+        VM_RECOVER_IF(vm, !OBJ_OFTYPE(obj, TY_LIST), vm->singletons._TYPE_EXCEPTION);
+        VM_RECOVER_IF(vm, !OBJ_OFTYPE(iobj, TY_INTEGER), vm->singletons._TYPE_EXCEPTION);
 
-    Object *e = OBJ_LIST_AT(l, idx);
+        Integer idx = OBJ_INTEGER(iobj);
+        VM_RECOVER_IF(vm, idx < 0 || (size_t)idx >= OBJ_LIST_SIZE(obj),
+                      vm->singletons._VALUE_EXCEPTION);
+
+        obj = OBJ_LIST_AT(obj, idx);
+    }
+
     vm_pop_n(vm, 2);
-    vm_push(vm, e);
+    vm_push(vm, obj);
 }
 
 // List, Integer (index), Value -> List
@@ -139,7 +150,7 @@ static void spk_filter(VM *vm) {
 
 DEFINE_MODULE(LIST) = {
     {"list", spk_list, 0, true},      {"len", spk_len, 1, false},
-    {"get", spk_get, 2, false},       {"put", spk_put, 3, false},
+    {"get", spk_get, 1, true},        {"put", spk_put, 3, false},
     {"push", spk_push, 2, false},     {"pop", spk_pop, 1, false},
     {"append", spk_append, 2, false}, {"map", spk_map, 2, false},
     {"filter", spk_filter, 2, false},
