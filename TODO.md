@@ -1,25 +1,71 @@
 # TODO
 
-This document outlines the features and fixes planned for Sparkle.
+This document tracks what is planned for Sparkle. Active work is grouped by the
+kind of change it is and ordered roughly correctness-first: the sections that
+keep the interpreter from crashing or misreporting come before the ones that add
+features, then speed, then polish. `Done` at the end is the record of what has
+already landed, with the verification notes taken at the time.
 
-## Syntax & Parser
+## Correctness & Safety
 
-* [ ] More descriptive parsing errors (on expected tokens).
-* [ ] Escape syntax for symbols that contain delimiters.
+The interpreter can be driven to crash or to invoke undefined behaviour by
+ordinary programs. These come before features: a language that segfaults out of
+`=` is one a program cannot trust.
 
-## Special Forms & Control Flow 
+* [ ] Deep recursion overflows the C stack and kills the process instead of
+      raising something catchable. Each Sparkle-level call costs several C frames
+      (`vm_eval_object` -> `vm_eval_list` -> `vm_call` -> `vm_call_lambda` ->
+      `vm_eval_object`); `spk_eq` recurses on its own path through nested lists
+      too, so a ceiling has to cover both. Wants tail-call elimination, or a
+      depth limit that raises, or an explicit control stack - the same structure
+      error reporting wants for a call trace (see Error Reporting, piece 3, and
+      do them together). A depth limit would also make the last cyclic-structure
+      crash catchable: `=` now short-circuits on identity, so `(= x x)` on a
+      self-referential list terminates, but two distinct mutually-cyclic lists
+      still overflow the stack - Python raises `RecursionError` there, so this is
+      low priority, just a segfault where Python does not.
+      *(verified: depth 10000 fine, 50000 overflows under `make debug`; two
+      mutually-cyclic lists compared with `=` overflow it too)*
 
-* [ ] Early exit: no `break`, `continue` or `return`, so a loop cannot stop
-      before its condition flips and a function cannot return from a branch.
-* [ ] `cond`-style dispatch on a value rather than on a chain of predicates.
-* [ ] No unwind protection: an exception unwinds past whatever cleanup the
-      program wanted to run. Once file handles exist this stops being academic.
+* [ ] The parser's recursion is a third crash surface, separate from the
+      evaluator's. `parser_read_expr` recurses per nesting level, so a source
+      file that is nothing but open parens kills the process before the VM ever
+      runs - and unlike the evaluator, the fix is trivial and independent: a
+      depth counter in the parser that sets `is_err` past a limit, no control
+      stack needed. *(verified: 100k nested parens overflow the C stack under
+      `make debug`)*
+
+* [ ] Nothing bounds interpreter memory. A runaway program takes the machine
+      down with it instead of raising.
+
+* [ ] Allocation failure is unchecked in release. `da_init` and `da_push` guard
+      `malloc` and `realloc` with `assert`, which `NDEBUG` compiles out, so the
+      release build writes through a null pointer under memory pressure rather
+      than failing. The GC constructors inherit this. The fix is to split two
+      things that are both `assert` today: an invariant the code guarantees (fine
+      to compile out) from a runtime condition the environment imposes (must be
+      checked always). *(verified: `dynamic_array.h:22` and `:31` are asserts;
+      release defines `NDEBUG`)*
+
+* [ ] The builtin stack protocol is kept by discipline, not checked by the
+      machine. Every builtin hand-balances the value stack and states its effect
+      only in a comment (`String, Integer -> String`); nothing verifies it
+      consumed its arguments and left exactly one result. A stray `vm_pop` on a
+      cold branch is silent stack corruption the suite catches only if ASan trips
+      on the fallout later. The check is cheap and belongs at the one dispatch
+      site: `vm_call_builtin` knows the input count before it calls
+      (`vm_eval.c:86` - `argc` slots for a fixed builtin, `arity + 1` for a
+      variadic one), so record `value_stack.size` there and, on normal return,
+      assert it fell to exactly that minus one. Debug builds only; an unwinding
+      `vm_recover` skips the check by construction, which is correct - the
+      recovery frame has already truncated the stack.
 
 ## Error Reporting
 
-**Next task.** Not one job but four independent ones, listed in the order they
-are worth doing: each is cheaper than the one after it, and each leaves the next
-somewhere to plug into. Two numbers worth having in hand before starting.
+**Next planned feature.** Not one job but four independent ones, listed in the
+order they are worth doing: each is cheaper than the one after it, and each
+leaves the next somewhere to plug into. Two numbers worth having in hand before
+starting.
 
 `sizeof(Object)` is 64 bytes today, laid out `kind` at 0, `marked` at 4, three
 bytes of padding, `heap_next` at 8, the union at 16. Adding a position costs:
@@ -36,7 +82,7 @@ is why piece 2 buys more than piece 4 for a fraction of the work.
       hand.** `diag_parser` opens with `(void)parser;` and prints a constant
       string, while `parser->cursor` points at the token that failed and every
       token carries `pos`. The cheapest item in this file: stop discarding what
-      is already there. Subsumes "More descriptive parsing errors" above.
+      is already there - this is the descriptive-parse-errors want made concrete.
 
 * [ ] **2. Messages do not say what went wrong, though the answer is in scope
       where the exception is raised.** `vm_scope_get` holds the name it failed
@@ -54,9 +100,9 @@ is why piece 2 buys more than piece 4 for a fraction of the work.
 
 * [ ] **3. No call trace.** "Failed in `foo`" without "called from `bar`, called
       from line 12" is half an answer. Wants the explicit control stack that the
-      deep-recursion item under Code base also wants - one structure, both
-      problems: a depth limit that raises instead of a segfault, and a trace to
-      print. Do them in one go.
+      deep-recursion item under Correctness & Safety also wants - one structure,
+      both problems: a depth limit that raises instead of a segfault, and a trace
+      to print. Do them in one go.
 
 * [ ] **4. Runtime errors carry no position, and objects have nowhere to put
       one.** The expensive, architectural piece; left last because by then the
@@ -74,24 +120,40 @@ is why piece 2 buys more than piece 4 for a fraction of the work.
       reports before returning while `src` is still the caller's, but that is
       currently a coincidence rather than a stated contract.
 
-## Optimizations
- 
-* [ ] Integer Interning.
-* [ ] Arena allocations instead of a linked list in GC.
-* [ ] Scope lookup is a linear scan: `scope_get` walks every binding of every
-      enclosing scope on each symbol evaluation. Index it.
-* [ ] String interning is a linear scan over every string interned so far
-      (`si_getn`), so interning is O(n) in the program's symbol count. Hash it.
-* [ ] Special-form dispatch scans the whole table on every list evaluation
-      (`vm_try_special_form`). The scan is now over `vm->special_forms`, so it is
-      per-VM data rather than a global table.
-
 ## Language Semantics
 
+Decisions the language still owes, each to be made and then written into
+`Specification.md`.
+
 * [ ] Builtins may be shadowed, like Python: a later binding of a builtin's name
-      takes precedence in its scope. Decided; what remains is saying so in
-      `Specification.md` and confirming the interpreter lets a builtin's name be
-      rebound rather than raising `REBINDING_EXCEPTION`.
+      takes precedence in its scope. Decided, and true in any nested scope - but
+      not at the top level, because `register_builtins` writes into the same root
+      scope top-level code binds in, so `(let + 5)` in a file is a same-scope
+      collision and raises `REBINDING_EXCEPTION`. Python avoids this by giving
+      builtins their own scope outside the module's; the fix here is the same
+      shape: push a second scope in `interp_alloc` after registration, so the
+      root the program sees sits above the builtins rather than beside them.
+      Then say so in `Specification.md`. *(verified: `(begin (let + 5) ...)`
+      shadows; top-level `(let + 5)` raises `REBINDING_EXCEPTION`)*
+
+* [ ] A binding whose name starts with a capital is unreachable, with no
+      diagnostic. `let` and `set` take any `Symbol`, but a capitalized symbol
+      self-evaluates before the scope is consulted (`vm_eval_symbol`,
+      `vm_eval.c:233`), so `(let Foo 1)` binds a name that evaluating `Foo` can
+      never read back - it yields the symbol `Foo`. The rule that ties
+      capitalization to self-evaluation is what buys symbols-as-enums, but it
+      also makes a whole class of bindings write-only and silent. Decide: raise
+      `VALUE_EXCEPTION` when `let`/`set` is handed a self-evaluating name
+      (recommended - such a binding is never useful), or allow it and say so in
+      `Specification.md`. *(verified: `(let Foo 1) Foo` prints `Foo`, not `1`)*
+
+* [ ] `(- 5)` is `5`, not `-5`. The fold rule is uniform - one argument folds to
+      itself, exactly as `(+ 5)` does - but negation is what every reader of a
+      Lisp expects from unary minus, and `neg` existing does not stop the
+      surprise. Scheme special-cases arity one for `-` and `/` for this reason.
+      Decide: keep the uniform fold and say so loudly under Arithmetic, or
+      special-case `(- x)` as negation. *(verified: `(- 5)` prints `5`)*
+
 * [ ] Exceptions carry nothing. `throw` raises a bare Symbol, so a failure
       cannot report which value or index caused it - the kind is the whole
       message. Planned shape, deferred: a new `Exception` type pairing a `Symbol`
@@ -101,16 +163,68 @@ is why piece 2 buys more than piece 4 for a fraction of the work.
       polymorphic exception objects, discriminating by kind (now that `try`
       accepts several) is enough. Deliberately not part of Error Reporting piece
       2, which only routes detail to the reporter and leaves `try` alone.
-* [ ] Integer overflow is unspecified. `Integer` is a C `long long` and signed
-      overflow is undefined behaviour, so `(* 99999999999 99999999999)` is
-      whatever the optimizer decides. Pick wrapping, saturation, promotion or
-      an exception, then say so in `Specification.md`.
+
+* [ ] Integer overflow is unspecified, and the reader has it too. `Integer` is a
+      C `long long` and signed overflow is undefined behaviour - in arithmetic,
+      where `(* 99999999999 99999999999)` is whatever the optimizer decides, and
+      already in `svtolli`, where a literal too big for the type overflows while
+      being read, so a program consisting of one long number executes UB before
+      anything runs. Pick wrapping, saturation, promotion or an exception, apply
+      it to literals as well as operators, then say so in `Specification.md`.
+      *(verified under UBSan: `string_view.c:131` on the literal,
+      `builtins_arithmetic.c:35` on the multiply; release prints garbage)*
+
 * [ ] Float printing does not round-trip. The form is now specified - fixed
       point, six decimals, never an exponent - so the loss is at least written
       down rather than merely suffered, but a magnitude below `0.0000005` still
       prints as `0.000000` and `inf` and `nan` do not read back at all. Wants a
       shortest-round-trip form, and literals the reader accepts for the
       non-finite values.
+
+* [ ] The two loops disagree about scope. `for` evaluates its body in a fresh
+      scope per iteration - the spec says so, and a lambda made in the body
+      captures its own step - while `while` evaluates the body in the enclosing
+      scope, so a bare `let` in it binds once and raises
+      `REBINDING_EXCEPTION` on the second pass. The asymmetry is visible in
+      `examples/life.spk`: every `for` body uses `let` bare, every `while` body
+      wraps itself in `begin` to survive. Either give `while` the per-iteration
+      scope `for` has, or state the difference in `Specification.md` where
+      `while` is defined - today the fresh-scope list under Evaluation Model
+      omits `while`, which is accurate but never called out. *(verified: bare
+      `let` in a `while` body raises on iteration two)*
+
+* [ ] A `Builtin` has no printed form. `write_expr` writes nothing for
+      `KIND_BUILTIN`, so `(str +)` is `""` and `(print "$0" +)` prints an empty
+      slot - while the spec promises `str` renders any type. Decide a form
+      (other Lisps print `#<builtin +>`; even a bare `<builtin>` beats
+      vanishing), spec it, and give `write_expr` the case. The name is not
+      currently in reach of the object - either store the registration name in
+      `BuiltinObject` or settle for a nameless form.
+
+* [ ] Special-form names are not values, and the spec never says so. `if` in a
+      non-head position is just an undefined symbol - `(let f if)` raises
+      `UNDEFINED_EXCEPTION` - which follows from the evaluation model (the
+      special-form check reads the head symbol before evaluation) but surprises
+      anyone arriving from a language where everything is first-class. One
+      sentence under Special Forms closes it. *(verified)*
+
+* [ ] `String` is ASCII, and the ceiling only shows at the edges. The type is a
+      byte sequence, `str-chr` rejects anything past 127, and
+      `str-len`/`str-get`/`str-upper`/`str-split` all count and cut in bytes - so
+      the ASCII limit stated under Types is real but invisible until a multibyte
+      input misbehaves partway through. Decide whether it stays ASCII or grows a
+      byte-versus-character distinction; either way the byte-orientation is worth
+      stating where the operations are, not only on the type.
+
+## Control Flow & Special Forms
+
+* [ ] Early exit: no `break`, `continue` or `return`, so a loop cannot stop
+      before its condition flips and a function cannot return from a branch.
+
+* [ ] `cond`-style dispatch on a value rather than on a chain of predicates.
+
+* [ ] No unwind protection: an exception unwinds past whatever cleanup the
+      program wanted to run. Once file handles exist this stops being academic.
 
 ## Base Library
 
@@ -133,52 +247,71 @@ is why piece 2 buys more than piece 4 for a fraction of the work.
 * [ ] Number parsing and printing in a chosen radix. The lexer reads `0b`,
       `0o` and `0x` literals, but a program cannot produce or consume them.
 
-## Documentation & Presentation
+## Performance
 
-* [ ] `Readme.md` does not open with what the language looks like. A reader
-      deciding whether to keep scrolling wants a program in the first screen.
-* [ ] A tutorial. `Specification.md` defines the language, which is not the
-      same as teaching it: there is no path from zero to a working program
-      short of reading the whole thing. This is what `README.md` should carry,
-      now that it is the only document written for a reader rather than for an
-      implementer.
-* [ ] `examples/` is thin. Each one should be a program worth reading, not a
-      feature demo.
-* [ ] Nothing keeps `Specification.md` honest as the language moves. A
-      checklist in the test suite, or a test that reads the document. The
-      merge that removed `Sparkle.md` found the gap the hard way: it was
-      missing all thirteen string functions, claimed `(+)` with no arguments
-      returns `0` when it raises `ARITY_EXCEPTION`, and carried a worked
-      example of a multi-expression `lambda` body that did not parse until the
-      body became a sequence.
-* [ ] No version number and no changelog, so there is nothing to point at when
-      something changes under a user.
+Everything here is correct but scans where it could index. Measure before
+committing to any of it.
 
-## Code base, bugs, & fixes
+* [ ] Integer Interning.
+* [ ] Arena allocations instead of a linked list in GC.
+* [ ] Scope lookup is a linear scan: `scope_get` walks every binding of every
+      enclosing scope on each symbol evaluation. Index it.
+* [ ] String interning is a linear scan over every string interned so far
+      (`si_getn`), so interning is O(n) in the program's symbol count. Hash it.
+* [ ] Special-form dispatch scans the whole table on every list evaluation
+      (`vm_try_special_form`). The scan is now over `vm->special_forms`, so it is
+      per-VM data rather than a global table.
+* [ ] The collection threshold only ratchets up. `gc_grow_if_needed` doubles
+      `capacity` every time the heap reaches it and nothing ever lowers it, so
+      one allocation spike makes every later collection rarer and the high-water
+      memory permanent. After a sweep, recompute the threshold from what
+      survived (say twice the live count, floored at the initial capacity).
 
-* [ ] Deep recursion overflows the C stack and kills the process instead of
-      raising something catchable. Each Sparkle-level call costs several C
-      frames (`vm_eval_object` -> `vm_eval_list` -> `vm_call` -> `vm_call_lambda`
-      -> `vm_eval_object`). Wants tail-call elimination, or a depth limit that
-      raises, or an explicit control stack. The control stack is the same
-      structure error reporting wants for a call trace - see Error Reporting,
-      piece 3, and do them together.
-      *(verified: depth 10000 fine, 50000 overflows the stack under `make debug`)*
-* [ ] Allocation failure is unchecked in release. `da_init` and `da_push` guard
-      `malloc` and `realloc` with `assert`, which `NDEBUG` compiles out, so the
-      release build writes through a null pointer under memory pressure rather
-      than failing. The GC constructors inherit this. *(verified:
-      `dynamic_array.h:22` and `:31` are asserts; release defines `NDEBUG`)*
-* [ ] Nothing bounds interpreter memory. A runaway program takes the machine
-      down with it instead of raising.
+## Internals & Refactoring
+
+Cleanups with no user-visible change.
+
 * [ ] `X_LANGUAGE_SYMBOLS` still lives in `vm.h`, so the VM core spells out
       words only the language gives meaning to (`Nil`, `True`, `False`,
-      `quote`, `Var`, `In`). It belongs in `lang/`, registered into the VM the
-      way special forms now are - `vm_register_special_form` already shows the
-      shape. The self-evaluating-symbol rule in `vm_eval_symbol` (capitalized
-      symbols evaluate to themselves) has to move with it, since that is the
-      only thing reading `Nil`/`True`/`False`. Moving it out of the interner
-      was the first half of this.
+      `quote`, `Var`). It belongs in `lang/`, registered into the VM the way
+      special forms now are - `vm_register_special_form` already shows the shape.
+      The self-evaluating-symbol rule in `vm_eval_symbol` (capitalized symbols
+      evaluate to themselves) has to move with it, since that is the only thing
+      reading `Nil`/`True`/`False`. Moving it out of the interner was the first
+      half of this.
+
+* [ ] Type checking past two arguments is hand-rolled. `vm_expect`/`vm_expect2`
+      stop at arity two, so `str-sub`, `str-replace` and `put` each open with
+      three separate `VM_RECOVER_IF(..., TYPE_EXCEPTION)` lines restating what
+      `vm_expect` exists to say. A `vm_expect_at(vm, depth, type)` or a variadic
+      `vm_expect_n` routes every type guard through one place - which is also
+      where Error Reporting piece 2 wants to attach the offending object, so the
+      two land together.
+
+* [ ] The `Numeric -> double` widening is written twice. `cast_numeric`
+      (`builtins_arithmetic.c:117`) and `numeric_as_double` (`:147`) carry the
+      same `Bool`/`Integer`/`Float` switch with the same `UNREACHABLE` tail, so a
+      new numeric kind is two edits. Fold to one helper.
+
+* [ ] The read-a-line loop is written twice. `repl_read_line` and `spk_input`
+      both spell the same `fgetc`-until-newline-or-EOF walk into a `CharDA`.
+      One helper serves both; where it lives is the only question, since
+      `repl.c` must not reach into `lang/`.
+
+## Syntax & Parser
+
+* [ ] The lexer splits what the grammar calls one symbol. `Specification.md`
+      defines `symbol = symbol-char+ - (integer | float)`, which makes `1ab` a
+      symbol - all symbol characters, not a number. The lexer instead scans the
+      longest number prefix and stops, so `1ab` lexes as `1` then `ab`, and
+      `(print "$0" 1ab)` prints `1` where the spec demands
+      `UNDEFINED_EXCEPTION`. Either the scanner refuses the number when a
+      symbol character follows it (maximal munch, matching the written
+      grammar), or the grammar documents the split. The first is truer to the
+      one-document-defines-the-language rule. *(verified: `1ab` evaluates as
+      two expressions)*
+
+* [ ] Escape syntax for symbols that contain delimiters.
 
 ## Tooling
 
@@ -186,12 +319,22 @@ is why piece 2 buys more than piece 4 for a fraction of the work.
       so nothing can be split up or reused across programs.
 * [ ] Benchmark suite - the test runner times each case, but nothing tracks
       whether the interpreter is getting faster or slower.
+* [ ] The tester's oracle is coarser than the output it checks. `format_output`
+      splits on all whitespace, so a test cannot distinguish one line from two,
+      a trailing space from none, or a blank line from nothing - and `print` is
+      the language's whole output story, so its exact spacing is part of the
+      contract. Positive tests also never look at stderr, so stray diagnostics
+      pass unseen. Compare line-by-line with a normalized-whitespace fallback,
+      and assert stderr is empty where no `.err` exists.
+* [ ] CI never runs `make format`, so formatting drift lands silently. A check
+      step - `clang-format --dry-run --Werror` over the sources - keeps the
+      format target honest the way `-Werror` keeps the build.
 * [ ] Editor support: syntax highlighting, at least a `.spk` grammar.
 * [ ] No install target - the binary only exists at `./build/sparkle`.
 * [ ] A trace mode that prints evaluation steps. The interpreter is a teaching
       artifact as much as a tool, and it cannot show its own work.
 
-## UX
+## CLI & REPL
 
 * [ ] Proper interpreter interaction.
 * [ ] The REPL is not covered by a single test. `tester.py` always invokes
@@ -218,6 +361,58 @@ is why piece 2 buys more than piece 4 for a fraction of the work.
       and the usage line is the only thing resembling documentation.
 * [ ] Exit statuses are undocumented. Today everything that fails exits 1, so a
       script cannot tell a syntax error from a runtime one.
+* [ ] Diagnostics print ANSI color unconditionally. `diagnostics.c` wraps every
+      report in `RED`...`RESET` whether or not stderr is a terminal, so a piped
+      or logged session gets raw escape bytes (the tester strips them on its
+      side). Gate on `isatty(fileno(stderr))`.
+
+## Documentation & Presentation
+
+* [ ] `Readme.md` does not open with what the language looks like. A reader
+      deciding whether to keep scrolling wants a program in the first screen.
+* [ ] A tutorial. `Specification.md` defines the language, which is not the
+      same as teaching it: there is no path from zero to a working program
+      short of reading the whole thing. This is what `README.md` should carry,
+      now that it is the only document written for a reader rather than for an
+      implementer.
+* [ ] `examples/` holds two programs worth reading - `life.spk` and `rpn.spk`
+      earn their place - but two is still a thin shelf for a language arguing it
+      is pleasant to write. Breadth is what is missing now, not quality: a
+      program per style the README claims (something recursive, something
+      string-heavy, something that leans on `map`/`filter`).
+* [ ] The README's warning banner overstates the danger. It promises "bugs,
+      memory leaks, and undefined behavior", while CI runs the whole suite under
+      ASan with `detect_leaks=1` and passes - the project is leak-checked on
+      every push and the banner does not know it. Replace the self-deprecation
+      with a short known-limitations note that points at this file; a portfolio
+      reader believes warnings.
+* [ ] `.gitignore` ignores itself, so it is not in the repository. A fresh clone
+      gets no ignore rules at all: `build/` and editor droppings land in
+      `git status` for anyone else touching the repo. Drop the `.gitignore`
+      line from itself and commit the file.
+* [ ] `README.md` promises more familiarity than the language keeps. It says
+      Sparkle "works the way you would expect coming from Python or Lua," while
+      several behaviours are deliberately not that: `set` assigns in parallel, so
+      `(set x y y x)` swaps; capitalized symbols self-evaluate; there is no
+      `return`, `break` or `continue`. Each is a defensible choice - but the
+      sentence should name them as where Sparkle diverges, or narrow the claim,
+      rather than let a reader meet them as surprises.
+* [ ] Nothing keeps `Specification.md` honest as the language moves. A
+      checklist in the test suite, or a test that reads the document. The
+      merge that removed `Sparkle.md` found the gap the hard way: it was
+      missing all thirteen string functions, claimed `(+)` with no arguments
+      returns `0` when it raises `ARITY_EXCEPTION`, and carried a worked
+      example of a multi-expression `lambda` body that did not parse until the
+      body became a sequence.
+* [ ] No version number and no changelog, so there is nothing to point at when
+      something changes under a user.
+* [ ] The reasoning in this file is really a design log. The Error Reporting
+      cost analysis, the `Done` notes and their verified observations, and the
+      rationale threaded through the sections above are decisions with their why
+      attached - worth more, and harder to find, than a task list should make
+      them. A `DESIGN.md` (or `DECISIONS.md`) could hold the rationale and leave
+      this file the tasks that point at it. Optional, and an editorial call about
+      how the project wants to present itself.
 
 ## Done
 
