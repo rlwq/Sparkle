@@ -1,0 +1,81 @@
+; Conway's Game of Life on a wrap-around (toroidal) board.
+;
+; The grid is a list of rows, each a list of cells that are 1 (alive) or 0.
+; Every tick, a live cell survives with two or three live neighbours and a dead
+; cell is born with exactly three. The board wraps at every edge, so a glider
+; crawls across it forever.
+;
+;   $ ./build/sparkle examples/life.spk
+
+; An empty w-by-h grid, every cell dead.
+(let make-grid (lambda (w h)
+  (let g (list))
+  (let y 0)
+  (while (< y h)
+    (begin
+      (let row (list))
+      (let x 0)
+      (while (< x w)
+        (begin
+          (push row 0)
+          (set x (+ x 1))))
+      (push g row)
+      (set y (+ y 1))))
+  g))
+
+; The value at (x, y), reading through the edges. x and y are only ever off by
+; one, so adding the size before the mod keeps the index non-negative.
+(let cell-at (lambda (grid x y)
+  (let h (len grid))
+  (let w (len (get grid 0)))
+  (get grid (mod (+ y h) h) (mod (+ x w) w))))
+
+; The eight neighbours around (x, y), summed.
+(let neighbours (lambda (grid x y)
+  (let total 0)
+  (for dy '(-1 0 1)
+    (for dx '(-1 0 1)
+      (if (not (and (= dx 0) (= dy 0)))
+          (set total (+ total (cell-at grid (+ x dx) (+ y dy)))))))
+  total))
+
+; One tick, into a fresh grid rather than mutating the old one under itself.
+(let step (lambda (grid)
+  (let next (list))
+  (for (y row) grid
+    (let new-row (list))
+    (for (x cell) row
+      (let n (neighbours grid x y))
+      (let live (if (= cell 1) (or (= n 2) (= n 3)) (= n 3)))
+      (push new-row (if live 1 0)))
+    (push next new-row))
+  next))
+
+; Draw the board, one row per line: '#' is alive, '.' is dead.
+(let draw (lambda (grid)
+  (for row grid
+    (let line "")
+    (for cell row
+      (set line (str-cat line (if (= cell 1) "#" "."))))
+    (print "$0" line))))
+
+; Seed a glider in the top-left corner.
+;   . # .
+;   . . #
+;   # # #
+(let grid (make-grid 20 12))
+(put (get grid 0) 1 1)
+(put (get grid 1) 2 1)
+(put (get grid 2) 0 1)
+(put (get grid 2) 1 1)
+(put (get grid 2) 2 1)
+
+; Run it.
+(let gen 0)
+(while (< gen 16)
+  (begin
+    (print "generation $0" gen)
+    (draw grid)
+    (print "")
+    (set grid (step grid))
+    (set gen (+ gen 1))))
