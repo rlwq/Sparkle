@@ -257,7 +257,7 @@ Every list is a flat, finite sequence of elements indexed from `0`. The number o
 
 The empty list `()` is its own empty `List` value (length 0), distinct from `Nil`. Both `()` and `(list)` produce an empty `List`. `Nil` does not terminate lists and is not an element of a list unless explicitly stored.
  
-Two `List` values are equal if and only if they are the same object (reference equality).
+Two `List` values are equal when they have the same length and their elements are equal position by position, each by the equality rule for its own kind. Equality is therefore structural and recurses into nested lists. A list that (through `put`) contains itself has no terminating comparison; the language does not guard against it.
 
 An empty `List` is falsy. A non-empty `List` is truthy.
 
@@ -280,7 +280,7 @@ A non-empty list expression is evaluated as a call or special form, determined b
 
 ### Lambda
  
-`Lambda` is a first-class function value. It carries a parameter list, a body expression, and a reference to the lexical scope in which it was defined (a closure).
+`Lambda` is a first-class function value. It carries a parameter list, a body of one or more expressions, and a reference to the lexical scope in which it was defined (a closure).
 
 The capture is by reference to that scope, not by copy of the bindings in it.
 Two consequences follow, and both are observable. A binding changed with `set`
@@ -410,17 +410,16 @@ If no condition is `True` and a `default` expression is provided, evaluates and 
 
 Creates and returns a `Lambda` object that captures the current scope.
 
-Usage: `(lambda args body)`
+Usage: `(lambda args body1 body2 ...)`
 
 `args` is either:
 * a list of symbols: `(x y z)` - evaluates to a fixed-arity lambda.
 * a single symbol: `args` - fully variadic lambda with no positional arguments; all arguments are collected into a `List` bound to that symbol.
 * a list of symbols containing the reserved marker symbol `Var` as its second-to-last element: `(x y Var rest)` - the symbols before `Var` are fixed positional parameters, and the single symbol after `Var` is bound to a `List` of the remaining arguments.
 
-The body is a single expression, evaluated in a new lexical scope; its value is
-what the call returns. A sequence of statements goes inside a `begin`, which is
-itself one expression. A `lambda` form given anything other than exactly two
-arguments raises `VALUE_EXCEPTION`.
+The body is one or more expressions, evaluated in order in a new lexical scope;
+the value of the last is what the call returns. A `lambda` form given fewer than
+two arguments - a parameter list with no body - raises `VALUE_EXCEPTION`.
 Duplicate argument names raise `VALUE_EXCEPTION`.
 
 ```lisp
@@ -435,11 +434,10 @@ Duplicate argument names raise `VALUE_EXCEPTION`.
 (let f (lambda (x y Var rest) rest))
 (f 1 2 3 4 5)  ; (3 4 5)
 
-; Several statements need a begin, since the body is one expression
+; Several expressions in the body are evaluated in order; the last is returned
 (let verbose-add (lambda (x y)
-  (begin
-    (let result (+ x y))
-    result)))
+  (let result (+ x y))
+  result))
 (verbose-add 3 4)  ; 7
 ```
 
@@ -492,22 +490,22 @@ Iterates over the elements of a `List`.
 Returns the value of the last body expression evaluated on the last iteration, or `Nil` when the list is empty or the body is empty.
 
 Usage:
-* `(for value In list expr1 expr2 ...)`
-* `(for key value In list expr1 expr2 ...)`
+* `(for value list expr1 expr2 ...)`
+* `(for (key value) list expr1 expr2 ...)`
 
-Evaluates `list` and then the body once per element, with `value` bound to the element and, in the second form, `key` bound to its 0-based index.
-The `In` marker delimits the names: the list position accepts a bare `Symbol`, so without the marker the two forms would not be distinguishable.
+Evaluates `list` and then the body once per element, with `value` bound to the element and, in the paired form, `key` bound to its 0-based index.
+The binding target's shape tells the two forms apart: a bare `Symbol` binds the element alone, a two-`Symbol` list `(key value)` binds the index and the element. Because the shape is what distinguishes them, the source list may itself be a bare symbol.
 
 Each iteration evaluates the body in a new lexical scope holding that iteration's bindings, so a `Lambda` created in the body captures that iteration alone. Neither name is bound after the loop.
 The length of the list is read before each iteration, so a body that shortens the list ends the loop rather than indexing past its end.
 
-`key` and `value` must be `Symbol`s and must be distinct. A missing `In` marker, a missing list expression, a non-`Symbol` name and two identical names each raise `VALUE_EXCEPTION`. A `list` that is not a `List` raises `TYPE_EXCEPTION`.
+`key` and `value` must be `Symbol`s and must be distinct. A binding target that is neither a `Symbol` nor a two-`Symbol` list, a missing list expression, and two identical names each raise `VALUE_EXCEPTION`. A `list` that is not a `List` raises `TYPE_EXCEPTION`.
 
 ```lisp
-(for v In '(10 20 30)
+(for v '(10 20 30)
   (print "$0" v))              ; 10, 20, 30
 
-(for i v In '("a" "b")
+(for (i v) '("a" "b")
   (print "$0 -> $1" i v))      ; 0 -> a, 1 -> b
 ```
 
@@ -515,19 +513,24 @@ The length of the list is read before each iteration, so a body that shortens th
 
 Catches exceptions raised when evaluating an expression.
 
-Usage: `(try ExceptionSymbol expr1 expr2...)`
+Usage:
+* `(try kind expr1 expr2 ...)`
+* `(try (kind1 kind2 ...) expr1 expr2 ...)`
 
+One kind is written bare; several are given as a list, and any of them is caught.
 Evaluates `expr1 expr2 ...` in a local lexical scope.
-If an exception matching `ExceptionSymbol` is raised, catches it and returns `ExceptionSymbol`.
+If an exception whose kind matches the caught kind, or any element of the list, is raised, catches it and returns the raised kind.
 If a different exception is raised, it propagates normally.
 If no exception occurs, returns the value of the last expression, or `Nil` when the body is empty.
-`ExceptionSymbol` is evaluated, so it must be a self-evaluating symbol or an expression resulting in a symbol.
-It is evaluated before the handler is armed, so an exception raised while producing it is not caught here.
+Each kind is evaluated, so it must be a self-evaluating symbol or an expression resulting in a symbol.
+The kinds are evaluated before the handler is armed, so an exception raised while producing one is not caught here.
+An empty kind list, and a kind that is not a `Symbol`, each raise `VALUE_EXCEPTION`.
 
 ```lisp
-(try TYPE_EXCEPTION (get Nil 0))  ; TYPE_EXCEPTION - caught
-(try TYPE_EXCEPTION (+ 1 2))      ; 3 - no exception
-(try TYPE_EXCEPTION (div 1 0))    ; propagates VALUE_EXCEPTION - not caught
+(try TYPE_EXCEPTION (get Nil 0))                   ; TYPE_EXCEPTION - caught
+(try TYPE_EXCEPTION (+ 1 2))                       ; 3 - no exception
+(try TYPE_EXCEPTION (div 1 0))                     ; propagates VALUE_EXCEPTION - not caught
+(try (TYPE_EXCEPTION VALUE_EXCEPTION) (div 1 0))   ; VALUE_EXCEPTION - either kind is caught
 ```
 
 ### and
@@ -736,7 +739,7 @@ The language raises these kinds:
 
 A program raises its own with `throw`, and the kind it names need not be one of the above: kinds are matched by name, so a program may invent as many as it likes.
 
-`try` catches one kind. An exception of any other kind passes through it untouched and continues outward, so a handler never absorbs a failure it was not written for. Because matching is by name, a kind the language defines and a kind a program invented are caught the same way.
+`try` catches any of the kinds it is given. An exception of any other kind passes through it untouched and continues outward, so a handler never absorbs a failure it was not written for. Because matching is by name, a kind the language defines and a kind a program invented are caught the same way.
 
 ```lisp
 (let result (try TYPE_EXCEPTION (get Nil 0)))

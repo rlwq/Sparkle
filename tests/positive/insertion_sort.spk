@@ -1,52 +1,49 @@
 ; Insert `v` into the already-sorted list `l`, returning a new sorted list.
 (let insert
   (lambda (v l)
-    (begin
-      (let r (list))
-      (let i 0)
-      (let n (len l))
-      (let placed False)
-      (while (< i n)
-        (begin
-          (if (and (not placed) (<= v (get l i)))
-              (begin (push r v) (set placed True)))
-          (push r (get l i))
-          (set i (+ i 1))))
-      (if (not placed) (push r v))
-      r)))
+    (let r (list))
+    (let i 0)
+    (let n (len l))
+    (let placed False)
+    (while (< i n)
+      (begin
+        (if (and (not placed) (<= v (get l i)))
+            (begin (push r v) (set placed True)))
+        (push r (get l i))
+        (set i (+ i 1))))
+    (if (not placed) (push r v))
+    r))
 
 ; Recursive insertion sort: fold `insert` over the elements by index.
 (let insertion_sort_rec
   (lambda (items)
-    (begin
-      (let result (list))
-      (let helper
-        (lambda (i)
-          (if (< i (len items))
-              (begin
-                (set result (insert (get items i) result))
-                (helper (+ i 1))))))
-      (helper 0)
-      result)))
+    (let result (list))
+    (let helper
+      (lambda (i)
+        (if (< i (len items))
+            (begin
+              (set result (insert (get items i) result))
+              (helper (+ i 1))))))
+    (helper 0)
+    result))
 
 ; Iterative in-place insertion sort into a growing result array.
 (let insertion_sort_iter
   (lambda (xs)
-    (begin
-      (let result (list))
-      (let i 0)
-      (while (< i (len xs))
-        (begin
-          (let v (get xs i))
-          (let j (len result))
-          (push result v)
-          (while (and (> j 0) (> (get result (- j 1)) v))
-            (begin
-              (put result j (get result (- j 1)))
-              (set j (- j 1))))
-          (put result j v)
-          (set i (+ i 1))))
-      result)))
+    (let result (list))
+    (let i 0)
+    (while (< i (len xs))
+      (begin
+        (let v (get xs i))
+        (let j (len result))
+        (push result v)
+        (while (and (> j 0) (> (get result (- j 1)) v))
+          (begin
+            (put result j (get result (- j 1)))
+            (set j (- j 1))))
+        (put result j v)
+        (set i (+ i 1))))
+    result))
 
 (let xs '(70 -53 -51 61 89 48 77 70 49 25 -25 1 27 75 -17 67 -98 -59 -90 70 -15 31 -82 35 -71 -83 -43 47 76 56 75 71 80 59 35 100 16 21 -48 -43 -25 95 57 -74 73 39 -5 26 25 9 74 -61 48 -55 -11 43 -83 -74 -60 -63 -16 94 -32 -41 42 50 -79 94 4 -63 19 43 -23 24 4 -46 -49 10 -93 -68 -5 -80 45 57 38 -40 65 64 -88 -25 -1 -16 -15 -35 -85 33 -81 -24 4 76 87 -79 75 -97 3 -12 70 84 -11 -84 14 81 -79 -55 14 37 50 -81 -21 -99 56 -80 -90 96 72 19 70 -58 50 23 46 84 18 -96 -59 68 71 78 1 -45 96 49 19 74 -34 -39 8 77 -82 -78 -95 40 91 -83 -66 40 57 -75 -3 61 71 -1 -58 84 50 -60 -75 -49 -59 -71 59 -45 39 -24 -5 -77 83 52 23 25 -96 -94 69 -6 -92 -15 25 78 -16 87 17 -16 -49 -56 24 -16 -59 46 -64 91 -94 -59 75 27 -22 67 -83 9 39 -72 -37 30 -4 -92 26 -82 -98 -93 44 58 96 -57 -5 53 -90 -81 -40 79 -64 -76 80 -85 -14 -18 -98 55 1 -21 61 -99 50 20 -7 20 98 89 25 -46 17 -32))
 (print "$0" (insertion_sort_rec xs))

@@ -9,35 +9,11 @@ This document outlines the features and fixes planned for Sparkle.
 
 ## Special Forms & Control Flow 
 
-* [ ] `lambda` takes exactly one body expression, while both documents promised
-      `(lambda args expr1 expr2 ...)` and a body "evaluated in order" - the
-      spec now says what the code does, and a sequence needs an explicit
-      `begin`. Decide which way to close the gap: let the body be variadic like
-      `begin`, `for` and `try` already are, or leave it and keep `begin`
-      explicit. Every other form with a body accepts several expressions, so
-      `lambda` is the odd one out.
-      *(verified: `spk_lambda_form` raises `VALUE_EXCEPTION` unless it is given
-      exactly two arguments; `((lambda (x) (print "s") x) 1)` fails)*
-
-* [ ] `try` should catch several kinds at once:
-      `(try kind1 kind2 ... In expr1 expr2 ...)`. It catches exactly one today,
-      so guarding against more means nesting one `try` per kind - four deep in
-      `examples/rpn.spk`, which is the first thing real code runs into.
-      The `In` marker earns its place the same way it does in `for`: kinds are
-      evaluated expressions, so a bare symbol is legal in both positions and
-      `(try A B expr)` is otherwise indistinguishable from `(try A expr1 expr2)`.
-      Note this changes existing syntax - every current `(try KIND expr)` needs
-      `In` inserted, tests and both documents included.
 * [ ] Early exit: no `break`, `continue` or `return`, so a loop cannot stop
       before its condition flips and a function cannot return from a branch.
 * [ ] `cond`-style dispatch on a value rather than on a chain of predicates.
-* [ ] `let` binds one symbol per form, so a block opens with a column of
-      `let`s. Wants several bindings at once, and a decision on whether later
-      ones see earlier ones.
 * [ ] No unwind protection: an exception unwinds past whatever cleanup the
       program wanted to run. Once file handles exist this stops being academic.
-* [ ] `try` cannot re-raise. A handler that inspects the kind and decides it is
-      not the right one has no way to pass it outward.
 
 ## Error Reporting
 
@@ -112,12 +88,19 @@ is why piece 2 buys more than piece 4 for a fraction of the work.
 
 ## Language Semantics
 
-* [ ] Decide whether shadowing a builtin is allowed, and say so.
+* [ ] Builtins may be shadowed, like Python: a later binding of a builtin's name
+      takes precedence in its scope. Decided; what remains is saying so in
+      `Specification.md` and confirming the interpreter lets a builtin's name be
+      rebound rather than raising `REBINDING_EXCEPTION`.
 * [ ] Exceptions carry nothing. `throw` raises a bare Symbol, so a failure
       cannot report which value or index caused it - the kind is the whole
-      message. Wants a payload, and `try` wants a way to bind it. This is a
-      language change and is deliberately not part of Error Reporting piece 2,
-      which only routes detail to the reporter and leaves `try` alone.
+      message. Planned shape, deferred: a new `Exception` type pairing a `Symbol`
+      kind with a message value, raised as `(throw Kind Value)` with the value
+      optional and reported as `Kind: Value`; `try` still matches on the kind and
+      gains a way to bind the value. Re-raise is deliberately left out - with no
+      polymorphic exception objects, discriminating by kind (now that `try`
+      accepts several) is enough. Deliberately not part of Error Reporting piece
+      2, which only routes detail to the reporter and leaves `try` alone.
 * [ ] Integer overflow is unspecified. `Integer` is a C `long long` and signed
       overflow is undefined behaviour, so `(* 99999999999 99999999999)` is
       whatever the optimizer decides. Pick wrapping, saturation, promotion or
@@ -131,7 +114,6 @@ is why piece 2 buys more than piece 4 for a fraction of the work.
 
 ## Base Library
 
-* [ ] Structure equality. 
 * [ ] `reduce` / `fold`.
 * [ ] `sort` with a comparator - `tests/positive` hand-rolls merge and
       insertion sort because there is none.
@@ -167,7 +149,8 @@ is why piece 2 buys more than piece 4 for a fraction of the work.
       merge that removed `Sparkle.md` found the gap the hard way: it was
       missing all thirteen string functions, claimed `(+)` with no arguments
       returns `0` when it raises `ARITY_EXCEPTION`, and carried a worked
-      example of a multi-expression `lambda` body that has never parsed.
+      example of a multi-expression `lambda` body that did not parse until the
+      body became a sequence.
 * [ ] No version number and no changelog, so there is nothing to point at when
       something changes under a user.
 
@@ -238,6 +221,34 @@ is why piece 2 buys more than piece 4 for a fraction of the work.
 
 ## Done
 
+* [x] Lists compare structurally. `=` on two `List`s is true when they have the
+      same length and equal elements, each compared by `=` in turn, so nested
+      lists and the numeric coercion of elements come for free. `Lambda` and
+      `Builtin` keep reference equality. `spk_eq` recurses on itself with the two
+      lists held on the value stack so their elements stay rooted; a list made to
+      contain itself has no terminating comparison and is not guarded against.
+* [x] `try` catches any of several kinds. One kind is written bare,
+      `(try KIND expr...)`; several are a list, `(try (K1 K2 ...) expr...)`, and
+      any of them is caught - so the shape needs no marker, the same reason
+      `for` reads its target by shape. Each kind is evaluated and packed into a
+      `List` the handler scans on unwind, returning the raised kind on a match
+      and re-raising otherwise; the four-deep tower of `try`s in
+      `examples/rpn.spk` collapses to one. The `In` marker the original plan
+      wanted was already gone with the `for` change, so this took the list route.
+* [x] A `lambda` body is a sequence. Several expressions are evaluated in order
+      and the last is returned, so a multi-statement function no longer needs an
+      explicit `begin` - the odd one out among the body forms is closed. The
+      form stores a body of two or more expressions as a synthesized
+      `(begin ...)`, reusing that form's sequencing and scope rather than
+      teaching `vm_call_lambda` a new shape; a single-expression body is stored
+      bare and prints unchanged. The `begin` symbol is interned by name the way
+      the parser interns `quote`, so it stays out of `X_LANGUAGE_SYMBOLS`.
+* [x] `for` reads its binding target by shape, not a marker. `(for value list
+      ...)` binds each element, `(for (key value) list ...)` binds the 0-based
+      index and the element, and a bare symbol in the source position is
+      unambiguous because the target is a `Symbol` or a two-`Symbol` list. The
+      `In` keyword is gone, and with it the last use of the reserved `In` symbol
+      left `X_LANGUAGE_SYMBOLS`.
 * [x] REPL. `sparkle` with no argument reads a line, evaluates it and prints
       what it came to, until end of input. Bindings accumulate, and neither a
       runtime error nor a parse error ends the session. One line is one chunk

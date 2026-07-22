@@ -28,3 +28,15 @@
 (print "$0" (try ARITY_EXCEPTION (str-len)))          ; ARITY_EXCEPTION
 (print "$0" (try UNCALLABLE_EXCEPTION (1 2)))         ; UNCALLABLE_EXCEPTION
 (print "$0" (try REBINDING_EXCEPTION (begin (let dup 1) (let dup 2))))  ; REBINDING_EXCEPTION
+
+; Several kinds in the list: any of them is caught, and the raised one is returned.
+(print "$0" (try (TYPE_EXCEPTION VALUE_EXCEPTION) (get Nil 0)))       ; TYPE_EXCEPTION
+(print "$0" (try (TYPE_EXCEPTION VALUE_EXCEPTION) (str-get "a" 9)))   ; VALUE_EXCEPTION
+(print "$0" (try (ARITY_EXCEPTION VALUE_EXCEPTION TYPE_EXCEPTION) (get Nil 0)))  ; TYPE_EXCEPTION
+
+; A kind outside the list still propagates to an enclosing handler.
+(print "$0" (try TYPE_EXCEPTION
+              (try (VALUE_EXCEPTION ARITY_EXCEPTION) (get Nil 0))))   ; TYPE_EXCEPTION
+
+; With no exception the body value comes back, list of kinds notwithstanding.
+(print "$0" (try (TYPE_EXCEPTION VALUE_EXCEPTION) (+ 20 22)))         ; 42

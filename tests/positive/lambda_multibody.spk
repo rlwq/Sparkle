@@ -1,0 +1,21 @@
+; A lambda body may be several expressions, evaluated in order; the last is the
+; result and the earlier ones run for their effects.
+(let f (lambda (x)
+  (print "step-$0" x)
+  (let doubled (* x 2))
+  (+ doubled 1)))
+(print "f=$0" (f 5))
+
+; A single-expression body is unchanged.
+(let g (lambda (x) (* x x)))
+(print "g=$0" (g 4))
+
+; Locals bound in a multi-expression body do not leak past the call.
+(let h (lambda () (let secret 99) secret))
+(print "h=$0" (h))
+(print "leaked=$0" (try UNDEFINED_EXCEPTION secret))
+
+; The body sees the parameters and the captured scope.
+(let base 100)
+(let add (lambda (x) (let bumped (+ x base)) bumped))
+(print "add=$0" (add 5))

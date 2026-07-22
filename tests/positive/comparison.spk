@@ -15,10 +15,13 @@
 ; Comparing across unrelated kinds is False rather than an error.
 (print "kinds $0 $1" (= "abc" 42) (= 'sym "sym"))          ; False False
 
-; Compound values compare by identity, not by structure - two lists with equal
-; contents are still two lists. Structure equality is not implemented yet.
+; Lists compare structurally: same length and equal elements, each by its own
+; rule. Lambdas and builtins still compare by identity.
 (let xs '(1 2))
-(print "ident $0 $1" (= xs xs) (= '(1 2) '(1 2)))          ; True False
+(print "ident  $0 $1" (= xs xs) (= '(1 2) '(1 2)))         ; True True
+(print "struct $0 $1 $2" (= '(1 2) '(1 3)) (= '(1) '(1 2)) (= '() '()))     ; False False True
+(print "nested $0 $1" (= '(1 (2 3)) '(1 (2 3))) (= '(1 (2 3)) '(1 (2 4))))  ; True False
+(print "elem   $0" (= '(1 2) '(1.0 2.0)))                  ; True - Integer and Float elements coerce
 
 ; Symbols compare by name, so equal spelling is equal value.
 (print "sym   $0 $1" (= 'a 'a) (= 'a 'b))                  ; True False

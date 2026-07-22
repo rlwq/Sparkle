@@ -1,0 +1,1 @@
+./tests/negative/for_bad_target.spk: [RUNTIME ERROR] Function expected some other value.

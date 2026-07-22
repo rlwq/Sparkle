@@ -11,52 +11,46 @@
 ; is chosen by whether the token is written as a decimal, so 4 stays an
 ; Integer and 4.5 becomes a Float rather than being truncated to 4.
 (let parse-number (lambda (token)
-  (begin
-    (let decimal (or (!= (str-find token ".") -1)
-                     (!= (str-find token "e") -1)
-                     (!= (str-find token "E") -1)))
-    (let value (try VALUE_EXCEPTION (if decimal (float token) (int token))))
-    (if (or (?INTEGER value) (?FLOAT value)) value Nil))))
+  (let decimal (or (!= (str-find token ".") -1)
+                   (!= (str-find token "e") -1)
+                   (!= (str-find token "E") -1)))
+  (let value (try VALUE_EXCEPTION (if decimal (float token) (int token))))
+  (if (or (?INTEGER value) (?FLOAT value)) value Nil)))
 
 ; Operators consume the top two values and leave one behind.
 (let apply-operator (lambda (stack operator)
-  (begin
-    (if (< (len stack) 2) (throw STACK_UNDERFLOW))
-    (let right (pop stack))
-    (let left (pop stack))
-    (push stack
-      (if (= operator "+") (+ left right)
-          (= operator "-") (- left right)
-          (= operator "*") (* left right)
-          (= operator "/") (if (= right 0)
-                               (throw DIVIDE_BY_ZERO)
-                               (/ left right))
-          (= operator "%") (mod left right)
-          (= operator "^") (pow left right)
-          (throw UNKNOWN_OPERATOR))))))
+  (if (< (len stack) 2) (throw STACK_UNDERFLOW))
+  (let right (pop stack))
+  (let left (pop stack))
+  (push stack
+    (if (= operator "+") (+ left right)
+        (= operator "-") (- left right)
+        (= operator "*") (* left right)
+        (= operator "/") (if (= right 0)
+                             (throw DIVIDE_BY_ZERO)
+                             (/ left right))
+        (= operator "%") (mod left right)
+        (= operator "^") (pow left right)
+        (throw UNKNOWN_OPERATOR)))))
 
 (let evaluate (lambda (line)
-  (begin
-    (let stack (list))
-    (for token In (str-split line " ")
-      (if (!= token "")
-        (begin
-          (let number (parse-number token))
-          (if (?NIL number)
-              (apply-operator stack token)
-              (push stack number)))))
-    ; Exactly one value should be left; anything else means the line was
-    ; short of operators or had too many operands.
-    (if (!= (len stack) 1) (throw MALFORMED))
-    (get stack 0))))
+  (let stack (list))
+  (for token (str-split line " ")
+    (if (!= token "")
+      (begin
+        (let number (parse-number token))
+        (if (?NIL number)
+            (apply-operator stack token)
+            (push stack number)))))
+  ; Exactly one value should be left; anything else means the line was
+  ; short of operators or had too many operands.
+  (if (!= (len stack) 1) (throw MALFORMED))
+  (get stack 0)))
 
-; try catches one kind at a time, so guarding against several means nesting.
+; One try guards the whole evaluation against any of the kinds it can raise.
 (let evaluate-safely (lambda (line)
-  (try MALFORMED
-    (try STACK_UNDERFLOW
-      (try UNKNOWN_OPERATOR
-        (try DIVIDE_BY_ZERO
-          (evaluate line)))))))
+  (try (MALFORMED STACK_UNDERFLOW UNKNOWN_OPERATOR DIVIDE_BY_ZERO)
+    (evaluate line))))
 
 (let line (input))
 (while (!= line Nil)

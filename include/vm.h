@@ -48,9 +48,7 @@
     X(True)                                                                                        \
     X(False)                                                                                       \
     X(quote)                                                                                       \
-    X(Var)                                                                                         \
-    X(In)
-
+    X(Var)
 // The interned name of a language symbol, for comparing against a StringName.
 #define VM_SYM(vm_, name_) (OBJ_SYMBOL((vm_)->symbols._##name_))
 

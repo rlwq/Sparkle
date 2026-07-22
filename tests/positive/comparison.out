@@ -1,1 +1,1 @@
-eq True False True order True True True False cross True True True mixord True True str True False False empty True nil True False kinds False False ident True False sym True False
+eq True False True order True True True False cross True True True mixord True True str True False False empty True nil True False kinds False False ident True True struct False False True nested True False elem True sym True False

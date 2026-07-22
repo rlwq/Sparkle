@@ -61,7 +61,22 @@ static void spk_eq(VM *vm) {
                    memcmp(OBJ_STRING_DATA(vm_peek(vm)), OBJ_STRING_DATA(vm_prev(vm)),
                           OBJ_STRING_SIZE(vm_peek(vm))) == 0;
         break;
-    case KIND_LIST:
+    case KIND_LIST: {
+        // Structural: same length, each element equal by = itself. The two
+        // lists stay rooted below the pushed pair while every element collects.
+        Object *l1 = vm_prev(vm);
+        Object *l2 = vm_peek(vm);
+        size_t size = OBJ_LIST_SIZE(l1);
+        is_equal = size == OBJ_LIST_SIZE(l2);
+        for (size_t i = 0; is_equal && i < size; i++) {
+            vm_push(vm, OBJ_LIST_AT(l1, i));
+            vm_push(vm, OBJ_LIST_AT(l2, i));
+            spk_eq(vm);
+            is_equal = OBJ_BOOL(vm_peek(vm));
+            vm_pop(vm);
+        }
+        break;
+    }
     case KIND_LAMBDA:
     case KIND_BUILTIN:
         is_equal = vm_peek(vm) == vm_prev(vm);

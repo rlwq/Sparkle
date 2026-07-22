@@ -5,8 +5,8 @@
 (print "nullary $0" ((lambda () 7)))            ; 7
 (print "two     $0" ((lambda (a b) (- a b)) 10 3))  ; 7
 
-; The body is a single expression; begin groups several.
-(let noisy (lambda (x) (begin (let doubled (* x 2)) (+ doubled 1))))
+; The body may be several expressions, evaluated in order; the last is returned.
+(let noisy (lambda (x) (let doubled (* x 2)) (+ doubled 1)))
 (print "body    $0" (noisy 5))                  ; 11
 
 ; Parameters shadow outer bindings for the duration of the call.

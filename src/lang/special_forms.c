@@ -138,30 +138,29 @@ static void spk_for_form(VM *vm) {
     assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
     Object *args = vm_peek(vm);
     size_t n = OBJ_LIST_SIZE(args);
-    StringName marker = VM_SYM(vm, In);
+    VM_RECOVER_IF(vm, n < 2, vm->singletons._VALUE_EXCEPTION);
 
-    size_t names = 0;
-    for (size_t i = 1; i <= 2 && i < n; i++) {
-        Object *at = OBJ_LIST_AT(args, i);
-        if (OBJ_OFTYPE(at, TY_SYMBOL) && OBJ_SYMBOL(at) == marker) {
-            names = i;
-            break;
-        }
+    // The binding target is a bare Symbol for the single-name form or a
+    // two-Symbol list (key value) for the keyed one. The shape alone tells them
+    // apart, so the source list that follows may still be a bare symbol.
+    Object *target = OBJ_LIST_AT(args, 0);
+    VM_RECOVER_IF(vm, !OBJ_OFTYPE(target, TY_SYMBOL | TY_LIST), vm->singletons._VALUE_EXCEPTION);
+
+    Object *key_sym = NULL;
+    Object *val_sym;
+    if (OBJ_OFTYPE(target, TY_SYMBOL)) {
+        val_sym = target;
+    } else {
+        VM_RECOVER_IF(vm, OBJ_LIST_SIZE(target) != 2, vm->singletons._VALUE_EXCEPTION);
+        key_sym = OBJ_LIST_AT(target, 0);
+        val_sym = OBJ_LIST_AT(target, 1);
+        VM_RECOVER_IF(vm, !OBJ_OFTYPE(key_sym, TY_SYMBOL) || !OBJ_OFTYPE(val_sym, TY_SYMBOL),
+                      vm->singletons._VALUE_EXCEPTION);
+        VM_RECOVER_IF(vm, OBJ_SYMBOL(key_sym) == OBJ_SYMBOL(val_sym),
+                      vm->singletons._VALUE_EXCEPTION);
     }
 
-    VM_RECOVER_IF(vm, names == 0, vm->singletons._VALUE_EXCEPTION);
-
-    size_t list_at = names + 1;
-    VM_RECOVER_IF(vm, list_at >= n, vm->singletons._VALUE_EXCEPTION);
-
-    for (size_t i = 0; i < names; i++)
-        VM_RECOVER_IF(vm, !OBJ_OFTYPE(OBJ_LIST_AT(args, i), TY_SYMBOL),
-                      vm->singletons._VALUE_EXCEPTION);
-    VM_RECOVER_IF(
-        vm, names == 2 && OBJ_SYMBOL(OBJ_LIST_AT(args, 0)) == OBJ_SYMBOL(OBJ_LIST_AT(args, 1)),
-        vm->singletons._VALUE_EXCEPTION);
-
-    vm_push(vm, OBJ_LIST_AT(args, list_at));
+    vm_push(vm, OBJ_LIST_AT(args, 1));
     vm_eval_object(vm);
     VM_RECOVER_IF(vm, !OBJ_OFTYPE(vm_peek(vm), TY_LIST), vm->singletons._TYPE_EXCEPTION);
 
@@ -174,17 +173,17 @@ static void spk_for_form(VM *vm) {
         // Fresh scope per iteration, so a lambda in the body captures this step's binding.
         vm_build_scope(vm);
 
-        if (names == 2) {
+        if (key_sym) {
             vm_build_integer(vm, (Integer)i);
-            vm_scope_define(vm, OBJ_SYMBOL(OBJ_LIST_AT(args, 0)));
+            vm_scope_define(vm, OBJ_SYMBOL(key_sym));
             vm_pop(vm);
         }
 
         vm_push(vm, OBJ_LIST_AT(items, i));
-        vm_scope_define(vm, OBJ_SYMBOL(OBJ_LIST_AT(args, names - 1)));
+        vm_scope_define(vm, OBJ_SYMBOL(val_sym));
         vm_pop(vm);
 
-        for (size_t b = list_at + 1; b < n; b++) {
+        for (size_t b = 2; b < n; b++) {
             vm_pop(vm);
             vm_push(vm, OBJ_LIST_AT(args, b));
             vm_eval_object(vm);
@@ -207,12 +206,27 @@ static bool lambda_has_arg(Object *lambda, StringName name) {
 static void spk_lambda_form(VM *vm) {
     assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
     Object *args = vm_peek(vm);
-    VM_RECOVER_IF(vm, OBJ_LIST_SIZE(args) != 2, vm->singletons._VALUE_EXCEPTION);
+    size_t n = OBJ_LIST_SIZE(args);
+    VM_RECOVER_IF(vm, n < 2, vm->singletons._VALUE_EXCEPTION);
 
     Object *params = OBJ_LIST_AT(args, 0);
-    Object *body = OBJ_LIST_AT(args, 1);
-
     VM_RECOVER_IF(vm, !OBJ_OFTYPE(params, TY_SYMBOL | TY_LIST), vm->singletons._VALUE_EXCEPTION);
+
+    // One body expression is stored as-is; several are wrapped in a synthesized
+    // (begin ...) so the call reuses begin's sequencing and its scope, adding no
+    // path to vm_call_lambda. The begin symbol is interned by name the way the
+    // parser interns quote, so it need not be a reserved VM symbol.
+    Object *body;
+    bool wrapped = n > 2;
+    if (!wrapped) {
+        body = OBJ_LIST_AT(args, 1);
+    } else {
+        vm_build_symbol(vm, si_get(vm->si, "begin"));
+        for (size_t i = 1; i < n; i++)
+            vm_push(vm, OBJ_LIST_AT(args, i));
+        vm_pack_list(vm, n);
+        body = vm_peek(vm);
+    }
 
     vm_build_lambda(vm, false, body, VM_CURR_SCOPE(vm));
     Object *lambda = vm_peek(vm);
@@ -250,12 +264,14 @@ static void spk_lambda_form(VM *vm) {
     }
 
     OBJ_LAMBDA_IS_VARIADIC(lambda) = is_variadic;
-    vm_pop_prev(vm);
+    if (wrapped)
+        vm_pop_prev(vm); // discard the synthesized (begin ...) list
+    vm_pop_prev(vm);     // discard the args list
 }
 
 // List -> Value
-// The caught kind is evaluated before the frame is pushed, so an error while
-// producing it reaches the enclosing handler. The frame is then pushed over the
+// The caught kinds are evaluated before the frame is pushed, so an error while
+// producing one reaches the enclosing handler. The frame is then pushed over the
 // values the handler needs, so unwinding discards the rest on its own.
 static void spk_try_form(VM *vm) {
     assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
@@ -264,22 +280,48 @@ static void spk_try_form(VM *vm) {
 
     VM_RECOVER_IF(vm, n == 0, vm->singletons._VALUE_EXCEPTION);
 
-    vm_push(vm, OBJ_LIST_AT(args, 0));
-    vm_eval_object(vm);
-    VM_RECOVER_IF(vm, !OBJ_OFTYPE(vm_peek(vm), TY_SYMBOL), vm->singletons._VALUE_EXCEPTION);
+    // One kind is written bare, several as a list; either way each is evaluated
+    // to a Symbol and packed into a List the handler scans on unwind.
+    Object *target = OBJ_LIST_AT(args, 0);
+    size_t nkinds;
+    if (OBJ_OFTYPE(target, TY_LIST)) {
+        nkinds = OBJ_LIST_SIZE(target);
+        VM_RECOVER_IF(vm, nkinds == 0, vm->singletons._VALUE_EXCEPTION);
+        for (size_t i = 0; i < nkinds; i++) {
+            vm_push(vm, OBJ_LIST_AT(target, i));
+            vm_eval_object(vm);
+            VM_RECOVER_IF(vm, !OBJ_OFTYPE(vm_peek(vm), TY_SYMBOL), vm->singletons._VALUE_EXCEPTION);
+        }
+    } else {
+        vm_push(vm, target);
+        vm_eval_object(vm);
+        VM_RECOVER_IF(vm, !OBJ_OFTYPE(vm_peek(vm), TY_SYMBOL), vm->singletons._VALUE_EXCEPTION);
+        nkinds = 1;
+    }
+    vm_pack_list(vm, nkinds);
 
     jmp_buf env;
     vm_push_recovery(vm, &env);
 
     if (setjmp(env)) {
-        // Unwound back to List, Symbol. Pop this frame first so an uncaught kind
-        // reaches the enclosing handler (vm_recover raises into the topmost frame).
-        // Kinds compare by interned name: same spelling always shares one StringName.
+        // Unwound back to List (args), List (kinds). Pop this frame first so an
+        // uncaught kind reaches the enclosing handler (vm_recover raises into the
+        // topmost frame). Kinds compare by interned name: same spelling always
+        // shares one StringName.
         vm_pop_recovery(vm);
 
-        if (OBJ_SYMBOL(vm_peek(vm)) != OBJ_SYMBOL(vm->exception))
+        Object *kinds = vm_peek(vm);
+        bool matched = false;
+        for (size_t i = 0; i < OBJ_LIST_SIZE(kinds); i++)
+            if (OBJ_SYMBOL(OBJ_LIST_AT(kinds, i)) == OBJ_SYMBOL(vm->exception))
+                matched = true;
+
+        if (!matched)
             vm_recover(vm, vm->exception);
 
+        // A caught try yields the raised kind; replace the kinds list with it.
+        vm_pop(vm);
+        vm_push(vm, vm->exception);
         vm_pop_prev(vm);
         return;
     }

@@ -16,8 +16,7 @@
 
 ; A captured binding is mutable through set, giving a counter.
 (let make-counter (lambda (start)
-  (begin
-    (let n start)
-    (lambda () (begin (set n (+ n 1)) n)))))
+  (let n start)
+  (lambda () (set n (+ n 1)) n)))
 (let tick (make-counter 10))
 (print "counter $0 $1 $2" (tick) (tick) (tick)) ; 11 12 13
