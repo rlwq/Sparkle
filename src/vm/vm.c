@@ -9,12 +9,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-VM *vm_alloc(GC *gc, StringInterner *si) {
+VM *vm_alloc(GC *gc, StringInterner *si, Io *io) {
     VM *vm = malloc(sizeof(VM));
     assert(vm);
 
     vm->gc = gc;
     vm->si = si;
+    vm->io = io;
 
     da_init(vm->instructions);
     vm->instruction_ptr = 0;

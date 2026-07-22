@@ -84,6 +84,10 @@ struct VM {
     GC *gc;
     StringInterner *si;
 
+    // Carried for the language layer's print/input/echo; the VM core itself
+    // never does IO.
+    Io *io;
+
     // Special forms installed by the language layer through
     // vm_register_special_form, the same way builtins arrive through
     // vm_register_builtin: the VM core holds the pairs and looks them up, but
@@ -123,7 +127,7 @@ struct VM {
 };
 
 // vm.c
-VM *vm_alloc(GC *gc, StringInterner *si);
+VM *vm_alloc(GC *gc, StringInterner *si, Io *io);
 
 // Copies the pointers, so the caller may free its array right after. May be
 // called repeatedly: whatever the scope stack reaches survives a cycle.
@@ -204,11 +208,9 @@ void vm_call(VM *vm);
 
 // vm_semantics.c
 //
-// A value's semantics live here as vm_ primitives - truthiness, numeric
-// coercion, equality - and the lang/ builtins borrow them rather than baking the
-// rules into themselves. A builtin whose meaning is a language rule (a cast, a
-// coercion, a comparison) extends this set and wraps it, so each rule has one
-// definition. See spk_cast_to_bool / spk_eq for the wrapping shape.
+// Value semantics as vm_ primitives - truthiness, coercion, equality. The
+// lang/ builtins wrap these rather than restating the rules, so each rule has
+// one definition.
 bool vm_cast_to_bool(VM *vm);
 ObjectKind vm_to_common_numeric(VM *vm);
 bool vm_eq(VM *vm);

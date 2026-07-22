@@ -1,7 +1,8 @@
-#include "io.h"
+#include "write.h"
 #include "dynamic_array.h"
 #include "forwards.h"
 #include "object.h"
+#include "vm.h"
 
 #include <assert.h>
 #include <stdio.h>

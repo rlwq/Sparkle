@@ -8,10 +8,10 @@
 
 #include <stdbool.h>
 
-// One evaluation session: the interner, the heap and the VM that outlive any
-// single chunk of source, plus the buffers a run reuses. Source goes in through
-// interp_eval as many times as you like - whatever the root scope reaches
-// survives from one call to the next, which is what a REPL needs.
+// One evaluation session: the interner, the heap, the io and the VM that
+// outlive any single chunk of source, plus the buffers a run reuses. Source
+// goes in through interp_eval as many times as you like - whatever the root
+// scope reaches survives from one call to the next, which is what a REPL needs.
 //
 // This is pipeline wiring and nothing more. The lexer and the parser are not
 // here on purpose: their state lives exactly one run, so interp_eval builds and
@@ -20,6 +20,7 @@
 typedef struct {
     StringInterner *si;
     GC *gc;
+    Io *io;
     VM *vm;
 
     TokenDA tokens;

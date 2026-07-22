@@ -1,10 +1,8 @@
 #ifndef REPL_H
 #define REPL_H
 
+#include "dynamic_array.h"
 #include "interpreter.h"
-// For CharDA. DA(char) written out again would be a distinct anonymous struct,
-// not the same type.
-#include "io.h"
 
 // An interactive session over one Interpreter: read a line, evaluate it, print
 // what it came to, repeat until end of input. Bindings accumulate, because the

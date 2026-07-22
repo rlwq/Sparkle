@@ -1,10 +1,10 @@
 #include "repl.h"
 
 #include "dynamic_array.h"
+#include "io.h"
 #include "string_view.h"
 
 #include <assert.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 Repl *repl_alloc(void) {
@@ -26,26 +26,16 @@ void repl_free(Repl *repl) {
     free(repl);
 }
 
-static bool repl_read_line(Repl *repl) {
-    repl->line.size = 0;
-
-    int c;
-    while ((c = fgetc(stdin)) != EOF && c != '\n')
-        da_push(repl->line, (char)c);
-
-    return c != EOF || repl->line.size > 0;
-}
-
 void repl_run(Repl *repl) {
-    while (true) {
-        fflush(stdout);
-        fputs("> ", stderr);
-        fflush(stderr);
+    Io *io = repl->interp->io;
 
-        if (!repl_read_line(repl))
+    while (true) {
+        io_err_write(io, "> ", 2);
+
+        if (!io_read_line(io, &repl->line))
             break;
         interp_eval(repl->interp, sv(repl->line.data, repl->line.size), "<repl>");
     }
 
-    fputc('\n', stderr);
+    io_err_write(io, "\n", 1);
 }

@@ -2,11 +2,11 @@
 #include "io.h"
 #include "object.h"
 #include "vm.h"
+#include "write.h"
 
 #include <assert.h>
 #include <ctype.h>
 #include <stdint.h>
-#include <stdio.h>
 
 // A format string carries arbitrary bytes, so every char reaching isdigit is
 // cast through unsigned char: on a signed-char build the high bytes of UTF-8
@@ -103,8 +103,8 @@ static void spk_print(VM *vm) {
         vm_recover(vm, vm->singletons._VALUE_EXCEPTION);
     }
 
-    fwrite(out.data, 1, out.size, stdout);
-    fputc('\n', stdout);
+    io_write(vm->io, out.data, out.size);
+    io_write(vm->io, "\n", 1);
     da_free(out);
 
     vm_pop_n(vm, 2);
@@ -116,11 +116,7 @@ static void spk_input(VM *vm) {
     CharDA line;
     da_init(line);
 
-    int c;
-    while ((c = fgetc(stdin)) != EOF && c != '\n')
-        da_push(line, (char)c);
-
-    if (c == EOF && line.size == 0) {
+    if (!io_read_line(vm->io, &line)) {
         da_free(line);
         vm_build_nil(vm);
         return;

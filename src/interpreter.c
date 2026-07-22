@@ -1,16 +1,15 @@
 #include "interpreter.h"
 
 #include "builtins.h"
-#include "diagnostics.h"
 #include "dynamic_array.h"
 #include "gc.h"
 #include "io.h"
 #include "parser.h"
 #include "special_forms.h"
 #include "vm.h"
+#include "write.h"
 
 #include <assert.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 Interpreter *interp_alloc(void) {
@@ -19,7 +18,8 @@ Interpreter *interp_alloc(void) {
 
     interp->si = si_alloc();
     interp->gc = gc_alloc();
-    interp->vm = vm_alloc(interp->gc, interp->si);
+    interp->io = io_alloc_std();
+    interp->vm = vm_alloc(interp->gc, interp->si, interp->io);
 
     da_init(interp->tokens);
     da_init(interp->exprs);
@@ -42,6 +42,7 @@ void interp_free(Interpreter *interp) {
     da_free(interp->exprs);
     da_free(interp->tokens);
 
+    io_free(interp->io);
     gc_free(interp->gc);
     si_free(interp->si);
 
@@ -58,8 +59,8 @@ static void interp_echo(VM *vm, Object *result) {
     da_init(out);
 
     write_expr(vm, &out, result);
-    fwrite(out.data, 1, out.size, stdout);
-    fputc('\n', stdout);
+    io_write(vm->io, out.data, out.size);
+    io_write(vm->io, "\n", 1);
 
     da_free(out);
 }
@@ -75,11 +76,11 @@ bool interp_eval(Interpreter *interp, StringView src, const char *name) {
     Lexer *lexer = lexer_alloc(src, &interp->tokens);
     lexer_run(lexer);
 
-    // Reported before the lexer is freed, then answered after: diag_lexer reads
-    // the lexer, and the caller only ever sees the verdict.
+    // Reported before the lexer is freed, then answered after: io_report_lexer
+    // reads the lexer, and the caller only ever sees the verdict.
     bool failed = lexer->is_err;
     if (failed)
-        diag_lexer(name, lexer);
+        io_report_lexer(interp->io, name, lexer);
     lexer_free(lexer);
     if (failed)
         return false;
@@ -89,7 +90,7 @@ bool interp_eval(Interpreter *interp, StringView src, const char *name) {
 
     failed = parser->is_err;
     if (failed)
-        diag_parser(name, parser);
+        io_report_parser(interp->io, name, parser);
     parser_free(parser);
     if (failed)
         return false;
@@ -101,7 +102,7 @@ bool interp_eval(Interpreter *interp, StringView src, const char *name) {
     vm_run(interp->vm);
 
     if (interp->vm->is_err) {
-        diag_vm(name, interp->vm);
+        io_report_vm(interp->io, name, interp->vm);
         return false;
     }
 

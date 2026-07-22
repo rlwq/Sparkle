@@ -1,5 +1,3 @@
-// The value-semantics primitives named in vm.h: truthiness, numeric coercion,
-// equality. The lang/ layer borrows these; the rules are defined only here.
 #include "object.h"
 #include "vm.h"
 
@@ -89,10 +87,9 @@ bool vm_eq(VM *vm) {
     assert(vm->value_stack.size >= 2);
     bool is_equal = false;
 
-    // A value is equal to itself, taken first so (= x x) on a self-referential
-    // list terminates before the structural walk below recurses forever. The
-    // one exception is a Float NaN, which IEEE 754 makes equal to nothing,
-    // itself included: it is let through to the numeric comparison that says so.
+    // Identity first, so (= x x) on a self-referential list terminates. The
+    // one exception is a Float NaN, equal to nothing by IEEE 754, itself
+    // included - it falls through to the numeric comparison that says so.
     if (vm_peek(vm) == vm_prev(vm) &&
         !(vm_peek(vm)->kind == KIND_FLOAT && isnan(OBJ_FLOAT(vm_peek(vm))))) {
         is_equal = true;

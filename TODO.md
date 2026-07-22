@@ -293,11 +293,6 @@ Cleanups with no user-visible change.
       same `Bool`/`Integer`/`Float` switch with the same `UNREACHABLE` tail, so a
       new numeric kind is two edits. Fold to one helper.
 
-* [ ] The read-a-line loop is written twice. `repl_read_line` and `spk_input`
-      both spell the same `fgetc`-until-newline-or-EOF walk into a `CharDA`.
-      One helper serves both; where it lives is the only question, since
-      `repl.c` must not reach into `lang/`.
-
 ## Syntax & Parser
 
 * [ ] The lexer splits what the grammar calls one symbol. `Specification.md`
@@ -316,7 +311,9 @@ Cleanups with no user-visible change.
 ## Tooling
 
 * [ ] No module system: a program is a single file, with no `import` or `load`,
-      so nothing can be split up or reused across programs.
+      so nothing can be split up or reused across programs. When file loading
+      arrives, `main.c`'s `read_file` errors - the last raw `fprintf(stderr)`
+      calls outside `io.c` - move behind the Io component with it.
 * [ ] Benchmark suite - the test runner times each case, but nothing tracks
       whether the interpreter is getting faster or slower.
 * [ ] The tester's oracle is coarser than the output it checks. `format_output`
@@ -361,10 +358,12 @@ Cleanups with no user-visible change.
       and the usage line is the only thing resembling documentation.
 * [ ] Exit statuses are undocumented. Today everything that fails exits 1, so a
       script cannot tell a syntax error from a runtime one.
-* [ ] Diagnostics print ANSI color unconditionally. `diagnostics.c` wraps every
-      report in `RED`...`RESET` whether or not stderr is a terminal, so a piped
-      or logged session gets raw escape bytes (the tester strips them on its
-      side). Gate on `isatty(fileno(stderr))`.
+* [ ] Report color is a policy flag nobody sets yet. `Io` carries `color` and
+      `io_report` honors it, but `io_alloc_std` hardwires `true`, so a piped or
+      logged session still gets raw escape bytes (the tester strips them on its
+      side). What remains is the edge decision in `main`: `isatty` is POSIX, so
+      either take it where available or add a `--no-color` flag; the plumbing
+      no longer cares.
 
 ## Documentation & Presentation
 
@@ -416,6 +415,17 @@ Cleanups with no user-visible change.
 
 ## Done
 
+* [x] IO became a component the VM is handed. `io.{c,h}` at the src/ root owns
+      the three streams, the err-after-out flush ordering the REPL prompt and
+      the diagnostics each used to spell by hand, severity and color, and the
+      `io_report_*` formatters that absorbed `diagnostics.{c,h}` whole. The VM
+      carries an `Io *` for the byte floor alone - `print`, `input` and echo
+      move bytes through it - while reporting stays the shell's business after
+      a run. `lang/io.{c,h}` became `lang/write.{c,h}`, putting `write_expr`
+      under the file named for it and freeing the io name; `CharDA` moved to
+      `dynamic_array.h`, typedef'd once; the read-line loop `repl_read_line`
+      and `spk_input` each spelled collapsed into `io_read_line`. Color is a
+      host-policy flag, hardwired on for now.
 * [x] Lists compare structurally. `=` on two `List`s is true when they have the
       same length and equal elements, each compared by `=` in turn, so nested
       lists and the numeric coercion of elements come for free. `Lambda` and

@@ -2,23 +2,45 @@
 #define IO_H
 
 #include "dynamic_array.h"
-#include "object.h"
-#include "vm.h"
+#include "forwards.h"
+#include "lexer.h"
+#include "parser.h"
 
-typedef DA(char) CharDA;
+#include <stdbool.h>
+#include <stdio.h>
 
-// The single source of truth for an object's textual form: print and the str
-// builtin must agree byte-for-byte, so both funnel through here.
-//
-// There is one form and it is the one meant for a user to read: a String comes
-// out as its bytes, without quotes or escapes. REPL echo goes through here too
-// and therefore cannot tell `"hello"` from the symbol `hello`. Splitting off a
-// readable form for echo is a known gap, written up in TODO.md - until then,
-// do not add quoting here, since print and str would inherit it.
-//
-// Takes the VM for the sake of one comparison: a (quote x) list prints as 'x,
-// and the head is recognised by StringName identity against VM_SYM(vm, quote)
-// like every other reserved name.
-void write_expr(VM *vm, CharDA *out, Object *expr);
+// The process's streams plus reporting over them. Every write to err flushes
+// out first, or a report outruns the output it is about once a stream is
+// redirected. io_report_* read Lexer/Parser/VM - hence src/ root, not core/.
+struct Io {
+    FILE *in;
+    FILE *out;
+    FILE *err;
+
+    // Reports wrap in ANSI color when set; deciding is the host's business.
+    bool color;
+};
+
+// stdin/stdout/stderr, color on. io_free releases the struct alone - the
+// standard streams are not this module's to close.
+Io *io_alloc_std(void);
+void io_free(Io *io);
+
+void io_write(Io *io, const char *data, size_t size);
+
+// One line from in into line (cleared first), newline dropped. False only at
+// end of input with nothing read.
+bool io_read_line(Io *io, CharDA *line);
+
+void io_err_write(Io *io, const char *data, size_t size);
+
+// To err; error and warning color when io->color is set, io_report is plain.
+void io_report(Io *io, const char *fmt, ...);
+void io_report_error(Io *io, const char *fmt, ...);
+void io_report_warning(Io *io, const char *fmt, ...);
+
+void io_report_lexer(Io *io, const char *path, Lexer *lexer);
+void io_report_parser(Io *io, const char *path, Parser *parser);
+void io_report_vm(Io *io, const char *path, VM *vm);
 
 #endif

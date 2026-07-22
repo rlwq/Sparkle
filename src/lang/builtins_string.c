@@ -1,7 +1,7 @@
 #include "builtins.h"
-#include "io.h"
 #include "object.h"
 #include "vm.h"
+#include "write.h"
 
 #include <assert.h>
 #include <ctype.h>

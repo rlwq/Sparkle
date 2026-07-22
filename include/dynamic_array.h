@@ -14,6 +14,10 @@
 
 #define da_empty {NULL, 0, 0}
 
+// The byte buffer, typedef'd once: DA(char) written out again elsewhere would
+// be a distinct anonymous struct type, not this one.
+typedef DA(char) CharDA;
+
 #define da_init(da_)                                                                               \
     do {                                                                                           \
         (da_).capacity = DA_INIT_CAPACITY;                                                         \
