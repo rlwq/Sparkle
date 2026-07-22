@@ -257,7 +257,7 @@ Every list is a flat, finite sequence of elements indexed from `0`. The number o
 
 The empty list `()` is its own empty `List` value (length 0), distinct from `Nil`. Both `()` and `(list)` produce an empty `List`. `Nil` does not terminate lists and is not an element of a list unless explicitly stored.
  
-Two `List` values are equal when they have the same length and their elements are equal position by position, each by the equality rule for its own kind. Equality is therefore structural and recurses into nested lists. A list that (through `put`) contains itself has no terminating comparison; the language does not guard against it.
+Two `List` values are equal when they have the same length and their elements are equal position by position, each by the equality rule for its own kind. Equality is therefore structural and recurses into nested lists. A list is equal to itself by identity before the structural walk begins, so comparing one with itself terminates even when it contains itself; but two distinct lists that each reach themselves through `put` have no terminating comparison, and the language does not guard against it.
 
 An empty `List` is falsy. A non-empty `List` is truthy.
 
@@ -591,7 +591,7 @@ Operands are combined under the numeric coercion rules, and a non-numeric operan
 
 ### Comparison
 
-* `(= x y)` / `(!= x y)` - equality and its negation, accepting values of any type. Values of different types are unequal, except that `Bool`, `Integer` and `Float` are compared under the numeric coercion rules. `String`s compare by content and `Symbol`s by name; `List`, `Lambda` and `Builtin` values compare by identity.
+* `(= x y)` / `(!= x y)` - equality and its negation, accepting values of any type. Two values are equal when they are the same object, or, failing that, when they are equal by the rule for their type. Identity is tried first, with one exception: a `Float` `NaN` is equal to nothing, itself included, as IEEE 754 requires, so `(= n n)` is `False` even when both operands are the same `NaN`. Otherwise values of different types are unequal, except that `Bool`, `Integer` and `Float` are compared under the numeric coercion rules; `String`s compare by content, `Symbol`s by name, `List`s by structure, and `Lambda` and `Builtin` values by identity alone.
 * `(< x y)` / `(<= x y)` / `(> x y)` / `(>= x y)` - ordering. Both operands must be numeric; anything else raises `TYPE_EXCEPTION`.
 
 ### Truth and type predicates

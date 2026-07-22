@@ -201,7 +201,14 @@ size_t vm_unpack_list(VM *vm);
 // vm_eval.c
 void vm_eval_object(VM *vm);
 void vm_call(VM *vm);
+
+// A value's semantics live here as vm_ primitives - truthiness, numeric
+// coercion, equality - and the lang/ builtins borrow them rather than baking the
+// rules into themselves. A builtin whose meaning is a language rule (a cast, a
+// coercion, a comparison) extends this set and wraps it, so each rule has one
+// definition. See spk_cast_to_bool / spk_eq for the wrapping shape.
 bool vm_cast_to_bool(VM *vm);
 ObjectKind vm_to_common_numeric(VM *vm);
+bool vm_eq(VM *vm);
 
 #endif

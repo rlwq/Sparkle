@@ -4,7 +4,6 @@
 
 #include <assert.h>
 #include <stdbool.h>
-#include <string.h>
 
 // Numeric, Numeric -> Bool
 #define NUMERIC_ORDER_BUILTIN(func_name_, operator_)                                               \
@@ -30,68 +29,13 @@
 // Value, Value -> Bool
 static void spk_eq(VM *vm) {
     assert(vm->value_stack.size >= 2);
-    bool is_equal = false;
-
-    if (OBJ_OFTYPE(vm_peek(vm), TY_NUMERIC) && OBJ_OFTYPE(vm_prev(vm), TY_NUMERIC))
-        vm_to_common_numeric(vm);
-
-    if (vm_peek(vm)->kind != vm_prev(vm)->kind) {
-        is_equal = false;
-        goto end;
-    }
-
-    switch (vm_peek(vm)->kind) {
-    case KIND_NIL:
-        is_equal = true;
-        break;
-    case KIND_SYMBOL:
-        is_equal = OBJ_SYMBOL(vm_peek(vm)) == OBJ_SYMBOL(vm_prev(vm));
-        break;
-    case KIND_INTEGER:
-        is_equal = OBJ_INTEGER(vm_peek(vm)) == OBJ_INTEGER(vm_prev(vm));
-        break;
-    case KIND_FLOAT:
-        is_equal = OBJ_FLOAT(vm_peek(vm)) == OBJ_FLOAT(vm_prev(vm));
-        break;
-    case KIND_BOOL:
-        is_equal = OBJ_BOOL(vm_peek(vm)) == OBJ_BOOL(vm_prev(vm));
-        break;
-    case KIND_STRING:
-        is_equal = OBJ_STRING_SIZE(vm_peek(vm)) == OBJ_STRING_SIZE(vm_prev(vm)) &&
-                   memcmp(OBJ_STRING_DATA(vm_peek(vm)), OBJ_STRING_DATA(vm_prev(vm)),
-                          OBJ_STRING_SIZE(vm_peek(vm))) == 0;
-        break;
-    case KIND_LIST: {
-        // Structural: same length, each element equal by = itself. The two
-        // lists stay rooted below the pushed pair while every element collects.
-        Object *l1 = vm_prev(vm);
-        Object *l2 = vm_peek(vm);
-        size_t size = OBJ_LIST_SIZE(l1);
-        is_equal = size == OBJ_LIST_SIZE(l2);
-        for (size_t i = 0; is_equal && i < size; i++) {
-            vm_push(vm, OBJ_LIST_AT(l1, i));
-            vm_push(vm, OBJ_LIST_AT(l2, i));
-            spk_eq(vm);
-            is_equal = OBJ_BOOL(vm_peek(vm));
-            vm_pop(vm);
-        }
-        break;
-    }
-    case KIND_LAMBDA:
-    case KIND_BUILTIN:
-        is_equal = vm_peek(vm) == vm_prev(vm);
-        break;
-    }
-
-end:
-    vm_pop_n(vm, 2);
-    vm_build_bool(vm, is_equal);
+    vm_eq(vm);
 }
 
 // Value, Value -> Bool
 static void spk_ne(VM *vm) {
-    spk_eq(vm);
-    vm_build_bool(vm, !OBJ_BOOL(vm_peek(vm)));
+    assert(vm->value_stack.size >= 2);
+    vm_build_bool(vm, !vm_eq(vm));
     vm_pop_prev(vm);
 }
 

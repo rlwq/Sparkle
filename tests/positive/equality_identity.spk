@@ -1,0 +1,22 @@
+; = is identity-or-type-rule: same object, or equal by the rule for its type.
+
+; A self-referential list is equal to itself by identity, so the comparison
+; terminates instead of recursing forever.
+(let a (list 1 2))
+(put a 0 a)
+(print "$0" (= a a))                        ; True
+
+; The type rule still applies to distinct objects: structural for lists.
+(print "$0" (= (list 1 2) (list 1 2)))      ; True
+(print "$0" (= 1 1))                        ; True
+
+; Identity is tried first, with one exception: a NaN equals nothing, itself
+; included, as IEEE 754 requires - so both comparisons are False.
+(let n (/ 0.0 0.0))
+(print "$0" (= n n))                        ; False
+(print "$0" (= (/ 0.0 0.0) (/ 0.0 0.0)))    ; False
+
+; Lambdas compare by identity alone.
+(let f (lambda (x) x))
+(print "$0" (= f f))                        ; True
+(print "$0" (= (lambda (x) x) (lambda (x) x))) ; False
