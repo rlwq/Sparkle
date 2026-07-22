@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <string.h>
 
+// Numeric, Numeric -> Bool
 #define NUMERIC_ORDER_BUILTIN(func_name_, operator_)                                               \
     static void func_name_(VM *vm) {                                                               \
         vm_expect2(vm, TY_NUMERIC, TY_NUMERIC);                                                    \
@@ -26,8 +27,9 @@
         vm_pop_prev_n(vm, 2);                                                                      \
     }
 
-// Object, Object -> Object
+// Value, Value -> Bool
 static void spk_eq(VM *vm) {
+    assert(vm->value_stack.size >= 2);
     bool is_equal = false;
 
     if (OBJ_OFTYPE(vm_peek(vm), TY_NUMERIC) && OBJ_OFTYPE(vm_prev(vm), TY_NUMERIC))
@@ -71,6 +73,7 @@ end:
     vm_build_bool(vm, is_equal);
 }
 
+// Value, Value -> Bool
 static void spk_ne(VM *vm) {
     spk_eq(vm);
     vm_build_bool(vm, !OBJ_BOOL(vm_peek(vm)));
@@ -82,11 +85,14 @@ NUMERIC_ORDER_BUILTIN(spk_ge, >=)
 NUMERIC_ORDER_BUILTIN(spk_lt, <)
 NUMERIC_ORDER_BUILTIN(spk_le, <=)
 
+// Value -> Bool
 static void spk_cast_to_bool(VM *vm) {
     vm_cast_to_bool(vm);
 }
 
+// List of Value -> Bool   (variadic: args arrive packed)
 static void spk_logical_and(VM *vm) {
+    assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
     bool result = true;
 
     Object *args_ = vm_peek(vm);
@@ -101,7 +107,9 @@ static void spk_logical_and(VM *vm) {
     vm_build_bool(vm, result);
 }
 
+// List of Value -> Bool   (variadic: args arrive packed)
 static void spk_logical_or(VM *vm) {
+    assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
     bool result = false;
 
     Object *args_ = vm_peek(vm);
@@ -116,6 +124,7 @@ static void spk_logical_or(VM *vm) {
     vm_build_bool(vm, result);
 }
 
+// Value -> Bool
 static void spk_logical_not(VM *vm) {
     vm_cast_to_bool(vm);
     vm_build_bool(vm, !OBJ_BOOL(vm_peek(vm)));

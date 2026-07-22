@@ -7,8 +7,10 @@
 #include <math.h>
 #include <stdbool.h>
 
+// Numeric, List of Numeric -> Integer | Float   (variadic: args arrive packed)
 #define NUMERIC_VARIADIC_BUILTIN(func_name_, operator_)                                            \
     static void func_name_(VM *vm) {                                                               \
+        assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));                                                  \
         vm_swap(vm);                                                                               \
                                                                                                    \
         Object *args_ = vm_prev(vm);                                                               \
@@ -33,6 +35,7 @@ NUMERIC_VARIADIC_BUILTIN(spk_add, +)
 NUMERIC_VARIADIC_BUILTIN(spk_mul, *)
 NUMERIC_VARIADIC_BUILTIN(spk_sub, -)
 
+// Numeric (dividend), Numeric (divisor) -> Float
 static void spk_truediv(VM *vm) {
     vm_expect2(vm, TY_NUMERIC, TY_NUMERIC);
 
@@ -55,6 +58,7 @@ static void spk_truediv(VM *vm) {
     vm_build_float(vm, v1 / v2);
 }
 
+// Integer (dividend), Integer (divisor) -> Integer (quotient)
 static void spk_div(VM *vm) {
     vm_expect2(vm, TY_INTEGER, TY_INTEGER);
     VM_RECOVER_IF(vm, OBJ_INTEGER(vm_peek(vm)) == 0, vm->singletons._VALUE_EXCEPTION);
@@ -63,6 +67,7 @@ static void spk_div(VM *vm) {
     vm_pop_prev_n(vm, 2);
 }
 
+// Integer (dividend), Integer (divisor) -> Integer (remainder)
 static void spk_mod(VM *vm) {
     vm_expect2(vm, TY_INTEGER, TY_INTEGER);
     VM_RECOVER_IF(vm, OBJ_INTEGER(vm_peek(vm)) == 0, vm->singletons._VALUE_EXCEPTION);
@@ -71,10 +76,8 @@ static void spk_mod(VM *vm) {
     vm_pop_prev_n(vm, 2);
 }
 
-// A string converts exactly when the same text would have read as a numeric
-// literal, which is why the lexer's scanner is the one asked. Requiring it to
-// consume the whole string is what rejects trailing characters: the scanner
-// stops at the end of the number, as a lexer should.
+// Reuses the lexer's scanner and requires it to consume the whole string, so
+// trailing characters are rejected.
 static bool scan_number(Object *s, bool *is_decimal) {
     size_t length = 0;
     SvNumber kind = sv_scan_number(sv(OBJ_STRING_DATA(s), OBJ_STRING_SIZE(s)), &length);
@@ -83,8 +86,7 @@ static bool scan_number(Object *s, bool *is_decimal) {
     return kind != SV_NUMBER_NONE && length == OBJ_STRING_SIZE(s);
 }
 
-// Object -> Integer or Float, per want. A String is read as a numeric literal, a
-// Bool counts as 1 or 0, and Float to Integer truncates toward zero.
+// Value -> Integer | Float
 static void cast_numeric(VM *vm, ObjectKind want) {
     Object *value = vm_peek(vm);
 
@@ -92,9 +94,8 @@ static void cast_numeric(VM *vm, ObjectKind want) {
         bool is_decimal = false;
         VM_RECOVER_IF(vm, !scan_number(value, &is_decimal), vm->singletons._VALUE_EXCEPTION);
 
-        // Which parser to use follows the decimal point, exactly as the lexer
-        // dispatches on TK_DECIMAL against TK_INTEGER: svtod scans for a '.'
-        // without a bound and runs off the end of a view that has none.
+        // svtod scans for a '.' without a bound, so an integer literal has to go
+        // through svtolli rather than being parsed as a float and cast.
         StringView text = sv(OBJ_STRING_DATA(value), OBJ_STRING_SIZE(value));
         double number = is_decimal ? svtod(text) : (double)svtolli(text);
 
@@ -162,8 +163,7 @@ static double numeric_as_double(Object *value) {
     return 0;
 }
 
-// Numeric -> Integer or Float. Bool negates through Integer, since arithmetic
-// already reads it as 1 and 0 and there is no negative Bool to land on.
+// Numeric -> Integer | Float
 static void spk_neg(VM *vm) {
     vm_expect(vm, TY_NUMERIC);
 
@@ -178,7 +178,7 @@ static void spk_neg(VM *vm) {
     vm_pop_prev(vm);
 }
 
-// Numeric -> Integer or Float, keeping the kind it was given.
+// Numeric -> Integer | Float
 static void spk_abs(VM *vm) {
     vm_expect(vm, TY_NUMERIC);
 
@@ -193,7 +193,7 @@ static void spk_abs(VM *vm) {
     vm_pop_prev(vm);
 }
 
-// List of Numeric -> Numeric. Variadic, so the arguments arrive packed.
+// List of Numeric -> Numeric   (variadic: args arrive packed)
 static void extremum(VM *vm, bool want_greater) {
     assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
 
@@ -205,8 +205,7 @@ static void extremum(VM *vm, bool want_greater) {
         VM_RECOVER_IF(vm, !OBJ_OFTYPE(arg, TY_NUMERIC), vm->singletons._TYPE_EXCEPTION);
     OBJ_END_LIST_FOREACH
 
-    // The winner is carried as the original object, so (min 1 2) stays an
-    // Integer and (min 1.0 2) stays a Float rather than everything widening.
+    // The winner stays the original object, so its kind survives instead of widening.
     size_t best = 0;
     for (size_t i = 1; i < n; i++) {
         double candidate = numeric_as_double(OBJ_LIST_AT(args, i));
@@ -219,14 +218,17 @@ static void extremum(VM *vm, bool want_greater) {
     vm_pop_prev(vm);
 }
 
+// List of Numeric -> Numeric
 static void spk_min(VM *vm) {
     extremum(vm, false);
 }
 
+// List of Numeric -> Numeric
 static void spk_max(VM *vm) {
     extremum(vm, true);
 }
 
+// Numeric -> Float
 #define FLOAT_RESULT_BUILTIN(func_name_, expr_)                                                    \
     static void func_name_(VM *vm) {                                                               \
         vm_expect(vm, TY_NUMERIC);                                                                 \
@@ -238,15 +240,14 @@ static void spk_max(VM *vm) {
 
 FLOAT_RESULT_BUILTIN(spk_sqrt_impl, sqrt(x))
 
-// Numeric -> Float. A negative argument has no real root, so it is a value
-// error rather than a quiet NaN.
+// Numeric -> Float
 static void spk_sqrt(VM *vm) {
     vm_expect(vm, TY_NUMERIC);
     VM_RECOVER_IF(vm, numeric_as_double(vm_peek(vm)) < 0, vm->singletons._VALUE_EXCEPTION);
     spk_sqrt_impl(vm);
 }
 
-// Numeric, Numeric -> Float. Float throughout, the same choice / makes.
+// Numeric (base), Numeric (exponent) -> Float
 static void spk_pow(VM *vm) {
     vm_expect2(vm, TY_NUMERIC, TY_NUMERIC);
 
@@ -257,8 +258,7 @@ static void spk_pow(VM *vm) {
     vm_pop_prev_n(vm, 2);
 }
 
-// Numeric -> Integer. Rounding lands on an Integer because that is what the
-// result is wanted for - indexing, counting, further integer arithmetic.
+// Numeric -> Integer
 #define ROUNDING_BUILTIN(func_name_, round_)                                                       \
     static void func_name_(VM *vm) {                                                               \
         vm_expect(vm, TY_NUMERIC);                                                                 \
@@ -270,12 +270,12 @@ ROUNDING_BUILTIN(spk_floor, floor)
 ROUNDING_BUILTIN(spk_ceil, ceil)
 ROUNDING_BUILTIN(spk_round, round)
 
-// Object -> Integer
+// Value -> Integer
 static void spk_cast_to_integer(VM *vm) {
     cast_numeric(vm, KIND_INTEGER);
 }
 
-// Object -> Float
+// Value -> Float
 static void spk_cast_to_float(VM *vm) {
     cast_numeric(vm, KIND_FLOAT);
 }

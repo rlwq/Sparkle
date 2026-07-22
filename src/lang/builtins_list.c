@@ -2,11 +2,12 @@
 #include "object.h"
 #include "vm.h"
 
+#include <assert.h>
 #include <stdbool.h>
 
-// ... -> List
+// Value... -> List   (variadic: args arrive packed)
 static void spk_list(VM *vm) {
-    /* The args. list is already on the stack. Does nothing */
+    assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
     (void)vm;
 }
 
@@ -19,7 +20,7 @@ static void spk_len(VM *vm) {
     vm_build_integer(vm, n);
 }
 
-// List, Integer -> Value
+// List, Integer (index) -> Value
 static void spk_get(VM *vm) {
     vm_expect2(vm, TY_LIST, TY_INTEGER);
 
@@ -33,7 +34,7 @@ static void spk_get(VM *vm) {
     vm_push(vm, e);
 }
 
-// List, Integer, Value -> List
+// List, Integer (index), Value -> List
 static void spk_put(VM *vm) {
     Object *l = vm_peek_at(vm, 2);
     Object *iobj = vm_prev(vm);

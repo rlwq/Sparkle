@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 
-// List (args, unevaluated) -> List (args, evaluated)
+// List (args) -> List (args evaluated)
 static void vm_eval_args(VM *vm) {
     assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
 
@@ -21,7 +21,7 @@ static void vm_eval_args(VM *vm) {
     vm_pop_prev(vm);
 }
 
-// List (args, evaluated), Lambda -> Object (result)
+// List (args), Lambda -> Value
 static void vm_call_lambda(VM *vm) {
     assert(OBJ_OFTYPE(vm_peek(vm), TY_LAMBDA));
     assert(OBJ_OFTYPE(vm_prev(vm), TY_LIST));
@@ -61,7 +61,7 @@ static void vm_call_lambda(VM *vm) {
     vm_pop_prev(vm);
 }
 
-// List (args, evaluated), Builtin -> Object (result)
+// List (args), Builtin -> Value
 static void vm_call_builtin(VM *vm) {
     assert(OBJ_OFTYPE(vm_peek(vm), TY_BUILTIN));
     assert(OBJ_OFTYPE(vm_prev(vm), TY_LIST));
@@ -86,7 +86,7 @@ static void vm_call_builtin(VM *vm) {
     OBJ_BUILTIN_FUNC(builtin)(vm);
 }
 
-// List (args, evaluated), Callable -> Object (result)
+// List (args), Callable -> Value
 void vm_call(VM *vm) {
     switch (vm_peek(vm)->kind) {
     case KIND_LAMBDA:
@@ -109,7 +109,7 @@ void vm_call(VM *vm) {
     }
 }
 
-// Object -> Bool
+// Value -> Bool
 bool vm_cast_to_bool(VM *vm) {
     bool result = false;
 
@@ -144,7 +144,7 @@ bool vm_cast_to_bool(VM *vm) {
     return result;
 }
 
-// (Bool | Integer | Float), (Bool | Integer | Float) -> Object, Object
+// Numeric, Numeric -> KIND_INTEGER | KIND_FLOAT
 static ObjectKind vm_common_numeric(VM *vm) {
     assert(OBJ_OFTYPE(vm_peek(vm), TY_NUMERIC));
     assert(OBJ_OFTYPE(vm_prev(vm), TY_NUMERIC));
@@ -155,7 +155,7 @@ static ObjectKind vm_common_numeric(VM *vm) {
     return KIND_INTEGER;
 }
 
-// (Bool | Integer | Float) -> Object
+// Numeric -> Numeric
 static void vm_cast_numeric(VM *vm, ObjectKind kind) {
     assert(OBJ_OFTYPE(vm_peek(vm), TY_NUMERIC));
 
@@ -170,7 +170,7 @@ static void vm_cast_numeric(VM *vm, ObjectKind kind) {
     }
 }
 
-// (Bool | Integer | Float), (Bool | Integer | Float) -> Object, Object
+// Numeric, Numeric -> Numeric, Numeric
 ObjectKind vm_to_common_numeric(VM *vm) {
     assert(OBJ_OFTYPE(vm_peek(vm), TY_NUMERIC));
     assert(OBJ_OFTYPE(vm_prev(vm), TY_NUMERIC));
@@ -185,7 +185,7 @@ ObjectKind vm_to_common_numeric(VM *vm) {
     return common;
 }
 
-// List -> Object
+// List -> Value
 static void vm_eval_list(VM *vm) {
     ASSERT_KIND(vm, KIND_LIST);
 
@@ -217,7 +217,7 @@ static void vm_eval_list(VM *vm) {
     vm_call(vm);
 }
 
-// Symbol -> Object
+// Symbol -> Value
 static void vm_eval_symbol(VM *vm) {
     ASSERT_KIND(vm, KIND_SYMBOL);
 
@@ -236,7 +236,7 @@ static void vm_eval_symbol(VM *vm) {
         vm_scope_get(vm, name);
 }
 
-// Object -> Object
+// Value -> Value
 void vm_eval_object(VM *vm) {
     switch (vm_peek(vm)->kind) {
     case KIND_NIL:
@@ -246,7 +246,6 @@ void vm_eval_object(VM *vm) {
     case KIND_STRING:
     case KIND_BUILTIN:
     case KIND_LAMBDA:
-        // Do nothing
         break;
 
     case KIND_SYMBOL:

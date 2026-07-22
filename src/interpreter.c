@@ -48,16 +48,8 @@ void interp_free(Interpreter *interp) {
     free(interp);
 }
 
-// Installed as the VM's result sink by interp_set_echo. Goes through
-// write_expr, so an echoed value reads exactly as str would render it and as
-// print would write it - one representation, three ways out.
-//
-// Nil is never echoed, including when the expression was the literal `Nil`.
-// The rule is about the value and not about how it was produced: everything
-// whose whole point is an effect - print, while, a for over an empty list -
-// answers Nil, and a REPL that prints it says nothing and says it loudly.
-// Nothing is lost, since an expression that really is asking about Nil can ask
-// with (?NIL x).
+// The VM's result sink (installed by interp_set_echo). Renders through
+// write_expr, the same path as str and print. Nil is never echoed.
 static void interp_echo(VM *vm, Object *result) {
     if (OBJ_OFTYPE(result, TY_NIL))
         return;

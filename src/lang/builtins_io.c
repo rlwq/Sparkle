@@ -33,18 +33,9 @@ static bool read_index(const char *data, size_t size, size_t *cursor, size_t *in
     return true;
 }
 
-// Writes fmt into out, substituting placeholders with args[N] rendered exactly
-// as str would render them. Returns false if a placeholder is malformed or
-// resolves to no argument, leaving out holding the partial output for the
-// caller to release.
-//
-// A placeholder is $N or ${N}. The braced form is the only way to put a digit
-// straight after a placeholder, since the bare form reads the whole digit run
-// as one index: "${0}0" is argument 0 followed by a literal 0, where "$00"
-// asks for argument 0 twice over.
-//
-// "$$" is the escape for a literal '$'; a '$' that is followed by none of '$',
-// '{' or a digit stands for itself, so a format may end in one or read "100$".
+// Writes fmt into out with its placeholders substituted. Returns false on a
+// malformed placeholder, leaving out holding the partial output for the caller
+// to release.
 static bool format_walk(VM *vm, CharDA *out, Object *fmt, Object *args) {
     const char *data = OBJ_STRING_DATA(fmt);
     size_t size = OBJ_STRING_SIZE(fmt);
@@ -95,9 +86,8 @@ static bool format_walk(VM *vm, CharDA *out, Object *fmt, Object *args) {
     return true;
 }
 
-// String (fmt), List (args) -> Nil
+// String (fmt), List (args) -> Nil   (variadic: args arrive packed)
 static void spk_print(VM *vm) {
-    // Variadic: everything past the format string arrives packed in a list.
     assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
 
     Object *fmt = vm_prev(vm);
@@ -121,7 +111,7 @@ static void spk_print(VM *vm) {
     vm_build_nil(vm);
 }
 
-// -> String or Nil
+// -> String | Nil
 static void spk_input(VM *vm) {
     CharDA line;
     da_init(line);
@@ -130,9 +120,6 @@ static void spk_input(VM *vm) {
     while ((c = fgetc(stdin)) != EOF && c != '\n')
         da_push(line, (char)c);
 
-    // Running out of input with nothing read is the absence of a line, so it
-    // reads as Nil. An empty line is still a line and reads as "", and a last
-    // line that no newline terminates is returned like any other.
     if (c == EOF && line.size == 0) {
         da_free(line);
         vm_build_nil(vm);

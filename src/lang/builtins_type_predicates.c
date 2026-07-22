@@ -2,6 +2,7 @@
 #include "object.h"
 #include "vm.h"
 
+// Value -> Bool
 #define spk_type_predicate(type_)                                                                  \
     static void spk_is_##type_(VM *vm) {                                                           \
         bool result = OBJ_OFTYPE(vm_peek(vm), TY_##type_);                                         \

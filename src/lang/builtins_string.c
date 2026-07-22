@@ -8,9 +8,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Object -> String
+// Value -> String
 static void cast_to_string(VM *vm) {
-    // Strings are immutable, so an existing string is shared as-is.
+    // Strings are immutable, so an existing one is shared as-is.
     if (vm_peek(vm)->kind == KIND_STRING)
         return;
 
@@ -18,17 +18,13 @@ static void cast_to_string(VM *vm) {
     da_init(repr);
     write_expr(vm, &repr, vm_peek(vm));
 
-    // Handed over instead of copied. da_init allocates before the first push,
-    // so the buffer is malloc'd and never zero-sized, which is what
-    // gc_alloc_string_own requires. It is not necessarily repr.size + 1 bytes:
-    // a size that lands exactly on the capacity leaves no spare byte. Nothing
-    // needs one - strings carry an explicit size and are never read as C
-    // strings (see object.h).
+    // Handed over, not copied. da_init allocates before the first push, so the
+    // buffer is malloc'd and never zero-sized, as gc_alloc_string_own requires.
     vm_pop(vm);
     vm_build_string_own(vm, repr.data, repr.size);
 }
 
-// Any -> String
+// Value -> String
 static void spk_str(VM *vm) {
     cast_to_string(vm);
 }
@@ -42,7 +38,7 @@ static void spk_str_len(VM *vm) {
     vm_build_integer(vm, n);
 }
 
-// String, Integer -> String
+// String, Integer (index) -> String
 static void spk_str_get(VM *vm) {
     vm_expect2(vm, TY_STRING, TY_INTEGER);
 
@@ -76,9 +72,8 @@ static void spk_str_sub(VM *vm) {
     vm_pop_prev_n(vm, 3);
 }
 
-// List of String -> String
+// List of String -> String   (variadic: args arrive packed)
 static void spk_str_cat(VM *vm) {
-    // Variadic: the args always arrive packed in a list.
     assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
 
     Object *args = vm_peek(vm);
@@ -100,12 +95,10 @@ static void spk_str_cat(VM *vm) {
     vm_build_string_own(vm, data, total);
 }
 
-// Finds the first occurrence of needle in haystack at or after `from`, writing
-// its index to *at. Reports success separately rather than through a sentinel
-// index: an empty needle matches at the end of the string too, so no in-range
-// value is free to mean "no match".
-//
-// str-find, str-split and str-replace all search the same way and share this.
+// First occurrence of needle in haystack at or after `from`, index into *at.
+// Success is a separate bool since an empty needle matches at the end too,
+// leaving no in-range index free to mean "no match". Shared by str-find,
+// str-split and str-replace.
 static bool find_from(Object *haystack, Object *needle, size_t from, size_t *at) {
     size_t size = OBJ_STRING_SIZE(haystack);
     size_t needle_size = OBJ_STRING_SIZE(needle);
@@ -120,7 +113,7 @@ static bool find_from(Object *haystack, Object *needle, size_t from, size_t *at)
     return false;
 }
 
-// String (haystack), String (needle) -> Integer (index of first occurrence, or -1)
+// String (haystack), String (needle) -> Integer (index, or -1)
 static void spk_str_find(VM *vm) {
     vm_expect2(vm, TY_STRING, TY_STRING);
 
@@ -155,9 +148,7 @@ static void spk_str_chr(VM *vm) {
     vm_build_string(vm, &c, 1);
 }
 
-// String, String (separator) -> List of String. An empty separator has no
-// meaning here - every position would match it - so it is refused rather than
-// given some invented reading.
+// String, String (separator) -> List of String
 static void spk_str_split(VM *vm) {
     vm_expect2(vm, TY_STRING, TY_STRING);
     VM_RECOVER_IF(vm, OBJ_STRING_SIZE(vm_peek(vm)) == 0, vm->singletons._VALUE_EXCEPTION);
@@ -219,7 +210,7 @@ static void spk_str_join(VM *vm) {
     vm_build_string_own(vm, data, total);
 }
 
-// String, String (target), String (replacement) -> String, every occurrence.
+// String, String (target), String (replacement) -> String
 static void spk_str_replace(VM *vm) {
     Object *s = vm_peek_at(vm, 2);
     Object *target = vm_prev(vm);
@@ -261,7 +252,7 @@ static void spk_str_replace(VM *vm) {
     vm_build_string_own(vm, data, offset);
 }
 
-// String -> String, without leading or trailing whitespace.
+// String -> String
 static void spk_str_trim(VM *vm) {
     vm_expect(vm, TY_STRING);
 
@@ -281,7 +272,7 @@ static void spk_str_trim(VM *vm) {
     vm_pop_prev(vm);
 }
 
-// String -> String. ASCII only, matching str-chr and str-ord.
+// String -> String
 #define STRING_CASE_BUILTIN(func_name_, convert_)                                                  \
     static void func_name_(VM *vm) {                                                               \
         vm_expect(vm, TY_STRING);                                                                  \

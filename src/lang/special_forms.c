@@ -5,15 +5,16 @@
 #include "string_interner.h"
 #include "vm.h"
 
+#include <assert.h>
+
 void special_forms_attach(VM *vm) {
     for (size_t i = 0; i < SPECIAL_FORMS_COUNT; i++)
         vm_register_special_form(vm, SPECIAL_FORMS[i].keyword, SPECIAL_FORMS[i].func);
 }
 
-// A running result sits on the stack from the start: Nil stands in until the
-// first binding, and each one drops the previous value and leaves its own, so
-// whatever remains at the end is the last bound value.
+// List -> Value
 static void spk_let_form(VM *vm) {
+    assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
     Object *args = vm_peek(vm);
     size_t n = OBJ_LIST_SIZE(args);
 
@@ -35,10 +36,9 @@ static void spk_let_form(VM *vm) {
     vm_pop_prev(vm);
 }
 
-// All exprs are evaluated first (left to right), then all assignments are
-// performed against the pre-evaluation bindings - this is what lets
-// `(set a b b a)` swap instead of clobbering b before it's read.
+// List -> Value
 static void spk_set_form(VM *vm) {
+    assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
     Object *args = vm_peek(vm);
     size_t n = OBJ_LIST_SIZE(args);
 
@@ -70,7 +70,9 @@ static void spk_set_form(VM *vm) {
     vm_pop_prev_n(vm, pairs);
 }
 
+// List -> Value
 static void spk_if_form(VM *vm) {
+    assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
     Object *args = vm_peek(vm);
     size_t n = OBJ_LIST_SIZE(args);
 
@@ -100,15 +102,15 @@ static void spk_if_form(VM *vm) {
     vm_build_nil(vm);
 }
 
+// List -> Value
 static void spk_while_form(VM *vm) {
+    assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
     Object *args = vm_peek(vm);
     VM_RECOVER_IF(vm, OBJ_LIST_SIZE(args) != 2, vm->singletons._VALUE_EXCEPTION);
 
     Object *condition = OBJ_LIST_AT(args, 0);
     Object *body = OBJ_LIST_AT(args, 1);
 
-    // Nil stands in as the result until the body runs once, so a loop whose
-    // condition is false from the start still leaves something behind.
     vm_build_nil(vm);
 
     vm_push(vm, condition);
@@ -131,11 +133,9 @@ static void spk_while_form(VM *vm) {
     vm_pop_prev(vm);
 }
 
-// (for value In list body...) or (for key value In list body...). The marker
-// fixes where the names end: without it `(for x lst body1 body2)` reads equally
-// well as one name over `lst` or as two names over `body1`, since the list
-// position accepts a bare symbol. Same trick as Var in lambda.
+// List -> Value
 static void spk_for_form(VM *vm) {
+    assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
     Object *args = vm_peek(vm);
     size_t n = OBJ_LIST_SIZE(args);
     StringName marker = VM_SYM(vm, In);
@@ -151,8 +151,6 @@ static void spk_for_form(VM *vm) {
 
     VM_RECOVER_IF(vm, names == 0, vm->singletons._VALUE_EXCEPTION);
 
-    // The list expression sits right after the marker; everything past it is
-    // the body, which may be empty.
     size_t list_at = names + 1;
     VM_RECOVER_IF(vm, list_at >= n, vm->singletons._VALUE_EXCEPTION);
 
@@ -169,15 +167,11 @@ static void spk_for_form(VM *vm) {
 
     Object *items = vm_peek(vm);
 
-    // Nil stands in as the result until the body runs, so an empty list still
-    // leaves something behind.
     vm_build_nil(vm);
 
-    // The size is re-read every step rather than cached, so a body that shrinks
-    // the list stops the loop instead of indexing past the end.
+    // Size re-read each step, so a body that shrinks the list can't index past the end.
     for (size_t i = 0; i < OBJ_LIST_SIZE(items); i++) {
-        // A scope per iteration, so a lambda made in the body captures that
-        // step's binding rather than sharing one cell with every other step.
+        // Fresh scope per iteration, so a lambda in the body captures this step's binding.
         vm_build_scope(vm);
 
         if (names == 2) {
@@ -209,7 +203,9 @@ static bool lambda_has_arg(Object *lambda, StringName name) {
     return false;
 }
 
+// List -> Value
 static void spk_lambda_form(VM *vm) {
+    assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
     Object *args = vm_peek(vm);
     VM_RECOVER_IF(vm, OBJ_LIST_SIZE(args) != 2, vm->singletons._VALUE_EXCEPTION);
 
@@ -257,12 +253,12 @@ static void spk_lambda_form(VM *vm) {
     vm_pop_prev(vm);
 }
 
-// The kind to catch is evaluated before the frame is pushed, so an exception
-// raised while producing it belongs to the enclosing handler - this try is not
-// armed yet. The frame is then pushed with the stack already holding everything
-// the handler reads, which lets the unwind discard the try scope and every
-// intermediate value on its own.
+// List -> Value
+// The caught kind is evaluated before the frame is pushed, so an error while
+// producing it reaches the enclosing handler. The frame is then pushed over the
+// values the handler needs, so unwinding discards the rest on its own.
 static void spk_try_form(VM *vm) {
+    assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
     Object *args = vm_peek(vm);
     size_t n = OBJ_LIST_SIZE(args);
 
@@ -276,11 +272,9 @@ static void spk_try_form(VM *vm) {
     vm_push_recovery(vm, &env);
 
     if (setjmp(env)) {
-        // Unwound back to List, Symbol. This frame goes first: a kind we do not
-        // catch has to reach the enclosing handler, and vm_recover always
-        // raises into the topmost frame. Kinds compare by interned name, the
-        // identity test for symbols here - two symbols spelled the same always
-        // share one StringName, while object identity means nothing.
+        // Unwound back to List, Symbol. Pop this frame first so an uncaught kind
+        // reaches the enclosing handler (vm_recover raises into the topmost frame).
+        // Kinds compare by interned name: same spelling always shares one StringName.
         vm_pop_recovery(vm);
 
         if (OBJ_SYMBOL(vm_peek(vm)) != OBJ_SYMBOL(vm->exception))
@@ -304,7 +298,9 @@ static void spk_try_form(VM *vm) {
     vm_pop_prev_n(vm, 2);
 }
 
+// List -> Value
 static void spk_quote_form(VM *vm) {
+    assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
     Object *args = vm_peek(vm);
     VM_RECOVER_IF(vm, OBJ_LIST_SIZE(args) != 1, vm->singletons._VALUE_EXCEPTION);
 
@@ -313,7 +309,9 @@ static void spk_quote_form(VM *vm) {
     vm_push(vm, expr);
 }
 
+// List -> Value
 static void spk_begin_form(VM *vm) {
+    assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
     Object *args = vm_peek(vm);
 
     vm_build_scope(vm);
@@ -329,7 +327,9 @@ static void spk_begin_form(VM *vm) {
     vm_pop_scope(vm);
 }
 
+// List -> Value
 static void spk_and_form(VM *vm) {
+    assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
     Object *args = vm_peek(vm);
 
     bool result = true;
@@ -347,7 +347,9 @@ static void spk_and_form(VM *vm) {
     vm_build_bool(vm, result);
 }
 
+// List -> Value
 static void spk_or_form(VM *vm) {
+    assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
     Object *args = vm_peek(vm);
 
     bool result = false;
