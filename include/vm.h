@@ -202,6 +202,8 @@ size_t vm_unpack_list(VM *vm);
 void vm_eval_object(VM *vm);
 void vm_call(VM *vm);
 
+// vm_semantics.c
+//
 // A value's semantics live here as vm_ primitives - truthiness, numeric
 // coercion, equality - and the lang/ builtins borrow them rather than baking the
 // rules into themselves. A builtin whose meaning is a language rule (a cast, a
