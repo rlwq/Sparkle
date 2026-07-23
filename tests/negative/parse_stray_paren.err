@@ -1,0 +1,1 @@
+./tests/negative/parse_stray_paren.spk:4:1: [PARSE ERROR] Unexpected token: ')'

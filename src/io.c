@@ -84,10 +84,24 @@ void io_report_lexer(Io *io, const char *path, Lexer *lexer) {
 }
 
 void io_report_parser(Io *io, const char *path, Parser *parser) {
-    (void)parser;
     assert(parser->is_err);
 
-    io_report_error(io, "%s: [PARSE ERROR] Invalid or incomplete expression.\n", path);
+    // No position means end of input: there was no token to point at.
+    if (!parser->err_has_pos) {
+        io_report_error(io, "%s: [PARSE ERROR] %s at end of input.\n", path, parser->err_msg);
+        return;
+    }
+
+    // The offending token's text names what was found, the way the lexer names
+    // the character it choked on; a positional error carrying none (a bad string
+    // escape) speaks for itself.
+    if (parser->err_where.size)
+        io_report_error(io, "%s:%zu:%zu: [PARSE ERROR] %s: '" SV_FMT "'\n", path,
+                        parser->err_pos.line + 1, parser->err_pos.column + 1, parser->err_msg,
+                        SV_ARGS(parser->err_where));
+    else
+        io_report_error(io, "%s:%zu:%zu: [PARSE ERROR] %s.\n", path, parser->err_pos.line + 1,
+                        parser->err_pos.column + 1, parser->err_msg);
 }
 
 void io_report_vm(Io *io, const char *path, VM *vm) {

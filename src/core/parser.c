@@ -33,6 +33,10 @@ Parser *parser_alloc(TokenDA *tokens, ObjectPtrDA *exprs, GC *gc, StringInterner
     parser->cursor = 0;
 
     parser->is_err = false;
+    parser->err_has_pos = false;
+    parser->err_pos = TEXT_BEGIN;
+    parser->err_where = sv(NULL, 0);
+    parser->err_msg = NULL;
     parser->tokens = tokens;
 
     return parser;
@@ -40,6 +44,32 @@ Parser *parser_alloc(TokenDA *tokens, ObjectPtrDA *exprs, GC *gc, StringInterner
 
 void parser_free(Parser *parser) {
     free(parser);
+}
+
+// The first failure wins: an inner cause is more specific than the frame that
+// discovers it (a list expecting `)`, a quote expecting an expression), so a
+// later, vaguer set is dropped.
+static void parser_fail_at(Parser *parser, TextPos pos, StringView where, const char *msg) {
+    if (parser->is_err)
+        return;
+    parser->is_err = true;
+    parser->err_has_pos = true;
+    parser->err_pos = pos;
+    parser->err_where = where;
+    parser->err_msg = msg;
+}
+
+// Fails at the current token, carrying its text so the report can name what was
+// found; at end of input there is no token, so only the message is kept.
+static void parser_fail(Parser *parser, const char *msg) {
+    if (parser->is_err)
+        return;
+    if (PARSER_DONE(parser)) {
+        parser->is_err = true;
+        parser->err_msg = msg;
+    } else {
+        parser_fail_at(parser, CURR(parser).pos, CURR(parser).src, msg);
+    }
 }
 
 static bool parser_match(Parser *parser, TokenKind kind) {
@@ -67,21 +97,6 @@ static bool parser_eat(Parser *parser, TokenKind kind) {
     return true;
 }
 
-static bool parser_expect(Parser *parser, TokenKind kind) {
-    if (!PARSER_VALID(parser)) {
-        parser->is_err = true;
-        return false;
-    }
-
-    if (CURR(parser).kind != kind) {
-        parser->is_err = true;
-        return false;
-    }
-
-    parser_advance(parser);
-    return true;
-}
-
 static Object *parser_read_expr(Parser *parser);
 
 static unsigned parser_hex_digit(char c) {
@@ -89,7 +104,10 @@ static unsigned parser_hex_digit(char c) {
 }
 
 static Object *parser_read_string(Parser *parser) {
-    StringView body = sv_drop_end(sv_drop(parser_advance(parser).src, 1), 1);
+    // Held whole: the cursor moves past it here, so its position is no longer at
+    // the cursor by the time an escape inside it fails.
+    Token token = parser_advance(parser);
+    StringView body = sv_drop_end(sv_drop(token.src, 1), 1);
 
     char *data = malloc(body.size + 1);
     assert(data);
@@ -121,7 +139,7 @@ static Object *parser_read_string(Parser *parser) {
             if (i + 2 >= body.size || !isxdigit(sv_at(body, i + 1)) ||
                 !isxdigit(sv_at(body, i + 2))) {
                 free(data);
-                parser->is_err = true;
+                parser_fail_at(parser, token.pos, sv(NULL, 0), "Invalid hex escape");
                 return NULL;
             }
             data[size++] = (char)(parser_hex_digit(sv_at(body, i + 1)) << 4 |
@@ -130,7 +148,7 @@ static Object *parser_read_string(Parser *parser) {
             break;
         default:
             free(data);
-            parser->is_err = true;
+            parser_fail_at(parser, token.pos, sv(NULL, 0), "Invalid string escape");
             return NULL;
         }
     }
@@ -147,7 +165,7 @@ static Object *parser_read_quote(Parser *parser) {
 
     Object *subexpr = parser_read_expr(parser);
     if (subexpr == NULL) {
-        parser->is_err = true;
+        parser_fail(parser, "Expected an expression");
         return NULL;
     }
 
@@ -171,8 +189,14 @@ static Object *parser_read_list(Parser *parser) {
     while (PARSER_VALID(parser) && !parser_match(parser, TK_R_PAREN))
         da_push(OBJ_LIST_ITEMS(result), parser_read_expr(parser));
 
-    if (!parser_expect(parser, TK_R_PAREN))
+    // parser_match guards is_err, so a failure already recorded inside the list
+    // (a bad escape leaving the cursor on the `)`) reaches parser_fail as the
+    // first, more specific cause rather than advancing past a token it must not.
+    if (!parser_match(parser, TK_R_PAREN)) {
+        parser_fail(parser, "Expected ')'");
         return NULL;
+    }
+    parser_advance(parser);
 
     return result;
 }
@@ -218,7 +242,7 @@ static Object *parser_read_expr(Parser *parser) {
     if (parser_match(parser, TK_SYMBOL))
         return parser_read_symbol(parser);
 
-    parser->is_err = true;
+    parser_fail(parser, "Unexpected token");
     return NULL;
 }
 

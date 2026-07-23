@@ -1,0 +1,4 @@
+; A stray ) is reported at the line and column where it sits, and naming the
+; token that was found. Nothing runs: the parse fails before the VM starts.
+(print "$0" 42)
+)

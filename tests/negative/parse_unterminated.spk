@@ -1,0 +1,4 @@
+; An unterminated list runs out of tokens before its ')', so the error is at
+; end of input, with no line and column to point at.
+(+ 1
+   2

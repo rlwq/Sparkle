@@ -21,6 +21,15 @@ typedef struct {
     StringInterner *si;
 
     bool is_err;
+    // Recorded once, at the first failure - an inner cause is more specific than
+    // the frame that discovers it. The reporter reads these instead of the
+    // cursor, which has moved past the token in the string-escape case.
+    // err_where is the offending token's text; empty when there is no position
+    // (end of input), which err_has_pos flags.
+    bool err_has_pos;
+    TextPos err_pos;
+    StringView err_where;
+    const char *err_msg;
 } Parser;
 
 Parser *parser_alloc(TokenDA *tokens, ObjectPtrDA *exprs, GC *gc, StringInterner *si);

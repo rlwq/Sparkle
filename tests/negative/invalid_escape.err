@@ -1,1 +1,1 @@
-./tests/negative/invalid_escape.spk: [PARSE ERROR] Invalid or incomplete expression.
+./tests/negative/invalid_escape.spk:1:8: [PARSE ERROR] Invalid string escape.
