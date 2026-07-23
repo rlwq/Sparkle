@@ -1,0 +1,12 @@
+; A special form used wrong now raises detail: the caught value is an Exception
+; carrying a message, not a bare kind, so a handler can read what went wrong.
+(let e (try VALUE_EXCEPTION (let odd)))
+(print "$0" (?EXCEPTION e))          ; True
+(print "$0" (exc-kind e))            ; VALUE_EXCEPTION
+(print "$0" (exc-value e))           ; let needs a value for every name
+
+; Each converted form gives its own message; matching stays by kind alone.
+(print "$0" (exc-value (try VALUE_EXCEPTION (set y))))      ; set needs a value for every name
+(print "$0" (exc-value (try VALUE_EXCEPTION (quote a b))))  ; quote takes one expression
+(print "$0" (exc-value (try VALUE_EXCEPTION (let 1 2))))    ; let can only bind a symbol
+(print "$0" (exc-value (try VALUE_EXCEPTION (while))))      ; while needs a condition

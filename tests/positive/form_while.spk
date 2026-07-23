@@ -11,3 +11,22 @@
 (let steps 0)
 (while (> n 0) (begin (set n (- n 1)) (set steps (+ steps 1))))
 (print "steps $0 $1" steps n)                   ; 5 0
+
+; A multi-expression body needs no begin, and each iteration is a fresh scope,
+; so a bare let binds anew rather than colliding on the second pass.
+(let acc 0)
+(let m 0)
+(while (< m 4)
+  (let sq (* m m))
+  (set acc (+ acc sq))
+  (set m (+ m 1)))
+(print "acc   $0" acc)                          ; 14
+
+; A lambda made in the body captures its own iteration, as in for.
+(let fns (list))
+(let j 0)
+(while (< j 3)
+  (let c j)
+  (set fns (push fns (lambda () c)))
+  (set j (+ j 1)))
+(print "cap   $0 $1 $2" ((get fns 0)) ((get fns 1)) ((get fns 2)))  ; 0 1 2

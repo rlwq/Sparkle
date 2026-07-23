@@ -1,0 +1,1 @@
+./tests/negative/let_no_value.spk: [RUNTIME ERROR] VALUE_EXCEPTION: let needs a value for every name

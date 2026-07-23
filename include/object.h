@@ -69,6 +69,9 @@ typedef struct {
 typedef struct {
     char *data;
     size_t size;
+    // false when data is borrowed - a static literal the GC frees the object
+    // around but never frees itself. Owned buffers are malloc'd and freed together.
+    bool owned;
 } StringObject;
 
 typedef struct {
@@ -113,6 +116,7 @@ struct Object {
 #define OBJ_STRING(n_) ((n_)->as.string)
 #define OBJ_STRING_DATA(n_) ((n_)->as.string.data)
 #define OBJ_STRING_SIZE(n_) ((n_)->as.string.size)
+#define OBJ_STRING_OWNED(n_) ((n_)->as.string.owned)
 
 #define OBJ_LAMBDA(n_) ((n_)->as.lambda)
 #define OBJ_LAMBDA_POS_ARGS_N(n_)                                                                  \

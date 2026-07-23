@@ -17,9 +17,8 @@ ordinary programs. These come before features: a language that segfaults out of
       (`vm_eval_object` -> `vm_eval_list` -> `vm_call` -> `vm_call_lambda` ->
       `vm_eval_object`); `spk_eq` recurses on its own path through nested lists
       too, so a ceiling has to cover both. Wants tail-call elimination, or a
-      depth limit that raises, or an explicit control stack - the same structure
-      error reporting wants for a call trace (see Error Reporting, piece 3, and
-      do them together). A depth limit would also make the last cyclic-structure
+      depth limit that raises, or an explicit control stack. A depth limit would
+      also make the last cyclic-structure
       crash catchable: `=` now short-circuits on identity, so `(= x x)` on a
       self-referential list terminates, but two distinct mutually-cyclic lists
       still overflow the stack - Python raises `RecursionError` there, so this is
@@ -62,64 +61,25 @@ ordinary programs. These come before features: a language that segfaults out of
 
 ## Error Reporting
 
-**Next planned feature.** Not one job but four independent ones, listed in the
-order they are worth doing: each is cheaper than the one after it, and each
-leaves the next somewhere to plug into. Two numbers worth having in hand before
-starting.
+Two pieces landed, and no more are planned: parser errors carry a position, and
+a runtime error can carry a message a program catches and the reporter prints.
 
-`sizeof(Object)` is 64 bytes today, laid out `kind` at 0, `marked` at 4, three
-bytes of padding, `heap_next` at 8, the union at 16. Adding a position costs:
-`uint16` byte offset **0 bytes** (it fits the padding hole, but caps a source
-file at 64K), `uint32` byte offset **+8**, a `TextPos` of two `size_t`
-**+16**. That is per object, every Integer included.
+* [x] **Parser errors carry their position and name what was found.** The
+      parser records the first failure - a `TextPos`, the offending token's text,
+      and a static message - and `io_report_parser` prints `line:column` the way
+      the lexer already does, or "at end of input" when the tokens ran out. The
+      first cause wins, so a bad escape inside a list is not masked by the `)`
+      the frame then misses. *(verified: a stray `)` reports its line:col, `(1 2`
+      reports at end of input, a bad `\x` escape points at the string)*
 
-The sixty places that raise an exception are 33 `VALUE_EXCEPTION`, 17
-`TYPE_EXCEPTION`, 4 `ARITY`, 3 `UNDEFINED`, 2 `UNCALLABLE`, 1 `REBINDING` - so
-fifty of sixty raise one of the two messages that say nothing whatsoever. Which
-is why piece 2 buys more than piece 4 for a fraction of the work.
-
-* [ ] **1. Parser errors carry no position, though the position is already in
-      hand.** `diag_parser` opens with `(void)parser;` and prints a constant
-      string, while `parser->cursor` points at the token that failed and every
-      token carries `pos`. The cheapest item in this file: stop discarding what
-      is already there - this is the descriptive-parse-errors want made concrete.
-
-* [ ] **2. Messages do not say what went wrong, though the answer is in scope
-      where the exception is raised.** `vm_scope_get` holds the name it failed
-      to find and reports "Symbol has no definition". `vm_expect` holds both the
-      expected type mask and the offending object and reports "Function expected
-      some other object type". `vm_call_lambda` holds both arities. Nothing new
-      has to be collected - the information exists and is thrown away.
-      Wants a detail channel on the VM beside `vm->exception`: a fixed buffer
-      rather than an allocation, since allocating while unwinding is asking for
-      trouble, and a `vm_recover_fmt` beside `vm_recover` so the sixty existing
-      sites keep compiling and improve one at a time. Kind names generate from
-      `X_KINDS`, the way `token_kind_names` already does for tokens.
-      Detail for the reporter only - the payload a program can catch and
-      inspect was the separate, program-facing axis, and now exists as the
-      `Exception` type.
-
-* [ ] **3. No call trace.** "Failed in `foo`" without "called from `bar`, called
-      from line 12" is half an answer. Wants the explicit control stack that the
-      deep-recursion item under Correctness & Safety also wants - one structure,
-      both problems: a depth limit that raises instead of a segfault, and a trace
-      to print. Do them in one go.
-
-* [ ] **4. Runtime errors carry no position, and objects have nowhere to put
-      one.** The expensive, architectural piece; left last because by then the
-      trace and the detail channel already exist, so there is somewhere to put
-      a position rather than a format to invent alongside it.
-      Store a byte offset and derive `line:column` when reporting, by counting
-      newlines: it happens once, at failure, where speed is irrelevant, and it
-      halves the cost per object. Take the `uint32`; the free `uint16` buys a
-      silent 64K ceiling, which is worse than eight bytes.
-      Only the parser sets it. Objects built at runtime have no position and
-      should not pretend to, and the scheme survives singletons because the
-      parser allocates a fresh object per token and shares nothing.
-      New requirement to write down where it is enforced: the source text has
-      to be alive when the report is made. It is today, since `interp_eval`
-      reports before returning while `src` is still the caller's, but that is
-      currently a coincidence rather than a stated contract.
+* [x] **Runtime errors can carry a message.** `vm_recover_msg` (with
+      `VM_RECOVER_IF_MSG` beside `VM_RECOVER_IF`) raises the kind carrying a
+      literal, built as an `Exception` whose value is a `String` borrowing the
+      literal - no copy of the text, and `gc_alloc_*` never collect on the
+      unwind. A handler reads it with `exc-value`; uncaught, it reports as
+      `Kind: message`. The special-form shape errors (`let`, `set`, `while`,
+      `quote`) carry their own line; the rest move over one at a time,
+      `VM_RECOVER_IF` to `VM_RECOVER_IF_MSG`.
 
 ## Language Semantics
 
@@ -171,18 +131,6 @@ Decisions the language still owes, each to be made and then written into
       prints as `0.000000` and `inf` and `nan` do not read back at all. Wants a
       shortest-round-trip form, and literals the reader accepts for the
       non-finite values.
-
-* [ ] The two loops disagree about scope. `for` evaluates its body in a fresh
-      scope per iteration - the spec says so, and a lambda made in the body
-      captures its own step - while `while` evaluates the body in the enclosing
-      scope, so a bare `let` in it binds once and raises
-      `REBINDING_EXCEPTION` on the second pass. The asymmetry is visible in
-      `examples/life.spk`: every `for` body uses `let` bare, every `while` body
-      wraps itself in `begin` to survive. Either give `while` the per-iteration
-      scope `for` has, or state the difference in `Specification.md` where
-      `while` is defined - today the fresh-scope list under Evaluation Model
-      omits `while`, which is accurate but never called out. *(verified: bare
-      `let` in a `while` body raises on iteration two)*
 
 * [ ] A `Builtin` has no printed form. `write_expr` writes nothing for
       `KIND_BUILTIN`, so `(str +)` is `""` and `(print "$0" +)` prints an empty
@@ -275,9 +223,7 @@ Cleanups with no user-visible change.
       stop at arity two, so `str-sub`, `str-replace` and `put` each open with
       three separate `VM_RECOVER_IF(..., TYPE_EXCEPTION)` lines restating what
       `vm_expect` exists to say. A `vm_expect_at(vm, depth, type)` or a variadic
-      `vm_expect_n` routes every type guard through one place - which is also
-      where Error Reporting piece 2 wants to attach the offending object, so the
-      two land together.
+      `vm_expect_n` routes every type guard through one place.
 
 * [ ] The `Numeric -> double` widening is written twice. `cast_numeric`
       (`builtins_arithmetic.c:117`) and `numeric_as_double` (`:147`) carry the
@@ -396,9 +342,9 @@ Cleanups with no user-visible change.
       body became a sequence.
 * [ ] No version number and no changelog, so there is nothing to point at when
       something changes under a user.
-* [ ] The reasoning in this file is really a design log. The Error Reporting
-      cost analysis, the `Done` notes and their verified observations, and the
-      rationale threaded through the sections above are decisions with their why
+* [ ] The reasoning in this file is really a design log. The `Done` notes and
+      their verified observations, and the rationale threaded through the
+      sections above are decisions with their why
       attached - worth more, and harder to find, than a task list should make
       them. A `DESIGN.md` (or `DECISIONS.md`) could hold the rationale and leave
       this file the tasks that point at it. Optional, and an editorial call about
@@ -583,6 +529,7 @@ Cleanups with no user-visible change.
 * [x] Evaluation time of tests.
 * [x] Exception kinds, `throw` and `try`: raise a Symbol by name, catch several kinds per handler.
 * [x] `Exception` data type carrying a value: `(throw Kind Value)` raises one pairing a kind Symbol with a value; `try` yields it, `exc-kind`/`exc-value` read it, and it prints as `Kind: Value`. A value-less exception stays a bare kind Symbol.
+* [x] `while` takes a multi-expression body and evaluates it in a fresh scope per iteration, the same rule `for` has - the loops no longer disagree, and a `while` body needs no `begin`.
 * [x] Introduce `StringName` data type for constant time string comparison.
 * [x] Assertions on values on stack in `eval_` functions.
 * [x] Exception reporting on all failed form calls (`lambda`, `if`, `let`, `quote`...)

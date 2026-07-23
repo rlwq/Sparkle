@@ -1,8 +1,10 @@
 #include "forwards.h"
+#include "gc.h"
 #include "object.h"
 #include "vm.h"
 
 #include <assert.h>
+#include <string.h>
 
 void vm_push_recovery(VM *vm, jmp_buf *jmp) {
     RecoveryStackEntry recovery = (RecoveryStackEntry){
@@ -26,6 +28,18 @@ _Noreturn void vm_recover(VM *vm, Object *exception) {
     vm->scope_stack.size = recovery.scopes_count;
 
     longjmp(*(recovery.jmp), 1);
+}
+
+_Noreturn void vm_recover_msg(VM *vm, Object *kind, const char *detail) {
+    assert(OBJ_OFTYPE(kind, TY_SYMBOL));
+
+    // Built straight through gc_alloc_*, not the vm_build_ path: those collect
+    // and push, and here on the unwind we must do neither. gc_alloc_* never
+    // collect, so message survives unrooted until the Exception holds it, and
+    // the Exception until vm_recover roots it in vm->exception.
+    Object *message = gc_alloc_string_static(vm->gc, detail, strlen(detail));
+    Object *exception = gc_alloc_exception(vm->gc, kind, message);
+    vm_recover(vm, exception);
 }
 
 // A value-less exception is the kind Symbol itself; a value-carrying one wraps

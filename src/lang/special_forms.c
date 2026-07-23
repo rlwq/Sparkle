@@ -18,13 +18,15 @@ static void spk_let_form(VM *vm) {
     Object *args = vm_peek(vm);
     size_t n = OBJ_LIST_SIZE(args);
 
-    VM_RECOVER_IF(vm, n % 2 != 0, vm->singletons._VALUE_EXCEPTION);
+    VM_RECOVER_IF_MSG(vm, n % 2 != 0, vm->singletons._VALUE_EXCEPTION,
+                      "let needs a value for every name");
 
     vm_build_nil(vm);
 
     for (size_t i = 0; i + 1 < n; i += 2) {
         Object *name = OBJ_LIST_AT(args, i);
-        VM_RECOVER_IF(vm, !OBJ_OFTYPE(name, TY_SYMBOL), vm->singletons._VALUE_EXCEPTION);
+        VM_RECOVER_IF_MSG(vm, !OBJ_OFTYPE(name, TY_SYMBOL), vm->singletons._VALUE_EXCEPTION,
+                          "let can only bind a symbol");
 
         vm_pop(vm);
         vm_push(vm, OBJ_LIST_AT(args, i + 1));
@@ -42,13 +44,15 @@ static void spk_set_form(VM *vm) {
     Object *args = vm_peek(vm);
     size_t n = OBJ_LIST_SIZE(args);
 
-    VM_RECOVER_IF(vm, n % 2 != 0, vm->singletons._VALUE_EXCEPTION);
+    VM_RECOVER_IF_MSG(vm, n % 2 != 0, vm->singletons._VALUE_EXCEPTION,
+                      "set needs a value for every name");
 
     size_t pairs = n / 2;
 
     for (size_t i = 0; i + 1 < n; i += 2) {
         Object *name = OBJ_LIST_AT(args, i);
-        VM_RECOVER_IF(vm, !OBJ_OFTYPE(name, TY_SYMBOL), vm->singletons._VALUE_EXCEPTION);
+        VM_RECOVER_IF_MSG(vm, !OBJ_OFTYPE(name, TY_SYMBOL), vm->singletons._VALUE_EXCEPTION,
+                          "set can only assign to a symbol");
 
         vm_push(vm, OBJ_LIST_AT(args, i + 1));
         vm_eval_object(vm);
@@ -106,10 +110,10 @@ static void spk_if_form(VM *vm) {
 static void spk_while_form(VM *vm) {
     assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
     Object *args = vm_peek(vm);
-    VM_RECOVER_IF(vm, OBJ_LIST_SIZE(args) != 2, vm->singletons._VALUE_EXCEPTION);
+    size_t n = OBJ_LIST_SIZE(args);
+    VM_RECOVER_IF_MSG(vm, n < 1, vm->singletons._VALUE_EXCEPTION, "while needs a condition");
 
     Object *condition = OBJ_LIST_AT(args, 0);
-    Object *body = OBJ_LIST_AT(args, 1);
 
     vm_build_nil(vm);
 
@@ -119,10 +123,17 @@ static void spk_while_form(VM *vm) {
 
     while (truthy) {
         vm_pop(vm);
-        vm_pop(vm);
 
-        vm_push(vm, body);
-        vm_eval_object(vm);
+        // Fresh scope per iteration, the same rule for follows: a bare let binds
+        // anew each turn instead of colliding, and a lambda made in the body
+        // captures this turn alone. An empty body leaves the prior result.
+        vm_build_scope(vm);
+        for (size_t i = 1; i < n; i++) {
+            vm_pop(vm);
+            vm_push(vm, OBJ_LIST_AT(args, i));
+            vm_eval_object(vm);
+        }
+        vm_pop_scope(vm);
 
         vm_push(vm, condition);
         vm_eval_object(vm);
@@ -351,7 +362,8 @@ static void spk_try_form(VM *vm) {
 static void spk_quote_form(VM *vm) {
     assert(OBJ_OFTYPE(vm_peek(vm), TY_LIST));
     Object *args = vm_peek(vm);
-    VM_RECOVER_IF(vm, OBJ_LIST_SIZE(args) != 1, vm->singletons._VALUE_EXCEPTION);
+    VM_RECOVER_IF_MSG(vm, OBJ_LIST_SIZE(args) != 1, vm->singletons._VALUE_EXCEPTION,
+                      "quote takes one expression");
 
     Object *expr = OBJ_LIST_AT(args, 0);
     vm_pop(vm);

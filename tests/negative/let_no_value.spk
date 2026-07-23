@@ -1,0 +1,3 @@
+; An uncaught special-form error reports its kind and a specific message,
+; where before every one of them read the same generic line.
+(let x)

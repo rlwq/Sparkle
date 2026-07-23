@@ -340,7 +340,7 @@ A special form instead receives its arguments unevaluated and decides for itself
 
 Every expression has a value, including the forms that exist for their effect. `while` and `for` yield the last value their body produced, or `Nil` if it never ran; `let` and `set` yield the last value they bound or assigned. A form with nothing to report yields `Nil`.
 
-Bindings live in scopes that nest lexically. `let` binds in the current scope, `set` assigns to the nearest enclosing binding of that name, and a symbol resolves by searching outward from the current scope. `begin`, `for` and the body of a `try` each evaluate in a fresh scope, and a `Lambda` captures the scope it was created in.
+Bindings live in scopes that nest lexically. `let` binds in the current scope, `set` assigns to the nearest enclosing binding of that name, and a symbol resolves by searching outward from the current scope. `begin`, `for`, `while` and the body of a `try` each evaluate in a fresh scope, and a `Lambda` captures the scope it was created in.
 
 
 ## Special Forms
@@ -485,17 +485,18 @@ Usage: `(begin expr1 expr2 ...)`
 
 ### while
 
-Conditional loop. Evaluates `condition` and casts the result to `Bool`. While truthy, evaluates `expr` then re-evaluates `condition`.
-Returns the value `expr` produced on the last iteration, or `Nil` if the condition was never truthy.
+Conditional loop. Evaluates `condition` and casts the result to `Bool`. While truthy, evaluates the body `expr1 expr2 ...` in order, then re-evaluates `condition`.
+Returns the value of the last body expression on the last iteration, or `Nil` if the condition was never truthy or the body is empty.
 
-Usage: `(while condition expr)`
+Usage: `(while condition expr1 expr2 ...)`
+
+Each iteration evaluates the body in a new lexical scope, as `for` does, so a bare `let` binds afresh each turn rather than colliding with the previous one, and a `Lambda` created in the body captures that iteration alone. A binding changed with `set` reaches the enclosing scope and so carries across iterations, which is how the loop keeps state.
 
 ```lisp
 (let i 0)
-(while (< i 3) (begin
+(while (< i 3)
   (print "i=$0" i)
-  (set i (+ i 1))
-))                ; prints i=0, i=1, i=2
+  (set i (+ i 1)))   ; prints i=0, i=1, i=2
 ```
 
 ### for

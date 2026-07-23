@@ -20,6 +20,16 @@
             vm_recover((vm_), (ex_));                                                              \
     } while (0)
 
+// The message form: kind is a singleton, msg a static literal that becomes the
+// raised Exception's String value, so the handler can read it back with
+// exc-value and the reporter prints `Kind: msg`. Sites move from VM_RECOVER_IF
+// to this one at a time; msg must be a literal (see vm_recover_msg).
+#define VM_RECOVER_IF_MSG(vm_, expr_, kind_, msg_)                                                 \
+    do {                                                                                           \
+        if ((expr_))                                                                               \
+            vm_recover_msg((vm_), (kind_), (msg_));                                                \
+    } while (0)
+
 // Singletons are allocated once in vm_alloc and never again: vm_build_bool and
 // vm_build_nil push these same objects, so comparing pointers against a
 // singleton is an identity check.
@@ -153,6 +163,11 @@ void vm_push_recovery(VM *vm, jmp_buf *jmp);
 void vm_pop_recovery(VM *vm);
 // The raised exception is a bare kind Symbol, or an Exception carrying a value.
 _Noreturn void vm_recover(VM *vm, Object *exception) __attribute__((cold));
+// Raises kind carrying detail: builds an Exception whose value is a String
+// borrowing detail, so detail must be a static literal (never copied, never
+// freed). The allocations are safe on the unwind path - gc_alloc_* never
+// collect - and the Exception is rooted through vm->exception before the jump.
+_Noreturn void vm_recover_msg(VM *vm, Object *kind, const char *detail) __attribute__((cold));
 // The kind Symbol of the pending exception, whichever form it took.
 Object *vm_exception_kind(VM *vm);
 void vm_expect(VM *vm, ObjectType type);

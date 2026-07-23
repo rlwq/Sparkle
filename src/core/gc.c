@@ -106,6 +106,7 @@ Object *gc_alloc_string_own(GC *gc, char *data, size_t size) {
     Object *object = gc_alloc_object(gc, KIND_STRING);
     OBJ_STRING_DATA(object) = data;
     OBJ_STRING_SIZE(object) = size;
+    OBJ_STRING_OWNED(object) = true;
     return object;
 }
 
@@ -115,6 +116,17 @@ Object *gc_alloc_string(GC *gc, const char *data, size_t size) {
     assert(buffer);
     memcpy(buffer, data, size);
     return gc_alloc_string_own(gc, buffer, size);
+}
+
+// Borrows data: it must outlive the object and is never freed, so this is for a
+// static literal, not a caller's buffer. The const is cast away to share one
+// StringObject shape; strings are immutable, so data is only ever read.
+Object *gc_alloc_string_static(GC *gc, const char *data, size_t size) {
+    Object *object = gc_alloc_object(gc, KIND_STRING);
+    OBJ_STRING_DATA(object) = (char *)data;
+    OBJ_STRING_SIZE(object) = size;
+    OBJ_STRING_OWNED(object) = false;
+    return object;
 }
 
 Object *gc_alloc_exception(GC *gc, Object *kind, Object *value) {
@@ -146,7 +158,8 @@ void gc_free_object(GC *gc, Object *object) {
         break;
 
     case KIND_STRING:
-        free(OBJ_STRING_DATA(object));
+        if (OBJ_STRING_OWNED(object))
+            free(OBJ_STRING_DATA(object));
         free(object);
         break;
 
