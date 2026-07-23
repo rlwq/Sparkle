@@ -1,0 +1,2 @@
+; An uncaught exception carrying a value reports as Kind: Value.
+(throw MY_ERROR "boom")

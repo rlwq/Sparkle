@@ -117,6 +117,13 @@ Object *gc_alloc_string(GC *gc, const char *data, size_t size) {
     return gc_alloc_string_own(gc, buffer, size);
 }
 
+Object *gc_alloc_exception(GC *gc, Object *kind, Object *value) {
+    Object *object = gc_alloc_object(gc, KIND_EXCEPTION);
+    OBJ_EXCEPTION_KIND(object) = kind;
+    OBJ_EXCEPTION_VALUE(object) = value;
+    return object;
+}
+
 void gc_free_object(GC *gc, Object *object) {
     assert(!object->marked);
     gc->objects_count--;
@@ -128,6 +135,8 @@ void gc_free_object(GC *gc, Object *object) {
     case KIND_BUILTIN:
     case KIND_BOOL:
     case KIND_FLOAT:
+    // kind and value are GC-owned objects, swept in their own right.
+    case KIND_EXCEPTION:
         free(object);
         break;
 
@@ -229,6 +238,11 @@ void gc_mark_object(Object *object) {
         case KIND_LAMBDA:
             da_push(to_mark, OBJ_LAMBDA_SUBEXPR(curr));
             gc_mark_scope(OBJ_LAMBDA_SCOPE(curr));
+            break;
+
+        case KIND_EXCEPTION:
+            da_push(to_mark, OBJ_EXCEPTION_KIND(curr));
+            da_push(to_mark, OBJ_EXCEPTION_VALUE(curr));
             break;
 
         case KIND_LIST:

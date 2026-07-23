@@ -102,6 +102,7 @@ void vm_call(VM *vm) {
     case KIND_INTEGER:
     case KIND_STRING:
     case KIND_NIL:
+    case KIND_EXCEPTION:
         vm_recover(vm, vm->singletons._UNCALLABLE_EXCEPTION);
         break;
     }
@@ -168,6 +169,7 @@ void vm_eval_object(VM *vm) {
     case KIND_STRING:
     case KIND_BUILTIN:
     case KIND_LAMBDA:
+    case KIND_EXCEPTION:
         break;
 
     case KIND_SYMBOL:

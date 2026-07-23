@@ -89,5 +89,10 @@ void write_expr(VM *vm, CharDA *out, Object *expr) {
     case KIND_LAMBDA:
         write_lambda(vm, out, expr);
         break;
+    case KIND_EXCEPTION:
+        write_expr(vm, out, OBJ_EXCEPTION_KIND(expr));
+        write_cstr(out, ": ");
+        write_expr(vm, out, OBJ_EXCEPTION_VALUE(expr));
+        break;
     }
 }

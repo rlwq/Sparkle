@@ -306,20 +306,27 @@ static void spk_try_form(VM *vm) {
     if (setjmp(env)) {
         // Unwound back to List (args), List (kinds). Pop this frame first so an
         // uncaught kind reaches the enclosing handler (vm_recover raises into the
-        // topmost frame). Kinds compare by interned name: same spelling always
-        // shares one StringName.
+        // topmost frame). Kinds match through vm_eq, the equality the language
+        // gives =, borrowed rather than a symbol compare rebuilt here.
         vm_pop_recovery(vm);
 
         Object *kinds = vm_peek(vm);
+        Object *raised = vm_exception_kind(vm);
         bool matched = false;
-        for (size_t i = 0; i < OBJ_LIST_SIZE(kinds); i++)
-            if (OBJ_SYMBOL(OBJ_LIST_AT(kinds, i)) == OBJ_SYMBOL(vm->exception))
-                matched = true;
+        for (size_t i = 0; i < OBJ_LIST_SIZE(kinds); i++) {
+            vm_push(vm, OBJ_LIST_AT(kinds, i));
+            vm_push(vm, raised);
+            matched = vm_eq(vm);
+            vm_pop(vm);
+            if (matched)
+                break;
+        }
 
         if (!matched)
             vm_recover(vm, vm->exception);
 
-        // A caught try yields the raised kind; replace the kinds list with it.
+        // A caught try yields what was raised: the bare kind Symbol, or the
+        // Exception carrying its value. Replace the kinds list with it.
         vm_pop(vm);
         vm_push(vm, vm->exception);
         vm_pop_prev(vm);

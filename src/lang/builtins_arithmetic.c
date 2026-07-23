@@ -130,6 +130,7 @@ static void cast_numeric(VM *vm, ObjectKind want) {
     case KIND_STRING:
     case KIND_BUILTIN:
     case KIND_LAMBDA:
+    case KIND_EXCEPTION:
         assert(false && "UNREACHABLE");
         break;
     }
@@ -158,6 +159,7 @@ static double numeric_as_double(Object *value) {
     case KIND_STRING:
     case KIND_BUILTIN:
     case KIND_LAMBDA:
+    case KIND_EXCEPTION:
         assert(false && "UNREACHABLE");
     }
     return 0;

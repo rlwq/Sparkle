@@ -1,0 +1,22 @@
+; A throw handed a value raises an Exception: the kind paired with that value.
+(let e (try Boom (throw Boom "detail")))
+(print "is    $0" (?EXCEPTION e))                    ; True
+(print "kind  $0" (exc-kind e))                      ; Boom
+(print "value $0" (exc-value e))                     ; detail
+(print "form  $0" e)                                 ; Boom: detail
+
+; A throw with no value stays a bare kind Symbol, exactly as before.
+(let s (try Boom (throw Boom)))
+(print "bare  $0 $1 $2" (?EXCEPTION s) (?SYMBOL s) s)  ; False True Boom
+
+; The value is any object, rendered in place inside the Kind: Value form.
+(print "int   $0" (exc-value (try E (throw E 42))))  ; 42
+(print "list  $0" (try E (throw E (list 1 2))))      ; E: (1 2)
+
+; try matches on the kind alone, whichever value came with it.
+(print "pick  $0" (exc-kind (try (A B) (throw B "x"))))                           ; B
+(print "named $0" (exc-value (try TYPE_EXCEPTION (throw TYPE_EXCEPTION "bad"))))  ; bad
+
+; A caught Exception is an ordinary value: bind it, keep it, read it later.
+(let held (try E (throw E "kept")))
+(print "held  $0" (exc-value held))                  ; kept

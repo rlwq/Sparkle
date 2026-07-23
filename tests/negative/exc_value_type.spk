@@ -1,0 +1,2 @@
+; The exception accessors demand an Exception, not a bare value.
+(exc-value 5)

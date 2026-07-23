@@ -1,0 +1,2 @@
+; throw carries at most one value; a second raises VALUE_EXCEPTION.
+(throw MY_ERROR 1 2)

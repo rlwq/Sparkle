@@ -1,6 +1,5 @@
 #include "forwards.h"
 #include "object.h"
-#include "string_interner.h"
 #include "vm.h"
 
 #include <assert.h>
@@ -16,17 +15,25 @@ void vm_pop_recovery(VM *vm) {
     da_pop(vm->recovery_stack);
 }
 
-_Noreturn void vm_recover(VM *vm, Object *exception_symbol) {
+_Noreturn void vm_recover(VM *vm, Object *exception) {
     assert(vm->recovery_stack.size > 0);
-    assert(OBJ_OFTYPE(exception_symbol, TY_SYMBOL));
+    assert(OBJ_OFTYPE(exception, TY_SYMBOL | TY_EXCEPTION));
 
-    vm->exception = exception_symbol;
+    vm->exception = exception;
     RecoveryStackEntry recovery = da_at_end(vm->recovery_stack, 0);
 
     vm->value_stack.size = recovery.values_count;
     vm->scope_stack.size = recovery.scopes_count;
 
     longjmp(*(recovery.jmp), 1);
+}
+
+// A value-less exception is the kind Symbol itself; a value-carrying one wraps
+// it, so reach through.
+Object *vm_exception_kind(VM *vm) {
+    if (OBJ_OFTYPE(vm->exception, TY_EXCEPTION))
+        return OBJ_EXCEPTION_KIND(vm->exception);
+    return vm->exception;
 }
 
 void vm_expect(VM *vm, ObjectType type) {

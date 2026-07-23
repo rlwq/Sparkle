@@ -22,7 +22,8 @@
     X(INTEGER)                                                                                     \
     X(STRING)                                                                                      \
     X(BUILTIN)                                                                                     \
-    X(LAMBDA)
+    X(LAMBDA)                                                                                      \
+    X(EXCEPTION)
 
 typedef enum {
 #define X(k_) KIND_##k_,
@@ -65,15 +66,15 @@ typedef struct {
     bool is_variadic;
 } BuiltinObject;
 
-// Strings are immutable byte arrays, so sharing one object is always safe.
-// data is malloc'd, holds at least size bytes and is never zero-sized, but the
-// content is not NUL-terminated and may itself contain '\0' - always work
-// with the explicit size. Buffers handed over from a CharDA are sized by the
-// array's capacity, so there is no spare byte past size to rely on.
 typedef struct {
     char *data;
     size_t size;
 } StringObject;
+
+typedef struct {
+    Object *kind;
+    Object *value;
+} ExceptionObject;
 
 typedef union {
     StringName symbol;
@@ -84,6 +85,7 @@ typedef union {
     double float_;
     bool bool_;
     StringObject string;
+    ExceptionObject exception;
 } ObjectUnion;
 
 struct Object {
@@ -124,6 +126,10 @@ struct Object {
 #define OBJ_BUILTIN_FUNC(n_) ((n_)->as.builtin.func)
 #define OBJ_BUILTIN_IS_VARIADIC(n_) ((n_)->as.builtin.is_variadic)
 #define OBJ_BUILTIN_ARGS_N(n_) ((n_)->as.builtin.arity)
+
+#define OBJ_EXCEPTION(n_) ((n_)->as.exception)
+#define OBJ_EXCEPTION_KIND(n_) ((n_)->as.exception.kind)
+#define OBJ_EXCEPTION_VALUE(n_) ((n_)->as.exception.value)
 
 #define OBJ_LIST_FOREACH(name_, list_)                                                             \
     for (size_t name_##_i = 0; name_##_i < OBJ_LIST_SIZE(list_); name_##_i++) {                    \

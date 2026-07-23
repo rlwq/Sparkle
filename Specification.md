@@ -134,7 +134,7 @@ block-comment = '/*', (block-comment | ? any text without '/*' or '*/' ?)*, '*/'
 ## Types
  
 Sparkle is dynamically typed. Type errors are detected at runtime.
-The language defines these types: `Nil`, `Bool`, `Integer`, `Float`, `String`, `Symbol`, `List`, `Lambda`, and `Builtin`.
+The language defines these types: `Nil`, `Bool`, `Integer`, `Float`, `String`, `Symbol`, `List`, `Lambda`, `Builtin`, and `Exception`.
  
 ### Nil
  
@@ -310,11 +310,25 @@ Two `Builtin` values are equal if and only if they are the same object (referenc
 
 A `Builtin` value is always truthy.
 
+### Exception
+
+`Exception` is a value pairing an exception kind - a `Symbol` - with a value carried alongside it.
+
+It is what an exception becomes once it carries a value. `(throw kind value)` raises one, and `try` hands it to the program when it catches such a raise. A value-less exception is not an `Exception` but the bare kind `Symbol`, so the object exists precisely when there is a value to carry.
+
+`(exc-kind e)` returns the kind, `(exc-value e)` the value.
+
+An `Exception` is printed - by `print`, by `str`, and anywhere else a value is rendered - as its kind, then a colon and a space, then its value, each rendered as `str` renders it. `(throw Overflow 42)` caught and printed shows `Overflow: 42`.
+
+Two `Exception` values are equal if and only if they are the same object (reference equality).
+
+An `Exception` value is always truthy.
+
 ## Evaluation Model
 
 Evaluating an expression yields a value. Which rule applies is decided by the type of the expression.
 
-`Nil`, `Bool`, `Integer`, `Float`, `String`, `Lambda` and `Builtin` are self-evaluating: they produce themselves.
+`Nil`, `Bool`, `Integer`, `Float`, `String`, `Lambda`, `Builtin` and `Exception` are self-evaluating: they produce themselves.
 
 A `Symbol` evaluates by the rules under Types: `Nil`, `True` and `False` produce their values, a symbol whose first character is an uppercase ASCII letter produces itself, and any other symbol resolves to its binding in the current scope, raising `UNDEFINED_EXCEPTION` when it has none.
 
@@ -519,7 +533,8 @@ Usage:
 
 One kind is written bare; several are given as a list, and any of them is caught.
 Evaluates `expr1 expr2 ...` in a local lexical scope.
-If an exception whose kind matches the caught kind, or any element of the list, is raised, catches it and returns the raised kind.
+If an exception whose kind matches the caught kind, or any element of the list, is raised, catches it and returns what was raised: the bare kind `Symbol`, or the `Exception` carrying its value, from which `exc-value` reads the detail.
+A kind matches by the equality rule for `Symbol`s, so the match is by name whether or not a value rides along.
 If a different exception is raised, it propagates normally.
 If no exception occurs, returns the value of the last expression, or `Nil` when the body is empty.
 Each kind is evaluated, so it must be a self-evaluating symbol or an expression resulting in a symbol.
@@ -531,6 +546,7 @@ An empty kind list, and a kind that is not a `Symbol`, each raise `VALUE_EXCEPTI
 (try TYPE_EXCEPTION (+ 1 2))                       ; 3 - no exception
 (try TYPE_EXCEPTION (div 1 0))                     ; propagates VALUE_EXCEPTION - not caught
 (try (TYPE_EXCEPTION VALUE_EXCEPTION) (div 1 0))   ; VALUE_EXCEPTION - either kind is caught
+(exc-value (try Overflow (throw Overflow 42)))     ; 42 - the caught value
 ```
 
 ### and
@@ -599,7 +615,7 @@ Operands are combined under the numeric coercion rules, and a non-numeric operan
 * `(? x)` - casts `x` to `Bool` following the truthiness rules under Types.
 * `(not x)` - casts `x` to `Bool` and returns its negation, so `(not 0)` is `True`.
 * `(&& x1 x2 ...)` / `(|| x1 x2 ...)` - conjunction and disjunction of the arguments cast to `Bool`. These are functions, so every argument is evaluated; the `and` and `or` special forms stop as soon as the result is settled. With no arguments, `&&` is `True` and `||` is `False`.
-* `(?NIL x)`, and likewise `(?BOOL x)`, `(?INTEGER x)`, `(?FLOAT x)`, `(?STRING x)`, `(?SYMBOL x)`, `(?LIST x)`, `(?LAMBDA x)`, `(?BUILTIN x)` - returns `True` when `x` is of that type. One predicate exists per type, named `?` followed by the type name in upper case.
+* `(?NIL x)`, and likewise `(?BOOL x)`, `(?INTEGER x)`, `(?FLOAT x)`, `(?STRING x)`, `(?SYMBOL x)`, `(?LIST x)`, `(?LAMBDA x)`, `(?BUILTIN x)`, `(?EXCEPTION x)` - returns `True` when `x` is of that type. One predicate exists per type, named `?` followed by the type name in upper case.
 
 ### Conversion
 
@@ -670,7 +686,9 @@ The following built-ins operate on `String` values. Passing a non-`String` value
 
 * `(eval x)` - evaluates `x` as an expression in the current scope and returns the result. A value that is not a `List` or `Symbol` evaluates to itself.
 * `(apply f args)` - calls `f` with the elements of the `List` `args` as its arguments. A non-callable `f` raises `UNCALLABLE_EXCEPTION`, and `f`'s own arity still applies.
-* `(throw kind)` - raises `kind` as an exception. `kind` must be a `Symbol`, so any name works, not only the kinds the language defines. A non-`Symbol` raises `TYPE_EXCEPTION`. `throw` does not return: control passes to the nearest enclosing `try` naming the same kind, or out of the program if there is none.
+* `(throw kind)` / `(throw kind value)` - raises `kind` as an exception. `kind` must be a `Symbol`, so any name works, not only the kinds the language defines. Given a `value`, the exception raised is an `Exception` (see Types) pairing the kind with it; given none, it is the bare kind `Symbol`. A non-`Symbol` `kind` raises `TYPE_EXCEPTION`, and more than one `value` raises `VALUE_EXCEPTION`. `throw` does not return: control passes to the nearest enclosing `try` naming the same kind, or out of the program if there is none.
+* `(exc-kind e)` - returns the kind `Symbol` of the `Exception` `e`. A non-`Exception` raises `TYPE_EXCEPTION`.
+* `(exc-value e)` - returns the value carried by the `Exception` `e`. A non-`Exception` raises `TYPE_EXCEPTION`.
 
 ```lisp
 (eval '(+ 1 2))         ; 3
@@ -725,7 +743,7 @@ Sparkle has no library layer separate from the language: everything available to
 
 ## Exception Model
 
-An exception is a `Symbol` naming a kind. Raising one abandons the expression in progress and unwinds to the nearest enclosing `try` that names the same kind; if none does, the program stops and the implementation reports the kind, exiting with a non-zero status.
+An exception is a `Symbol` naming a kind, optionally carrying a value. Raising one abandons the expression in progress and unwinds to the nearest enclosing `try` that names the same kind; if none does, the program stops and the implementation reports it, exiting with a non-zero status.
 
 The language raises these kinds:
 
@@ -740,9 +758,14 @@ The language raises these kinds:
 
 A program raises its own with `throw`, and the kind it names need not be one of the above: kinds are matched by name, so a program may invent as many as it likes.
 
+An exception may carry a value. `(throw kind value)` raises an `Exception` (see Types) pairing the kind with the value, and a `try` that catches it hands the program that object in place of the bare kind, so a handler reads the detail with `exc-value`. Whether a value rides along or not, matching is by kind alone. An uncaught exception with a value is reported as its kind, a colon, and the value.
+
 `try` catches any of the kinds it is given. An exception of any other kind passes through it untouched and continues outward, so a handler never absorbs a failure it was not written for. Because matching is by name, a kind the language defines and a kind a program invented are caught the same way.
 
 ```lisp
 (let result (try TYPE_EXCEPTION (get Nil 0)))
 (print "$0" result)      ; TYPE_EXCEPTION
+
+(let e (try Overflow (throw Overflow 42)))
+(print "$0" (exc-value e))   ; 42
 ```

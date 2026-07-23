@@ -1,6 +1,7 @@
 #include "io.h"
 #include "string_view.h"
 #include "vm.h"
+#include "write.h"
 
 #include <assert.h>
 #include <stdarg.h>
@@ -92,12 +93,26 @@ void io_report_parser(Io *io, const char *path, Parser *parser) {
 void io_report_vm(Io *io, const char *path, VM *vm) {
     assert(vm->is_err);
 
-    // Compared by interned name rather than by object: a kind that reached here
-    // through throw is a fresh symbol, since capitalized symbols self-evaluate
-    // into one, and would match no singleton by identity.
+    // A value-carrying exception is an Exception object; its whole point is the
+    // detail it holds, so render it as the Kind: Value that write_expr gives and
+    // let it stand in for any fixed message.
+    if (OBJ_OFTYPE(vm->exception, TY_EXCEPTION)) {
+        CharDA out;
+        da_init(out);
+        write_expr(vm, &out, vm->exception);
+        io_report_error(io, "%s: [RUNTIME ERROR] %.*s\n", path, (int)out.size, out.data);
+        da_free(out);
+        return;
+    }
+
+    // A value-less exception is a bare kind Symbol. Compared by interned name
+    // rather than by object: a kind that reached here through throw is a fresh
+    // symbol, since capitalized symbols self-evaluate into one, and would match
+    // no singleton by identity.
+    StringName kind = OBJ_SYMBOL(vm_exception_kind(vm));
     const char *message = NULL;
 #define X(name_, msg_)                                                                             \
-    if (OBJ_SYMBOL(vm->exception) == OBJ_SYMBOL(vm->singletons._##name_))                          \
+    if (kind == OBJ_SYMBOL(vm->singletons._##name_))                                               \
         message = (msg_);
     X_RUNTIME_EXCEPTIONS
 #undef X
@@ -107,5 +122,5 @@ void io_report_vm(Io *io, const char *path, VM *vm) {
     if (message)
         io_report_error(io, "%s: [RUNTIME ERROR] %s\n", path, message);
     else
-        io_report_error(io, "%s: [RUNTIME ERROR] %s raised.\n", path, OBJ_SYMBOL(vm->exception));
+        io_report_error(io, "%s: [RUNTIME ERROR] %s raised.\n", path, kind);
 }

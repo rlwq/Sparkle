@@ -33,6 +33,7 @@ Object *gc_alloc_list(GC *gc);
 Object *gc_alloc_lambda(GC *gc, bool is_variadic, Object *expr, Scope *scope);
 Object *gc_alloc_string_own(GC *gc, char *data, size_t size);
 Object *gc_alloc_string(GC *gc, const char *data, size_t size);
+Object *gc_alloc_exception(GC *gc, Object *kind, Object *value);
 
 Scope *gc_alloc_scope(GC *gc, Scope *parent);
 void gc_free_scope(GC *gc, Scope *scope);

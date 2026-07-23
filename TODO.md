@@ -95,8 +95,9 @@ is why piece 2 buys more than piece 4 for a fraction of the work.
       trouble, and a `vm_recover_fmt` beside `vm_recover` so the sixty existing
       sites keep compiling and improve one at a time. Kind names generate from
       `X_KINDS`, the way `token_kind_names` already does for tokens.
-      Detail for the reporter only. A payload the program can catch and inspect
-      is a language change, tracked separately under Language Semantics.
+      Detail for the reporter only - the payload a program can catch and
+      inspect was the separate, program-facing axis, and now exists as the
+      `Exception` type.
 
 * [ ] **3. No call trace.** "Failed in `foo`" without "called from `bar`, called
       from line 12" is half an answer. Wants the explicit control stack that the
@@ -153,16 +154,6 @@ Decisions the language still owes, each to be made and then written into
       surprise. Scheme special-cases arity one for `-` and `/` for this reason.
       Decide: keep the uniform fold and say so loudly under Arithmetic, or
       special-case `(- x)` as negation. *(verified: `(- 5)` prints `5`)*
-
-* [ ] Exceptions carry nothing. `throw` raises a bare Symbol, so a failure
-      cannot report which value or index caused it - the kind is the whole
-      message. Planned shape, deferred: a new `Exception` type pairing a `Symbol`
-      kind with a message value, raised as `(throw Kind Value)` with the value
-      optional and reported as `Kind: Value`; `try` still matches on the kind and
-      gains a way to bind the value. Re-raise is deliberately left out - with no
-      polymorphic exception objects, discriminating by kind (now that `try`
-      accepts several) is enough. Deliberately not part of Error Reporting piece
-      2, which only routes detail to the reporter and leaves `try` alone.
 
 * [ ] Integer overflow is unspecified, and the reader has it too. `Integer` is a
       C `long long` and signed overflow is undefined behaviour - in arithmetic,
@@ -590,7 +581,8 @@ Cleanups with no user-visible change.
 * [x] Write about `(x .)` & `(. x)` syntax.
 * [x] Negative tests. Error message validation.
 * [x] Evaluation time of tests.
-* [x] `Exception` data type for expressive error reporting & powerful catch mechanism.
+* [x] Exception kinds, `throw` and `try`: raise a Symbol by name, catch several kinds per handler.
+* [x] `Exception` data type carrying a value: `(throw Kind Value)` raises one pairing a kind Symbol with a value; `try` yields it, `exc-kind`/`exc-value` read it, and it prints as `Kind: Value`. A value-less exception stays a bare kind Symbol.
 * [x] Introduce `StringName` data type for constant time string comparison.
 * [x] Assertions on values on stack in `eval_` functions.
 * [x] Exception reporting on all failed form calls (`lambda`, `if`, `let`, `quote`...)

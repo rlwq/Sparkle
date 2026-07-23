@@ -71,3 +71,8 @@ void vm_build_lambda(VM *vm, bool is_variadic, Object *expr, Scope *scope) {
     vm_maybe_collect(vm);
     vm_push(vm, gc_alloc_lambda(vm->gc, is_variadic, expr, scope));
 }
+
+void vm_build_exception(VM *vm, Object *kind, Object *value) {
+    vm_maybe_collect(vm);
+    vm_push(vm, gc_alloc_exception(vm->gc, kind, value));
+}

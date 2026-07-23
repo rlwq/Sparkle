@@ -1,0 +1,1 @@
+./tests/negative/throw_extra_value.spk: [RUNTIME ERROR] Function expected some other value.

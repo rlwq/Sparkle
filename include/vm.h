@@ -151,7 +151,10 @@ void vm_run(VM *vm);
 // vm_recovery.c
 void vm_push_recovery(VM *vm, jmp_buf *jmp);
 void vm_pop_recovery(VM *vm);
-_Noreturn void vm_recover(VM *vm, Object *exception_symbol) __attribute__((cold));
+// The raised exception is a bare kind Symbol, or an Exception carrying a value.
+_Noreturn void vm_recover(VM *vm, Object *exception) __attribute__((cold));
+// The kind Symbol of the pending exception, whichever form it took.
+Object *vm_exception_kind(VM *vm);
 void vm_expect(VM *vm, ObjectType type);
 void vm_expect2(VM *vm, ObjectType prev, ObjectType peek);
 
@@ -182,6 +185,7 @@ void vm_build_symbol(VM *vm, StringName value);
 void vm_build_string(VM *vm, const char *data, size_t size);
 void vm_build_string_own(VM *vm, char *data, size_t size);
 void vm_build_list(VM *vm);
+void vm_build_exception(VM *vm, Object *kind, Object *value);
 
 // vm_stack.c
 void vm_push(VM *vm, Object *value);

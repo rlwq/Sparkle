@@ -29,6 +29,7 @@ bool vm_cast_to_bool(VM *vm) {
     case KIND_SYMBOL:
     case KIND_BUILTIN:
     case KIND_LAMBDA:
+    case KIND_EXCEPTION:
         result = true;
         break;
     case KIND_NIL:
@@ -142,6 +143,7 @@ bool vm_eq(VM *vm) {
     }
     case KIND_LAMBDA:
     case KIND_BUILTIN:
+    case KIND_EXCEPTION:
         is_equal = vm_peek(vm) == vm_prev(vm);
         break;
     }
